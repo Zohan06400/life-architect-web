@@ -150,8 +150,8 @@ const ReflectionInput = ({ question, placeholder, icon, defaultValue, onBlurSave
             type="button"
             onClick={handleMicClick}
             className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${isRecording
-              ? 'bg-rose-500/30 text-rose-400 ring-2 ring-rose-500/50'
-              : 'bg-white/10 text-slate-400 hover:bg-purple-500/20 hover:text-purple-400'
+                ? 'bg-rose-500/30 text-rose-400 ring-2 ring-rose-500/50'
+                : 'bg-white/10 text-slate-400 hover:bg-purple-500/20 hover:text-purple-400'
               }`}
             title={isRecording ? "Stop recording" : "Start voice input"}
           >
@@ -1252,7 +1252,7 @@ const LifeArchitect = () => {
 
     // Week navigation state
     const [weekOffset, setWeekOffset] = useState(0);
-    const [showMonthPicker, setShowMonthPicker] = useState(false);
+    const [showMonthPicker, setShowMonthPicker] = useState(true);
 
     // Generate week days for calendar with offset
     const getWeekDays = () => {
@@ -1686,22 +1686,22 @@ const LifeArchitect = () => {
                                 : 'hover:bg-white/5'}`}
                     >
                       <span className={`text-[10px] font-medium uppercase tracking-wide ${isDragOverThisDay
-                        ? 'text-purple-200'
-                        : day.isSelected
-                          ? 'text-purple-300'
-                          : day.isToday
-                            ? 'text-purple-400'
-                            : 'text-slate-500'
+                          ? 'text-purple-200'
+                          : day.isSelected
+                            ? 'text-purple-300'
+                            : day.isToday
+                              ? 'text-purple-400'
+                              : 'text-slate-500'
                         }`}>
                         {day.dayName}
                       </span>
                       <span className={`text-lg font-semibold ${isDragOverThisDay
-                        ? 'text-white'
-                        : day.isSelected
                           ? 'text-white'
-                          : day.isToday
-                            ? 'text-purple-300'
-                            : 'text-slate-300'
+                          : day.isSelected
+                            ? 'text-white'
+                            : day.isToday
+                              ? 'text-purple-300'
+                              : 'text-slate-300'
                         }`}>
                         {day.dayNum}
                       </span>
@@ -1872,8 +1872,8 @@ const LifeArchitect = () => {
                               <span className="text-slate-200 font-medium text-sm">{task.title}</span>
                               <div className="flex items-center gap-2 mt-0.5">
                                 <span className={`text-xs px-1.5 py-0.5 rounded ${task.energy === 'high' ? 'bg-rose-500/20 text-rose-400' :
-                                  task.energy === 'medium' ? 'bg-amber-500/20 text-amber-400' :
-                                    'bg-emerald-500/20 text-emerald-400'
+                                    task.energy === 'medium' ? 'bg-amber-500/20 text-amber-400' :
+                                      'bg-emerald-500/20 text-emerald-400'
                                   }`}>
                                   {task.energy}
                                 </span>
@@ -2364,10 +2364,10 @@ const LifeArchitect = () => {
                         key={level}
                         onClick={() => setPlanTaskData(prev => ({ ...prev, energy: level }))}
                         className={`py-2.5 px-3 rounded-xl text-sm font-medium capitalize transition-all ${planTaskData.energy === level
-                          ? level === 'high' ? 'bg-rose-500/30 text-rose-300 ring-2 ring-rose-500/50' :
-                            level === 'medium' ? 'bg-amber-500/30 text-amber-300 ring-2 ring-amber-500/50' :
-                              'bg-emerald-500/30 text-emerald-300 ring-2 ring-emerald-500/50'
-                          : 'bg-white/5 text-slate-400'
+                            ? level === 'high' ? 'bg-rose-500/30 text-rose-300 ring-2 ring-rose-500/50' :
+                              level === 'medium' ? 'bg-amber-500/30 text-amber-300 ring-2 ring-amber-500/50' :
+                                'bg-emerald-500/30 text-emerald-300 ring-2 ring-emerald-500/50'
+                            : 'bg-white/5 text-slate-400'
                           }`}
                       >
                         {level}
@@ -2385,8 +2385,8 @@ const LifeArchitect = () => {
                         key={opt.value}
                         onClick={() => setPlanTaskData(prev => ({ ...prev, timeEstimate: opt.value }))}
                         className={`py-2 px-2 rounded-xl text-xs font-medium transition-all ${planTaskData.timeEstimate === opt.value
-                          ? 'bg-cyan-500/30 text-cyan-300 ring-2 ring-cyan-500/50'
-                          : 'bg-white/5 text-slate-400'
+                            ? 'bg-cyan-500/30 text-cyan-300 ring-2 ring-cyan-500/50'
+                            : 'bg-white/5 text-slate-400'
                           }`}
                       >
                         {opt.label}
@@ -3360,22 +3360,22 @@ const LifeArchitect = () => {
                           : 'hover:bg-white/5 text-slate-400'}`}
               >
                 <span className={`text-[10px] font-medium uppercase tracking-wide ${isDragOver
-                  ? 'text-amber-200'
-                  : day.isSelected
-                    ? 'text-purple-200'
-                    : day.isToday
-                      ? 'text-purple-400'
-                      : 'text-slate-500'
+                    ? 'text-amber-200'
+                    : day.isSelected
+                      ? 'text-purple-200'
+                      : day.isToday
+                        ? 'text-purple-400'
+                        : 'text-slate-500'
                   }`}>
                   {day.dayName}
                 </span>
                 <span className={`text-lg font-semibold mt-0.5 ${isDragOver
-                  ? 'text-white'
-                  : day.isSelected
                     ? 'text-white'
-                    : day.isToday
+                    : day.isSelected
                       ? 'text-white'
-                      : 'text-slate-300'
+                      : day.isToday
+                        ? 'text-white'
+                        : 'text-slate-300'
                   }`}>
                   {day.dayNum}
                 </span>
@@ -3557,10 +3557,10 @@ const LifeArchitect = () => {
                   className="flex items-center justify-end h-8"
                 >
                   <span className={`text-xs font-medium transition-all duration-300 ${isCurrent
-                    ? 'text-amber-400 font-bold'
-                    : isPast
-                      ? 'text-slate-500'
-                      : 'text-slate-400'
+                      ? 'text-amber-400 font-bold'
+                      : isPast
+                        ? 'text-slate-500'
+                        : 'text-slate-400'
                     }`}>
                     {slot.label}
                   </span>
@@ -4846,18 +4846,18 @@ const LifeArchitect = () => {
                     : 'hover:bg-white/5 text-slate-400'}`}
             >
               <span className={`text-[10px] font-medium uppercase tracking-wide ${day.isSelected
-                ? 'text-purple-200'
-                : day.isToday
-                  ? 'text-purple-400'
-                  : 'text-slate-500'
+                  ? 'text-purple-200'
+                  : day.isToday
+                    ? 'text-purple-400'
+                    : 'text-slate-500'
                 }`}>
                 {day.dayName}
               </span>
               <span className={`text-lg font-semibold mt-0.5 ${day.isSelected
-                ? 'text-white'
-                : day.isToday
                   ? 'text-white'
-                  : 'text-slate-300'
+                  : day.isToday
+                    ? 'text-white'
+                    : 'text-slate-300'
                 }`}>
                 {day.dayNum}
               </span>
@@ -5215,12 +5215,12 @@ const LifeArchitect = () => {
                         <div
                           key={i}
                           className={`w-1.5 h-1.5 rounded-full transition-all ${i < currentReflection.rating
-                            ? currentReflection.rating >= 7
-                              ? 'bg-emerald-400'
-                              : currentReflection.rating >= 4
-                                ? 'bg-amber-400'
-                                : 'bg-rose-400'
-                            : 'bg-white/10'
+                              ? currentReflection.rating >= 7
+                                ? 'bg-emerald-400'
+                                : currentReflection.rating >= 4
+                                  ? 'bg-amber-400'
+                                  : 'bg-rose-400'
+                              : 'bg-white/10'
                             }`}
                         />
                       ))}
@@ -5690,8 +5690,8 @@ const LifeArchitect = () => {
                             <div className="w-full h-3 bg-white/10 rounded-full overflow-hidden">
                               <div
                                 className={`h-full rounded-full bg-gradient-to-r ${progress.percent === 100 ? 'from-emerald-500 to-green-500' :
-                                  progress.percent >= 50 ? 'from-cyan-500 to-blue-500' :
-                                    'from-slate-500 to-slate-400'
+                                    progress.percent >= 50 ? 'from-cyan-500 to-blue-500' :
+                                      'from-slate-500 to-slate-400'
                                   } transition-all duration-500`}
                                 style={{ width: `${progress.percent}%` }}
                               />
@@ -6426,8 +6426,8 @@ const LifeArchitect = () => {
                           key={icon}
                           onClick={() => setEditReminderIcon(icon)}
                           className={`w-10 h-10 rounded-xl text-xl flex items-center justify-center transition-all ${editReminderIcon === icon
-                            ? 'bg-amber-500/30 ring-2 ring-amber-400'
-                            : 'bg-white/5 hover:bg-white/10'
+                              ? 'bg-amber-500/30 ring-2 ring-amber-400'
+                              : 'bg-white/5 hover:bg-white/10'
                             }`}
                         >
                           {icon}
@@ -6628,8 +6628,8 @@ const LifeArchitect = () => {
                           key={key}
                           onClick={() => setLocalProjectData(prev => ({ ...prev, status: key }))}
                           className={`py-2.5 px-3 rounded-xl text-sm font-medium transition-all ${localProjectData.status === key
-                            ? `${val.bg} ${val.text} ring-2 ring-current`
-                            : 'bg-white/5 text-slate-400 hover:bg-white/10'
+                              ? `${val.bg} ${val.text} ring-2 ring-current`
+                              : 'bg-white/5 text-slate-400 hover:bg-white/10'
                             }`}
                         >
                           {val.label}
@@ -6647,8 +6647,8 @@ const LifeArchitect = () => {
                           key={color.value}
                           onClick={() => setLocalProjectData(prev => ({ ...prev, color: color.value }))}
                           className={`w-8 h-8 rounded-lg transition-all ${localProjectData.color === color.value
-                            ? 'ring-2 ring-white ring-offset-2 ring-offset-slate-900 scale-110'
-                            : 'hover:scale-110'
+                              ? 'ring-2 ring-white ring-offset-2 ring-offset-slate-900 scale-110'
+                              : 'hover:scale-110'
                             }`}
                           style={{ backgroundColor: color.value }}
                           title={color.name}
@@ -6833,8 +6833,8 @@ const LifeArchitect = () => {
                     <p className="text-white font-medium truncate">{task.title}</p>
                     <div className="flex items-center gap-3 mt-1">
                       <span className={`text-xs px-2 py-0.5 rounded-full ${task.energy === 'high' ? 'bg-rose-500/20 text-rose-400' :
-                        task.energy === 'medium' ? 'bg-amber-500/20 text-amber-400' :
-                          'bg-emerald-500/20 text-emerald-400'
+                          task.energy === 'medium' ? 'bg-amber-500/20 text-amber-400' :
+                            'bg-emerald-500/20 text-emerald-400'
                         }`}>
                         {task.energy}
                       </span>
@@ -6975,10 +6975,10 @@ const LifeArchitect = () => {
                         key={level}
                         onClick={() => setLocalTaskData(prev => ({ ...prev, energy: level }))}
                         className={`py-2.5 px-3 rounded-xl text-sm font-medium capitalize transition-all ${localTaskData.energy === level
-                          ? level === 'high' ? 'bg-rose-500/20 text-rose-400 ring-2 ring-rose-500/50' :
-                            level === 'medium' ? 'bg-amber-500/20 text-amber-400 ring-2 ring-amber-500/50' :
-                              'bg-emerald-500/20 text-emerald-400 ring-2 ring-emerald-500/50'
-                          : 'bg-white/5 text-slate-400 hover:bg-white/10'
+                            ? level === 'high' ? 'bg-rose-500/20 text-rose-400 ring-2 ring-rose-500/50' :
+                              level === 'medium' ? 'bg-amber-500/20 text-amber-400 ring-2 ring-amber-500/50' :
+                                'bg-emerald-500/20 text-emerald-400 ring-2 ring-emerald-500/50'
+                            : 'bg-white/5 text-slate-400 hover:bg-white/10'
                           }`}
                       >
                         {level}
@@ -6996,8 +6996,8 @@ const LifeArchitect = () => {
                         key={opt.value}
                         onClick={() => setLocalTaskData(prev => ({ ...prev, timeEstimate: opt.value }))}
                         className={`py-2 px-2 rounded-lg text-xs font-medium transition-all ${localTaskData.timeEstimate === opt.value
-                          ? 'bg-cyan-500/20 text-cyan-400 ring-2 ring-cyan-500/50'
-                          : 'bg-white/5 text-slate-400 hover:bg-white/10'
+                            ? 'bg-cyan-500/20 text-cyan-400 ring-2 ring-cyan-500/50'
+                            : 'bg-white/5 text-slate-400 hover:bg-white/10'
                           }`}
                       >
                         {opt.label}
@@ -7010,8 +7010,8 @@ const LifeArchitect = () => {
                         key={opt.value}
                         onClick={() => setLocalTaskData(prev => ({ ...prev, timeEstimate: opt.value }))}
                         className={`py-2 px-2 rounded-lg text-xs font-medium transition-all ${localTaskData.timeEstimate === opt.value
-                          ? 'bg-cyan-500/20 text-cyan-400 ring-2 ring-cyan-500/50'
-                          : 'bg-white/5 text-slate-400 hover:bg-white/10'
+                            ? 'bg-cyan-500/20 text-cyan-400 ring-2 ring-cyan-500/50'
+                            : 'bg-white/5 text-slate-400 hover:bg-white/10'
                           }`}
                       >
                         {opt.label}
@@ -7149,8 +7149,8 @@ const LifeArchitect = () => {
                         key={key}
                         onClick={() => setLocalProjectData(prev => ({ ...prev, status: key }))}
                         className={`py-2.5 px-3 rounded-xl text-sm font-medium transition-all ${localProjectData.status === key
-                          ? `${val.bg} ${val.text} ring-2 ring-current`
-                          : 'bg-white/5 text-slate-400'
+                            ? `${val.bg} ${val.text} ring-2 ring-current`
+                            : 'bg-white/5 text-slate-400'
                           }`}
                       >
                         {val.label}
@@ -7181,8 +7181,8 @@ const LifeArchitect = () => {
                         key={color.value}
                         onClick={() => setLocalProjectData(prev => ({ ...prev, color: color.value }))}
                         className={`w-8 h-8 rounded-lg transition-all ${localProjectData.color === color.value
-                          ? 'ring-2 ring-white ring-offset-2 ring-offset-slate-900 scale-110'
-                          : 'hover:scale-110'
+                            ? 'ring-2 ring-white ring-offset-2 ring-offset-slate-900 scale-110'
+                            : 'hover:scale-110'
                           }`}
                         style={{ backgroundColor: color.value }}
                         title={color.name}
@@ -7266,7 +7266,7 @@ const LifeArchitect = () => {
       </div>
 
       {/* Bottom Navigation - Liquid Glass */}
-      <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-[400px] rounded-full backdrop-blur-2xl bg-black/40 border border-white/10 shadow-2xl shadow-black/50 z-50">
+      <nav className="fixed bottom-0 left-0 right-0 glass-dark border-t border-white/10 safe-area-pb">
         <div className="max-w-md mx-auto flex justify-around items-end py-2">
           <NavItem
             id="projects"
@@ -7377,8 +7377,8 @@ const LifeArchitect = () => {
                   <button
                     onClick={() => setGlobalTaskMode('task')}
                     className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all ${globalTaskMode === 'task'
-                      ? 'bg-amber-500/80 text-white'
-                      : 'bg-white/10 text-slate-400'
+                        ? 'bg-amber-500/80 text-white'
+                        : 'bg-white/10 text-slate-400'
                       }`}
                   >
                     ⏰ Scheduled Task
@@ -7386,8 +7386,8 @@ const LifeArchitect = () => {
                   <button
                     onClick={() => setGlobalTaskMode('reminder')}
                     className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all ${globalTaskMode === 'reminder'
-                      ? 'bg-purple-500/80 text-white'
-                      : 'bg-white/10 text-slate-400'
+                        ? 'bg-purple-500/80 text-white'
+                        : 'bg-white/10 text-slate-400'
                       }`}
                   >
                     📌 Reminder
