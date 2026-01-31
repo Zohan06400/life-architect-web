@@ -5,16 +5,50 @@ import React, { useState, useEffect } from 'react';
 // ============================================
 
 // Questions for reflection
+// Options for influence question
+const influenceOptions = {
+  helped: [
+    { id: 'priorities', label: 'Clear priorities', icon: '🎯' },
+    { id: 'focus', label: 'Strong focus', icon: '🧠' },
+    { id: 'energy_high', label: 'High energy', icon: '🔋' },
+    { id: 'time', label: 'Enough time', icon: '⏱️' },
+    { id: 'next_steps', label: 'Clear next steps', icon: '🧩' },
+    { id: 'discipline', label: 'Discipline', icon: '💪' },
+  ],
+  blocked: [
+    { id: 'distractions', label: 'Distractions', icon: '📱' },
+    { id: 'energy_low', label: 'Low energy', icon: '😴' },
+    { id: 'clarity', label: 'Lack of clarity', icon: '🤯' },
+    { id: 'time_low', label: 'Not enough time', icon: '⏳' },
+    { id: 'interruptions', label: 'Interruptions', icon: '🧍' },
+    { id: 'stress', label: 'Stress', icon: '😵‍💫' },
+  ]
+};
+
+// Questions for reflection
 const reflectionQuestions = [
-  { key: 'activities', question: "What did you do today?", placeholder: "List your main activities...", icon: "📝" },
-  { key: 'topResult', question: "What is the one most important result?", placeholder: "The biggest win or outcome...", icon: "🏆" },
-  { key: 'energyDrain', question: "What drained your energy?", placeholder: "What felt heavy or exhausting...", icon: "🔋" },
-  { key: 'didWell', question: "One thing you did well?", placeholder: "Something you're proud of...", icon: "⭐" },
-  { key: 'lesson', question: "One lesson from today?", placeholder: "What did you learn...", icon: "💡" },
+  {
+    key: 'activities',
+    question: "What mattered most today?",
+    placeholder: "We already know which tasks you completed today.\nDescribe what actually moved forward today — the task, decision, or result that had real impact.\nSome days are for maintenance or recovery. “Nothing meaningful” is a valid answer.",
+    icon: "📝"
+  },
+  {
+    key: 'influencers',
+    question: "What influenced your progress today?",
+    type: 'balanced-select',
+    icon: "📊"
+  },
+  {
+    key: 'differently',
+    question: "🤔 What would you do differently tomorrow?",
+    placeholder: "One small change you’d make tomorrow to improve your day.",
+    icon: "🔄"
+  },
 ];
 
 // Reflection input with voice recording option
-const ReflectionInput = ({ question, placeholder, icon, defaultValue, onBlurSave, onValueChange }) => {
+const ReflectionInput = ({ question, description, placeholder, icon, defaultValue, onBlurSave, onValueChange }) => {
   const textareaRef = React.useRef(null);
   const [isRecording, setIsRecording] = React.useState(false);
   const [speechSupported, setSpeechSupported] = React.useState(true);
@@ -166,6 +200,15 @@ const ReflectionInput = ({ question, placeholder, icon, defaultValue, onBlurSave
         )}
       </div>
 
+      {/* Description / Subtext */}
+      {description && (
+        <div className="mb-3 px-1">
+          <p className="text-slate-400 text-xs leading-relaxed whitespace-pre-line border-l-2 border-slate-700/50 pl-3 italic">
+            {description}
+          </p>
+        </div>
+      )}
+
       <textarea
         ref={textareaRef}
         defaultValue={defaultValue}
@@ -284,6 +327,8 @@ const LifeArchitect = () => {
   const [projectsEditingReminder, setProjectsEditingReminder] = useState(null);
   // Execute Screen
   const [executeShowNewTaskModal, setExecuteShowNewTaskModal] = useState(false);
+  const [executeEditingTask, setExecuteEditingTask] = useState(null);
+  const [executeEditingRoutine, setExecuteEditingRoutine] = useState(null);
   // Plan Screen
   const [planShowNewReminder, setPlanShowNewReminder] = useState(false);
   const [planEditingReminder, setPlanEditingReminder] = useState(null);
@@ -2468,6 +2513,8 @@ const LifeArchitect = () => {
   // ============================================
   const ExecuteScreen = () => {
     const today = new Date();
+    // Verify lifted state availability
+    // console.log('ExecuteScreen State:', { executeEditingTask, executeEditingRoutine });
     const [currentTime, setCurrentTime] = useState(new Date());
     const [draggingTask, setDraggingTask] = useState(null);
     const [dragStartY, setDragStartY] = useState(0);
@@ -2477,14 +2524,14 @@ const LifeArchitect = () => {
 
     // Routine expansion state
     // expandedRoutine is now lifted to App component
-    const [editingRoutine, setEditingRoutine] = useState(null); // 'morning' | 'evening' | null
+    // editingRoutine is now lifted to App component as executeEditingRoutine
     const [newHabitText, setNewHabitText] = useState('');
 
     // Get current routines for selected date
     const currentRoutines = getRoutinesForDate(selectedExecuteDate);
 
     // Task edit modal state
-    const [editingTask, setEditingTask] = useState(null);
+    // editingTask is now lifted to App component as executeEditingTask
     const [editTaskName, setEditTaskName] = useState('');
     const [editTaskIcon, setEditTaskIcon] = useState('📌');
     const [editTaskEnergy, setEditTaskEnergy] = useState('medium');
@@ -2540,7 +2587,7 @@ const LifeArchitect = () => {
 
     // Open task for editing
     const openTaskEdit = (task) => {
-      setEditingTask(task);
+      setExecuteEditingTask(task);
       setEditTaskName(task.title);
       setEditTaskIcon(task.icon);
       setEditTaskEnergy(task.energy || 'medium');
@@ -2552,7 +2599,7 @@ const LifeArchitect = () => {
 
     // Save task edits
     const saveTaskEdit = () => {
-      if (!editingTask || !editTaskName.trim()) return;
+      if (!executeEditingTask || !editTaskName.trim()) return;
 
       const newStartTime = new Date(selectedExecuteDate);
       newStartTime.setHours(editTaskStartHour, editTaskStartMinute, 0, 0);
@@ -2568,7 +2615,7 @@ const LifeArchitect = () => {
       setTasksByDate(prev => ({
         ...prev,
         [dateKey]: (prev[dateKey] || []).map(t => {
-          if (t.id === editingTask.id) {
+          if (t.id === executeEditingTask.id) {
             return {
               ...t,
               title: editTaskName.trim(),
@@ -2582,7 +2629,7 @@ const LifeArchitect = () => {
         }).sort((a, b) => a.startTime - b.startTime)
       }));
 
-      setEditingTask(null);
+      setExecuteEditingTask(null);
     };
 
     // Delete task
@@ -2592,7 +2639,7 @@ const LifeArchitect = () => {
         ...prev,
         [dateKey]: (prev[dateKey] || []).filter(t => t.id !== taskId)
       }));
-      setEditingTask(null);
+      setExecuteEditingTask(null);
     };
 
     // Start focus mode
@@ -2611,7 +2658,7 @@ const LifeArchitect = () => {
       setPomodoroSession(1);
       setIsBreak(false);
       setTotalFocusTime(0);
-      setEditingTask(null);
+      setExecuteEditingTask(null);
     };
 
     // Get initial focus duration for reset
@@ -3438,7 +3485,7 @@ const LifeArchitect = () => {
           const totalCount = routine.habits.length;
           const progress = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
           const isExpanded = expandedRoutine === 'morning';
-          const isEditing = editingRoutine === 'morning';
+          const isEditing = executeEditingRoutine === 'morning';
           const allDone = completedCount === totalCount;
 
           return (
@@ -3557,7 +3604,7 @@ const LifeArchitect = () => {
                         </button>
                       )}
                       <button
-                        onClick={() => setEditingRoutine(isEditing ? null : 'morning')}
+                        onClick={() => setExecuteEditingRoutine(isEditing ? null : 'morning')}
                         className="px-4 py-2 rounded-xl text-sm font-medium text-slate-400 bg-white/5 hover:bg-white/10 transition-all"
                       >
                         {isEditing ? 'Done' : 'Edit'}
@@ -3749,7 +3796,7 @@ const LifeArchitect = () => {
           const totalCount = routine.habits.length;
           const progress = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
           const isExpanded = expandedRoutine === 'evening';
-          const isEditing = editingRoutine === 'evening';
+          const isEditing = executeEditingRoutine === 'evening';
           const allDone = completedCount === totalCount;
 
           return (
@@ -3868,7 +3915,7 @@ const LifeArchitect = () => {
                         </button>
                       )}
                       <button
-                        onClick={() => setEditingRoutine(isEditing ? null : 'evening')}
+                        onClick={() => setExecuteEditingRoutine(isEditing ? null : 'evening')}
                         className="px-4 py-2 rounded-xl text-sm font-medium text-slate-400 bg-white/5 hover:bg-white/10 transition-all"
                       >
                         {isEditing ? 'Done' : 'Edit'}
@@ -4060,11 +4107,11 @@ const LifeArchitect = () => {
         )}
 
         {/* Edit Task Modal */}
-        {editingTask && !focusMode && (
+        {executeEditingTask && !focusMode && (
           <div className="fixed inset-0 z-50 flex items-end justify-center animate-fadeIn">
             <div
               className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-              onClick={() => setEditingTask(null)}
+              onClick={() => setExecuteEditingTask(null)}
             />
 
             <div
@@ -4081,7 +4128,7 @@ const LifeArchitect = () => {
                 <div className="flex items-center justify-between">
                   <h2 className="text-lg font-semibold text-white">Edit Task</h2>
                   <button
-                    onClick={() => setEditingTask(null)}
+                    onClick={() => setExecuteEditingTask(null)}
                     className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-slate-400 hover:bg-white/20 transition-colors"
                   >
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -4208,9 +4255,9 @@ const LifeArchitect = () => {
                 </div>
 
                 {/* Focus Mode Button */}
-                {!editingTask?.completed && (
+                {!executeEditingTask?.completed && (
                   <button
-                    onClick={() => startFocusMode(editingTask)}
+                    onClick={() => startFocusMode(executeEditingTask)}
                     className="w-full py-3.5 rounded-xl font-semibold text-sm transition-all duration-200 flex items-center justify-center gap-2 mb-4
                       bg-gradient-to-r from-purple-500/30 to-indigo-500/30 text-purple-300 border border-purple-500/30 hover:from-purple-500/50 hover:to-indigo-500/50"
                   >
@@ -4224,7 +4271,7 @@ const LifeArchitect = () => {
               <div className="px-5 py-4 border-t border-white/10">
                 <div className="flex gap-3">
                   <button
-                    onClick={() => deleteTask(editingTask.id)}
+                    onClick={() => deleteTask(executeEditingTask.id)}
                     className="px-4 py-3 rounded-xl font-medium text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 transition-all"
                   >
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -4232,7 +4279,7 @@ const LifeArchitect = () => {
                     </svg>
                   </button>
                   <button
-                    onClick={() => setEditingTask(null)}
+                    onClick={() => setExecuteEditingTask(null)}
                     className="flex-1 py-3 rounded-xl font-medium text-slate-400 bg-white/10 hover:bg-white/20 transition-all"
                   >
                     Cancel
@@ -4528,12 +4575,12 @@ const LifeArchitect = () => {
     // Check if reflection has any content
     const hasContent = currentReflection.activities || currentReflection.topResult ||
       currentReflection.energyDrain || currentReflection.didWell ||
-      currentReflection.lesson || currentReflection.rating || currentReflection.photo;
+      currentReflection.lesson || currentReflection.differently || currentReflection.rating || currentReflection.photo;
 
     // Check if reflection has any content at all (for showing capsule button)
     const canCreateCapsule = currentReflection.activities || currentReflection.topResult ||
       currentReflection.energyDrain || currentReflection.didWell ||
-      currentReflection.lesson || currentReflection.rating || currentReflection.photo;
+      currentReflection.lesson || currentReflection.differently || currentReflection.rating || currentReflection.photo;
 
     // Auto-switch to capsule view if already has capsule created (for past dates)
     // Only run when date changes, not on every render
@@ -4549,7 +4596,16 @@ const LifeArchitect = () => {
 
     // Share Memory Capsule
     const handleShare = async () => {
-      const shareText = `Memory Capsule - ${new Date(selectedReflectDate).toLocaleDateString()}\nRating: ${currentReflection.rating}/10\n\nToday in brief: ${currentReflection.activities?.split('.')[0] || 'Brief summary'}\n\nTop moment: ${currentReflection.topResult || 'N/A'}\n\nLesson learned: ${currentReflection.lesson || 'N/A'}`;
+      const influencers = currentReflection.influencers || { helped: [], blocked: [] };
+      const helpedText = influencers.helped?.map(id => influenceOptions.helped.find(o => o.id === id)?.label).filter(Boolean).join(', ');
+      const blockedText = influencers.blocked?.map(id => influenceOptions.blocked.find(o => o.id === id)?.label).filter(Boolean).join(', ');
+
+      const influenceSummary = [
+        helpedText ? `💪 Helped: ${helpedText}` : '',
+        blockedText ? `🚧 Blocked: ${blockedText}` : ''
+      ].filter(Boolean).join('\n');
+
+      const shareText = `Memory Capsule - ${new Date(selectedReflectDate).toLocaleDateString()}\nRating: ${currentReflection.rating}/10\n\nToday in brief: ${currentReflection.activities?.split('.')[0] || 'Brief summary'}\n\n${influenceSummary ? `Influencers:\n${influenceSummary}\n\n` : ''}Next Step: ${currentReflection.differently || 'N/A'}`;
 
       if (navigator.share) {
         try {
@@ -4596,7 +4652,7 @@ const LifeArchitect = () => {
         const reflection = reflectionsByDate[dateKey];
         const hasReflection = reflection && (reflection.activities || reflection.topResult ||
           reflection.energyDrain || reflection.didWell ||
-          reflection.lesson || reflection.rating);
+          reflection.lesson || reflection.differently || reflection.rating);
 
         const todayDate = getToday();
         const selectedDate = new Date(selectedReflectDate);
@@ -4683,7 +4739,7 @@ const LifeArchitect = () => {
           isSelected: date.getTime() === selectedDate.getTime(),
           hasReflection: reflection && (reflection.activities || reflection.topResult ||
             reflection.energyDrain || reflection.didWell ||
-            reflection.lesson || reflection.rating),
+            reflection.lesson || reflection.differently || reflection.rating),
           projectTimelines: projectTimelines
         });
       }
@@ -4755,12 +4811,10 @@ const LifeArchitect = () => {
       if (currentReflection.activities) {
         summaryLines.push(`You focused on ${currentReflection.activities.toLowerCase().includes('work') ? 'work-related tasks' : 'various activities'}.`);
       }
-      if (currentReflection.topResult) {
-        summaryLines.push(`Key win: ${currentReflection.topResult}.`);
+      if (currentReflection.influencers?.helped?.length > 0) {
+        summaryLines.push(`Progress aided by ${currentReflection.influencers.helped.length} factors.`);
       }
-      if (currentReflection.energyDrain) {
-        summaryLines.push(`Energy spent on ${currentReflection.energyDrain.toLowerCase()}.`);
-      }
+
 
       return summaryLines.join(' ') || null;
     };
@@ -4948,68 +5002,7 @@ const LifeArchitect = () => {
               </div>
             </div>
 
-            {/* Photo of the Day */}
-            <div className="glass-card rounded-2xl p-4 mb-4">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-slate-300 font-medium">📸 Photo of the Day</span>
-                {currentReflection.photo && (
-                  <button
-                    onClick={() => setReviewShowPhotoModal(true)}
-                    className="text-xs text-purple-400 hover:text-purple-300 transition-colors"
-                  >
-                    View
-                  </button>
-                )}
-              </div>
 
-              {currentReflection.photo ? (
-                <div
-                  className="relative group cursor-pointer"
-                  onClick={() => setReviewShowPhotoModal(true)}
-                >
-                  <div
-                    className="w-full h-48 rounded-xl overflow-hidden"
-                    style={{
-                      background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)',
-                    }}
-                  >
-                    <img
-                      src={currentReflection.photo}
-                      alt="Photo of the day"
-                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                    />
-                  </div>
-                  {/* Hover overlay */}
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded-xl flex items-center justify-center">
-                    <span className="text-white font-medium text-sm">Click to view</span>
-                  </div>
-                </div>
-              ) : (
-                <button
-                  onClick={() => photoInputRef.current?.click()}
-                  className="w-full h-32 rounded-xl border-2 border-dashed border-white/20 hover:border-purple-500/50 hover:bg-purple-500/10 transition-all duration-200 flex flex-col items-center justify-center gap-2 group"
-                >
-                  <div className="w-12 h-12 rounded-full bg-white/10 group-hover:bg-purple-500/20 flex items-center justify-center transition-all">
-                    <svg className="w-6 h-6 text-slate-400 group-hover:text-purple-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                  </div>
-                  <span className="text-slate-500 group-hover:text-purple-400 text-sm font-medium transition-colors">
-                    Add a memory from today
-                  </span>
-                </button>
-              )}
-
-              {/* Hidden file input */}
-              <input
-                ref={photoInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handlePhotoUpload}
-                className="hidden"
-              />
-            </div>
 
             {/* Photo Modal - Full Screen View */}
             {reviewShowPhotoModal && currentReflection.photo && (
@@ -5084,17 +5077,153 @@ const LifeArchitect = () => {
 
             {/* Questions - All visible with auto-save */}
             <div className="space-y-4">
-              {reflectionQuestions.map((q) => (
-                <ReflectionInput
-                  key={`${getDateKey(selectedReflectDate)}-${q.key}`}
-                  question={q.question}
-                  placeholder={q.placeholder}
-                  icon={q.icon}
-                  defaultValue={currentReflection[q.key] || ''}
-                  onBlurSave={(value) => handleFieldChange(q.key, value)}
-                  onValueChange={(value) => handleFieldChange(q.key, value)}
-                />
-              ))}
+              {reflectionQuestions.map((q) => {
+                if (q.type === 'balanced-select') {
+                  const currentVal = currentReflection[q.key] || { helped: [], blocked: [] };
+                  // Handle legacy data safety
+                  const safeVal = typeof currentVal === 'string' ? { helped: [], blocked: [] } : currentVal;
+
+                  const toggleInfluence = (type, id) => {
+                    const list = safeVal[type] || [];
+                    const newList = list.includes(id)
+                      ? list.filter(item => item !== id)
+                      : [...list, id];
+
+                    handleFieldChange(q.key, { ...safeVal, [type]: newList });
+                  };
+
+                  return (
+                    <div key={`${getDateKey(selectedReflectDate)}-${q.key}`} className="bg-white/5 rounded-2xl p-5 border border-white/5">
+                      <div className="flex items-center gap-3 mb-4 text-slate-400">
+                        <span className="text-xl">{q.icon}</span>
+                        <h3 className="font-medium text-sm uppercase tracking-wide">{q.question}</h3>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        {/* Helped Column */}
+                        <div>
+                          <div className="text-emerald-400 text-xs font-bold uppercase tracking-wider mb-3 flex items-center gap-1">
+                            <span>💪 What Helped</span>
+                          </div>
+                          <div className="space-y-2">
+                            {influenceOptions.helped.map(opt => (
+                              <button
+                                key={opt.id}
+                                onClick={() => toggleInfluence('helped', opt.id)}
+                                className={`w-full p-2.5 rounded-xl text-left text-xs font-medium flex items-center gap-2 transition-all ${safeVal.helped?.includes(opt.id)
+                                  ? 'bg-emerald-500/20 text-emerald-200 border border-emerald-500/30'
+                                  : 'bg-white/5 text-slate-400 hover:bg-white/10 border border-transparent'
+                                  }`}
+                              >
+                                <span>{opt.icon}</span>
+                                <span>{opt.label}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Blocked Column */}
+                        <div>
+                          <div className="text-rose-400 text-xs font-bold uppercase tracking-wider mb-3 flex items-center gap-1">
+                            <span>🚧 What Blocked</span>
+                          </div>
+                          <div className="space-y-2">
+                            {influenceOptions.blocked.map(opt => (
+                              <button
+                                key={opt.id}
+                                onClick={() => toggleInfluence('blocked', opt.id)}
+                                className={`w-full p-2.5 rounded-xl text-left text-xs font-medium flex items-center gap-2 transition-all ${safeVal.blocked?.includes(opt.id)
+                                  ? 'bg-rose-500/20 text-rose-200 border border-rose-500/30'
+                                  : 'bg-white/5 text-slate-400 hover:bg-white/10 border border-transparent'
+                                  }`}
+                              >
+                                <span>{opt.icon}</span>
+                                <span>{opt.label}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+
+                return (
+                  <ReflectionInput
+                    key={`${getDateKey(selectedReflectDate)}-${q.key}`}
+                    question={q.question}
+                    description={q.description}
+                    placeholder={q.placeholder}
+                    icon={q.icon}
+                    defaultValue={currentReflection[q.key] || ''}
+                    onBlurSave={(value) => handleFieldChange(q.key, value)}
+                    onValueChange={(value) => handleFieldChange(q.key, value)}
+                  />
+                );
+              })}
+            </div>
+
+            {/* Photo of the Day */}
+            <div className="glass-card rounded-2xl p-4 mt-6">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-slate-300 font-medium">📸 Photo of the Day</span>
+                {currentReflection.photo && (
+                  <button
+                    onClick={() => setReviewShowPhotoModal(true)}
+                    className="text-xs text-purple-400 hover:text-purple-300 transition-colors"
+                  >
+                    View
+                  </button>
+                )}
+              </div>
+
+              {currentReflection.photo ? (
+                <div
+                  className="relative group cursor-pointer"
+                  onClick={() => setReviewShowPhotoModal(true)}
+                >
+                  <div
+                    className="w-full h-48 rounded-xl overflow-hidden"
+                    style={{
+                      background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)',
+                    }}
+                  >
+                    <img
+                      src={currentReflection.photo}
+                      alt="Photo of the day"
+                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    />
+                  </div>
+                  {/* Hover overlay */}
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded-xl flex items-center justify-center">
+                    <span className="text-white font-medium text-sm">Click to view</span>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={() => photoInputRef.current?.click()}
+                  className="w-full h-32 rounded-xl border-2 border-dashed border-white/20 hover:border-purple-500/50 hover:bg-purple-500/10 transition-all duration-200 flex flex-col items-center justify-center gap-2 group"
+                >
+                  <div className="w-12 h-12 rounded-full bg-white/10 group-hover:bg-purple-500/20 flex items-center justify-center transition-all">
+                    <svg className="w-6 h-6 text-slate-400 group-hover:text-purple-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                  </div>
+                  <span className="text-slate-500 group-hover:text-purple-400 text-sm font-medium transition-colors">
+                    Add a memory from today
+                  </span>
+                </button>
+              )}
+
+              {/* Hidden file input */}
+              <input
+                ref={photoInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handlePhotoUpload}
+                className="hidden"
+              />
             </div>
 
             {/* Create Memory Capsule Button - Always visible */}
@@ -5192,35 +5321,59 @@ const LifeArchitect = () => {
                   )}
 
                   {/* What Stood Out */}
-                  {currentReflection.topResult && (
-                    <div
-                      className="p-4 rounded-2xl"
-                      style={{
-                        background: 'rgba(255,255,255,0.06)',
-                        border: '1px solid rgba(255,255,255,0.08)'
-                      }}
-                    >
-                      <p className="text-[10px] font-medium text-indigo-400/70 uppercase tracking-widest mb-2">What Stood Out</p>
-                      <p className="text-slate-200 text-sm leading-relaxed">{currentReflection.topResult}</p>
+                  {/* Influencers Section */}
+                  {(currentReflection.influencers?.helped?.length > 0 || currentReflection.influencers?.blocked?.length > 0) && (
+                    <div className="mb-4 space-y-3">
+                      <div className="flex items-center gap-2 mb-2 text-indigo-300/80">
+                        <span className="text-lg">📊</span>
+                        <h3 className="text-xs font-bold uppercase tracking-widest">Influencers</h3>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        {/* Helped */}
+                        {currentReflection.influencers?.helped?.length > 0 && (
+                          <div className="bg-emerald-500/10 rounded-xl p-3 border border-emerald-500/20">
+                            <p className="text-emerald-400 text-[10px] font-bold uppercase tracking-wider mb-2 flex items-center gap-1">
+                              <span>💪 Helped</span>
+                            </p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {currentReflection.influencers.helped.map(id => {
+                                const opt = influenceOptions.helped.find(o => o.id === id);
+                                return opt ? (
+                                  <span key={id} className="text-emerald-100 text-xs bg-emerald-500/20 px-1.5 py-0.5 rounded-md border border-emerald-500/20 inline-flex items-center gap-1">
+                                    <span>{opt.icon}</span>
+                                    <span>{opt.label}</span>
+                                  </span>
+                                ) : null;
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Blocked */}
+                        {currentReflection.influencers?.blocked?.length > 0 && (
+                          <div className="bg-rose-500/10 rounded-xl p-3 border border-rose-500/20">
+                            <p className="text-rose-400 text-[10px] font-bold uppercase tracking-wider mb-2 flex items-center gap-1">
+                              <span>🚧 Blocked</span>
+                            </p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {currentReflection.influencers.blocked.map(id => {
+                                const opt = influenceOptions.blocked.find(o => o.id === id);
+                                return opt ? (
+                                  <span key={id} className="text-rose-100 text-xs bg-rose-500/20 px-1.5 py-0.5 rounded-md border border-rose-500/20 inline-flex items-center gap-1">
+                                    <span>{opt.icon}</span>
+                                    <span>{opt.label}</span>
+                                  </span>
+                                ) : null;
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
 
-                  {/* Energy Note */}
-                  {currentReflection.energyDrain && (
-                    <div
-                      className="p-4 rounded-2xl"
-                      style={{
-                        background: 'rgba(255,255,255,0.06)',
-                        border: '1px solid rgba(255,255,255,0.08)'
-                      }}
-                    >
-                      <p className="text-[10px] font-medium text-amber-400/70 uppercase tracking-widest mb-2">Energy Note</p>
-                      <p className="text-slate-300 text-sm leading-relaxed">{currentReflection.energyDrain}</p>
-                    </div>
-                  )}
-
-                  {/* Quiet Insight */}
-                  {currentReflection.lesson && (
+                  {/* Tomorrow's Adjustment */}
+                  {currentReflection.differently && (
                     <div
                       className="p-4 rounded-2xl"
                       style={{
@@ -5228,24 +5381,8 @@ const LifeArchitect = () => {
                         border: '1px solid rgba(139,92,246,0.2)'
                       }}
                     >
-                      <p className="text-[10px] font-medium text-purple-400/80 uppercase tracking-widest mb-2">Quiet Insight</p>
-                      <p className="text-slate-200 text-sm leading-relaxed italic">"{currentReflection.lesson}"</p>
-                    </div>
-                  )}
-
-                  {/* Tomorrow's Focus */}
-                  {currentReflection.didWell && (
-                    <div
-                      className="p-4 rounded-2xl"
-                      style={{
-                        background: 'rgba(255,255,255,0.06)',
-                        border: '1px solid rgba(255,255,255,0.08)'
-                      }}
-                    >
-                      <p className="text-[10px] font-medium text-emerald-400/70 uppercase tracking-widest mb-2">Tomorrow's Focus</p>
-                      <p className="text-slate-300 text-sm leading-relaxed">
-                        Keep building on: {currentReflection.didWell.toLowerCase()}
-                      </p>
+                      <p className="text-[10px] font-medium text-purple-400/80 uppercase tracking-widest mb-2">Tomorrow's Adjustment</p>
+                      <p className="text-slate-200 text-sm leading-relaxed italic">"{currentReflection.differently}"</p>
                     </div>
                   )}
 
@@ -7319,6 +7456,8 @@ const LifeArchitect = () => {
     projectsShowMoveModal ||
     projectsEditingReminder ||
     executeShowNewTaskModal ||
+    executeEditingTask ||
+    executeEditingRoutine ||
     planShowNewReminder ||
     planEditingReminder ||
     planEditingTask ||
