@@ -264,9 +264,38 @@ const LifeArchitect = () => {
   const [selectedProject, setSelectedProject] = useState(null);
   const [showProjectModal, setShowProjectModal] = useState(false);
   const [showProjectTaskModal, setShowProjectTaskModal] = useState(false);
+  const [projectsExpanded, setProjectsExpanded] = useState(false);
+  const [expandedProjectId, setExpandedProjectId] = useState(null);
+  const [remindersExpanded, setRemindersExpanded] = useState(false);
+  const [expandedRoutine, setExpandedRoutine] = useState(null); // 'morning' | 'evening' | null
+  // Lifted state for global persistence
+  const [reviewViewMode, setReviewViewMode] = useState('edit');
+  const [patternsViewMode, setPatternsViewMode] = useState('week');
+  const [patternsActiveSection, setPatternsActiveSection] = useState('habits');
+  const [projectsRemindersExpanded, setProjectsRemindersExpanded] = useState(false);
   const [editingProject, setEditingProject] = useState(null);
   const [editingProjectTask, setEditingProjectTask] = useState(null);
   const [pendingEditTask, setPendingEditTask] = useState(null); // Task to edit when navigating from Plan
+
+  // Lifted Modal States for Navigation Hiding
+  // Projects Screen
+  const [projectsShowMoveModal, setProjectsShowMoveModal] = useState(false);
+  const [projectsReminderToMove, setProjectsReminderToMove] = useState(null);
+  const [projectsEditingReminder, setProjectsEditingReminder] = useState(null);
+  // Execute Screen
+  const [executeShowNewTaskModal, setExecuteShowNewTaskModal] = useState(false);
+  // Plan Screen
+  const [planShowNewReminder, setPlanShowNewReminder] = useState(false);
+  const [planEditingReminder, setPlanEditingReminder] = useState(null);
+  // editingPlanTask is already lifted or unique enough, ensuring consistency:
+  const [planEditingTask, setPlanEditingTask] = useState(null);
+  const [planEditingTaskProject, setPlanEditingTaskProject] = useState(null);
+
+  // Review Screen
+  const [reviewShowPhotoModal, setReviewShowPhotoModal] = useState(false);
+  // Projects Screen - Notes
+  const [projectsIsEditingNotes, setProjectsIsEditingNotes] = useState(false);
+
 
   // Calculate project progress
   const getProjectProgress = (project) => {
@@ -1116,23 +1145,20 @@ const LifeArchitect = () => {
   // PLAN SCREEN
   // ============================================
   const PlanScreen = () => {
-    const [projectsExpanded, setProjectsExpanded] = useState(false);
-    const [expandedProjectId, setExpandedProjectId] = useState(null);
-    const [remindersExpanded, setRemindersExpanded] = useState(false);
-    const [showNewReminder, setShowNewReminder] = useState(false);
+    // projectsExpanded, expandedProjectId, remindersExpanded state lifted to App component
+    // planShowNewReminder lifted to App as planShowNewReminder
     const [newReminderName, setNewReminderName] = useState('');
     const [newReminderIcon, setNewReminderIcon] = useState('📌');
     const [newReminderEnergy, setNewReminderEnergy] = useState('medium');
 
     // Edit reminder state
-    const [editingReminder, setEditingReminder] = useState(null);
+    // planEditingReminder lifted to App as planEditingReminder
     const [editReminderName, setEditReminderName] = useState('');
     const [editReminderIcon, setEditReminderIcon] = useState('📌');
     const [editReminderEnergy, setEditReminderEnergy] = useState('medium');
 
     // Edit project task state (for editing in Plan screen)
-    const [editingPlanTask, setEditingPlanTask] = useState(null);
-    const [editingPlanTaskProject, setEditingPlanTaskProject] = useState(null);
+    // planEditingTask, planEditingTaskProject lifted to App as planEditingTask, planEditingTaskProject
     const [planTaskData, setPlanTaskData] = useState({
       title: '',
       value: 5,
@@ -1162,20 +1188,20 @@ const LifeArchitect = () => {
         dueDate: task.dueDate || '',
         notes: task.notes || ''
       });
-      setEditingPlanTask(task);
-      setEditingPlanTaskProject(project);
+      setPlanEditingTask(task);
+      setPlanEditingTaskProject(project);
     };
 
     const savePlanTask = () => {
-      if (!planTaskData.title.trim() || !editingPlanTaskProject) return;
-      updateProjectTask(editingPlanTaskProject.id, editingPlanTask.id, planTaskData);
-      setEditingPlanTask(null);
-      setEditingPlanTaskProject(null);
+      if (!planTaskData.title.trim() || !planEditingTaskProject) return;
+      updateProjectTask(planEditingTaskProject.id, planEditingTask.id, planTaskData);
+      setPlanEditingTask(null);
+      setPlanEditingTaskProject(null);
     };
 
     const closePlanTaskModal = () => {
-      setEditingPlanTask(null);
-      setEditingPlanTaskProject(null);
+      setPlanEditingTask(null);
+      setPlanEditingTaskProject(null);
     };
 
     const iconOptions = [
@@ -1186,7 +1212,7 @@ const LifeArchitect = () => {
 
     // Open reminder for editing
     const openReminderEdit = (reminder) => {
-      setEditingReminder(reminder);
+      setPlanEditingReminder(reminder);
       setEditReminderName(reminder.name);
       setEditReminderIcon(reminder.icon);
       setEditReminderEnergy(reminder.energy || 'medium');
@@ -1194,10 +1220,10 @@ const LifeArchitect = () => {
 
     // Save reminder edits
     const saveReminderEdit = () => {
-      if (!editingReminder || !editReminderName.trim()) return;
+      if (!planEditingReminder || !editReminderName.trim()) return;
 
       setReminders(prev => prev.map(r => {
-        if (r.id === editingReminder.id) {
+        if (r.id === planEditingReminder.id) {
           return {
             ...r,
             name: editReminderName.trim(),
@@ -1208,13 +1234,13 @@ const LifeArchitect = () => {
         return r;
       }));
 
-      setEditingReminder(null);
+      setPlanEditingReminder(null);
     };
 
     // Delete reminder
     const deleteReminder = (reminderId) => {
       setReminders(prev => prev.filter(r => r.id !== reminderId));
-      setEditingReminder(null);
+      setPlanEditingReminder(null);
     };
 
     const createReminder = () => {
@@ -1231,7 +1257,7 @@ const LifeArchitect = () => {
       setNewReminderName('');
       setNewReminderIcon('📌');
       setNewReminderEnergy('medium');
-      setShowNewReminder(false);
+      setPlanShowNewReminder(false);
     };
 
     const totalMinutes = priorities.reduce((sum, p) => {
@@ -2178,11 +2204,11 @@ const LifeArchitect = () => {
         )}
 
         {/* Edit Reminder Modal */}
-        {editingReminder && (
+        {planEditingReminder && (
           <div className="fixed inset-0 z-50 flex items-end justify-center animate-fadeIn">
             <div
               className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-              onClick={() => setEditingReminder(null)}
+              onClick={() => setPlanEditingReminder(null)}
             />
 
             <div
@@ -2199,7 +2225,7 @@ const LifeArchitect = () => {
                 <div className="flex items-center justify-between">
                   <h2 className="text-lg font-semibold text-white">Edit Reminder</h2>
                   <button
-                    onClick={() => setEditingReminder(null)}
+                    onClick={() => setPlanEditingReminder(null)}
                     className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-slate-400 hover:bg-white/20 transition-colors"
                   >
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -2270,7 +2296,7 @@ const LifeArchitect = () => {
               <div className="px-5 py-4 border-t border-white/10">
                 <div className="flex gap-3">
                   <button
-                    onClick={() => deleteReminder(editingReminder.id)}
+                    onClick={() => deleteReminder(planEditingReminder.id)}
                     className="px-4 py-3 rounded-xl font-medium text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 transition-all"
                   >
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -2278,7 +2304,7 @@ const LifeArchitect = () => {
                     </svg>
                   </button>
                   <button
-                    onClick={() => setEditingReminder(null)}
+                    onClick={() => setPlanEditingReminder(null)}
                     className="flex-1 py-3 rounded-xl font-medium text-slate-400 bg-white/10 hover:bg-white/20 transition-all"
                   >
                     Cancel
@@ -2300,7 +2326,7 @@ const LifeArchitect = () => {
         )}
 
         {/* Project Task Edit Modal */}
-        {editingPlanTask && (
+        {planEditingTask && (
           <div className="fixed inset-0 z-50 flex items-end justify-center animate-fadeIn">
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={closePlanTaskModal} />
 
@@ -2316,7 +2342,7 @@ const LifeArchitect = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <h2 className="text-lg font-semibold text-white">Edit Task</h2>
-                    <p className="text-cyan-400 text-xs mt-0.5">{editingPlanTaskProject?.title}</p>
+                    <p className="text-cyan-400 text-xs mt-0.5">{planEditingTaskProject?.title}</p>
                   </div>
                   <button
                     onClick={closePlanTaskModal}
@@ -2422,7 +2448,7 @@ const LifeArchitect = () => {
                 {/* Delete Button */}
                 <button
                   onClick={() => {
-                    deleteProjectTask(editingPlanTaskProject.id, editingPlanTask.id);
+                    deleteProjectTask(planEditingTaskProject.id, planEditingTask.id);
                     closePlanTaskModal();
                   }}
                   className="w-full py-3 rounded-xl font-medium text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 transition-all"
@@ -2450,7 +2476,7 @@ const LifeArchitect = () => {
     const [timelineRef, setTimelineRef] = useState(null);
 
     // Routine expansion state
-    const [expandedRoutine, setExpandedRoutine] = useState(null); // 'morning' | 'evening' | null
+    // expandedRoutine is now lifted to App component
     const [editingRoutine, setEditingRoutine] = useState(null); // 'morning' | 'evening' | null
     const [newHabitText, setNewHabitText] = useState('');
 
@@ -2604,8 +2630,10 @@ const LifeArchitect = () => {
       return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     };
 
+    // formatPomodoroTime helper function...
+
     // New task modal state
-    const [showNewTaskModal, setShowNewTaskModal] = useState(false);
+    // executeShowNewTaskModal lifted to App as executeShowNewTaskModal
     const [newTaskName, setNewTaskName] = useState('');
     const [newTaskIcon, setNewTaskIcon] = useState('📌');
     const [newTaskEnergy, setNewTaskEnergy] = useState('medium');
@@ -2676,7 +2704,7 @@ const LifeArchitect = () => {
       setNewTaskEndMinute(0);
       setNewTaskReminder(null);
       setNewTaskIsNonNegotiable(false);
-      setShowNewTaskModal(false);
+      setExecuteShowNewTaskModal(false);
     };
 
     // Reset modal form
@@ -2697,7 +2725,7 @@ const LifeArchitect = () => {
     // Open modal with smart defaults
     const openNewTaskModal = () => {
       resetNewTaskForm();
-      setShowNewTaskModal(true);
+      setExecuteShowNewTaskModal(true);
     };
 
     // Update current time every 30 seconds for smoother sand clock
@@ -4460,17 +4488,16 @@ const LifeArchitect = () => {
   // ============================================
   // REVIEW SCREEN - Evening Reflection with Memory
   // ============================================
-  // REVIEW SCREEN
-  // ============================================
 
   const ReviewScreen = () => {
 
     // Photo upload ref
     const photoInputRef = React.useRef(null);
-    const [showPhotoModal, setShowPhotoModal] = useState(false);
+    // reviewShowPhotoModal lifted to App as reviewShowPhotoModal
+
 
     // Mode: 'edit' for questions, 'capsule' for viewing memory capsule
-    const [viewMode, setViewMode] = useState('edit');
+    // viewMode state lifted to App component as reviewViewMode
 
     // Handle photo upload
     const handlePhotoUpload = (e) => {
@@ -4487,7 +4514,7 @@ const LifeArchitect = () => {
     // Remove photo
     const removePhoto = () => {
       updateReflection(selectedReflectDate, 'photo', null);
-      setShowPhotoModal(false);
+      setReviewShowPhotoModal(false);
     };
 
     // Get current reflection from global state
@@ -4511,20 +4538,39 @@ const LifeArchitect = () => {
     // Auto-switch to capsule view if already has capsule created (for past dates)
     // Only run when date changes, not on every render
     const dateKey = getDateKey(selectedReflectDate);
-    React.useEffect(() => {
+    useEffect(() => {
       const reflection = reflectionsByDate[dateKey];
       if (reflection?.capsuleCreated) {
-        setViewMode('capsule');
+        setReviewViewMode('capsule');
       } else {
-        setViewMode('edit');
+        setReviewViewMode('edit');
       }
     }, [dateKey]);
+
+    // Share Memory Capsule
+    const handleShare = async () => {
+      const shareText = `Memory Capsule - ${new Date(selectedReflectDate).toLocaleDateString()}\nRating: ${currentReflection.rating}/10\n\nToday in brief: ${currentReflection.activities?.split('.')[0] || 'Brief summary'}\n\nTop moment: ${currentReflection.topResult || 'N/A'}\n\nLesson learned: ${currentReflection.lesson || 'N/A'}`;
+
+      if (navigator.share) {
+        try {
+          await navigator.share({
+            title: 'My Memory Capsule',
+            text: shareText,
+          });
+        } catch (error) {
+          console.log('Error sharing:', error);
+        }
+      } else {
+        navigator.clipboard.writeText(shareText);
+        alert('Capsule summary copied to clipboard!');
+      }
+    };
 
     // Generate Memory Capsule
     const createMemoryCapsule = () => {
       console.log('Creating memory capsule...');
       updateReflection(selectedReflectDate, 'capsuleCreated', true);
-      setViewMode('capsule');
+      setReviewViewMode('capsule');
       console.log('View mode set to capsule');
     };
 
@@ -4874,7 +4920,7 @@ const LifeArchitect = () => {
         </div>
 
         {/* EDIT MODE - Rating, Photo, and Questions */}
-        {viewMode === 'edit' && (
+        {reviewViewMode === 'edit' && (
           <>
             {/* Rating Section */}
             <div className="glass-card rounded-2xl p-4 mb-4">
@@ -4908,7 +4954,7 @@ const LifeArchitect = () => {
                 <span className="text-slate-300 font-medium">📸 Photo of the Day</span>
                 {currentReflection.photo && (
                   <button
-                    onClick={() => setShowPhotoModal(true)}
+                    onClick={() => setReviewShowPhotoModal(true)}
                     className="text-xs text-purple-400 hover:text-purple-300 transition-colors"
                   >
                     View
@@ -4919,7 +4965,7 @@ const LifeArchitect = () => {
               {currentReflection.photo ? (
                 <div
                   className="relative group cursor-pointer"
-                  onClick={() => setShowPhotoModal(true)}
+                  onClick={() => setReviewShowPhotoModal(true)}
                 >
                   <div
                     className="w-full h-48 rounded-xl overflow-hidden"
@@ -4966,17 +5012,17 @@ const LifeArchitect = () => {
             </div>
 
             {/* Photo Modal - Full Screen View */}
-            {showPhotoModal && currentReflection.photo && (
+            {reviewShowPhotoModal && currentReflection.photo && (
               <div className="fixed inset-0 z-50 flex items-center justify-center animate-fadeIn">
                 <div
                   className="absolute inset-0 bg-black/90 backdrop-blur-xl"
-                  onClick={() => setShowPhotoModal(false)}
+                  onClick={() => setReviewShowPhotoModal(false)}
                 />
 
                 <div className="relative max-w-lg w-full mx-4">
                   {/* Close button */}
                   <button
-                    onClick={() => setShowPhotoModal(false)}
+                    onClick={() => setReviewShowPhotoModal(false)}
                     className="absolute -top-12 right-0 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-colors z-10"
                   >
                     <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -5083,11 +5129,11 @@ const LifeArchitect = () => {
         )}
 
         {/* CAPSULE MODE - Memory Capsule View */}
-        {viewMode === 'capsule' && (
+        {reviewViewMode === 'capsule' && (
           <div className="animate-fadeIn">
             {/* Memory Capsule Card - Clickable to edit */}
             <div
-              onClick={() => setViewMode('edit')}
+              onClick={() => setReviewViewMode('edit')}
               className="cursor-pointer transition-all duration-300 hover:scale-[1.01] active:scale-[0.99]"
             >
               {/* Header */}
@@ -5236,6 +5282,26 @@ const LifeArchitect = () => {
               </div>
             </div>
 
+            {/* Share and Edit Buttons */}
+            <div className="flex gap-3 mt-4">
+              <button
+                onClick={handleShare}
+                className="flex-1 py-3 px-4 rounded-xl flex items-center justify-center gap-2 font-medium text-indigo-100 transition-all active:scale-95 group"
+                style={{
+                  background: 'rgba(99, 102, 241, 0.15)',
+                  border: '1px solid rgba(99, 102, 241, 0.3)'
+                }}
+              >
+                <div className="p-1.5 rounded-full bg-indigo-500/20 group-hover:bg-indigo-500/30 transition-colors">
+                  <svg className="w-4 h-4 text-indigo-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                  </svg>
+                </div>
+                <span>Share Capsule</span>
+              </button>
+            </div>
+
+
             {/* Edit hint */}
             <div className="mt-4 text-center">
               <p className="text-slate-500 text-xs">Tap the capsule to edit your reflection</p>
@@ -5258,9 +5324,10 @@ const LifeArchitect = () => {
   // PATTERNS SCREEN
   // ============================================
   const PatternsScreen = () => {
-    const [viewMode, setViewMode] = useState('week');
+    // viewMode and activeSection lifted to App component
+    // const [viewMode, setViewMode] = useState('week'); -> patternsViewMode
     const [selectedMonth, setSelectedMonth] = useState(new Date());
-    const [activeSection, setActiveSection] = useState('habits');
+    // const [activeSection, setActiveSection] = useState('habits'); -> patternsActiveSection
 
     const getWeekDays = () => {
       const days = [];
@@ -5481,18 +5548,19 @@ const LifeArchitect = () => {
         </div>
 
         <div className="flex gap-2 mb-6">
-          <button onClick={() => setActiveSection('habits')} className={`flex-1 py-3 rounded-xl font-medium text-sm transition-all flex items-center justify-center gap-2 ${activeSection === 'habits' ? 'bg-gradient-to-r from-purple-500 to-indigo-500 text-white' : 'glass-card text-slate-400'}`}>
-            <span>🌅</span> Habits
+          <button onClick={() => setPatternsActiveSection('habits')} className={`flex-1 py-3 rounded-xl font-medium text-sm transition-all flex items-center justify-center gap-2 ${patternsActiveSection === 'habits' ? 'bg-gradient-to-r from-purple-500 to-indigo-500 text-white' : 'glass-card text-slate-400'}`}>
+            <span className="text-lg">✅</span> Habits
           </button>
-          <button onClick={() => setActiveSection('tasks')} className={`flex-1 py-3 rounded-xl font-medium text-sm transition-all flex items-center justify-center gap-2 ${activeSection === 'tasks' ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white' : 'glass-card text-slate-400'}`}>
-            <span>📋</span> Tasks
+          <button onClick={() => setPatternsActiveSection('tasks')} className={`flex-1 py-3 rounded-xl font-medium text-sm transition-all flex items-center justify-center gap-2 ${patternsActiveSection === 'tasks' ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white' : 'glass-card text-slate-400'}`}>
+            <span className="text-lg">📋</span> Tasks
           </button>
-          <button onClick={() => setActiveSection('reflect')} className={`flex-1 py-3 rounded-xl font-medium text-sm transition-all flex items-center justify-center gap-2 ${activeSection === 'reflect' ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white' : 'glass-card text-slate-400'}`}>
-            <span>💭</span> Reflect
+          <button onClick={() => setPatternsActiveSection('reflect')} className={`flex-1 py-3 rounded-xl font-medium text-sm transition-all flex items-center justify-center gap-2 ${patternsActiveSection === 'reflect' ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white' : 'glass-card text-slate-400'}`}>
+            <span className="text-lg">🧠</span> Reflect
           </button>
         </div>
 
-        {activeSection === 'habits' ? (
+        {/* CONTENT */}
+        {patternsActiveSection === 'habits' ? (
           <>
             <div className="grid grid-cols-3 gap-3 mb-6">
               <div className="glass-card rounded-2xl p-4 text-center">
@@ -5511,13 +5579,13 @@ const LifeArchitect = () => {
                 <p className="text-slate-400 text-xs">Week Avg</p>
               </div>
             </div>
-
-            <div className="flex gap-2 mb-6">
-              <button onClick={() => setViewMode('week')} className={`flex-1 py-3 rounded-xl font-medium text-sm transition-all ${viewMode === 'week' ? 'bg-gradient-to-r from-emerald-500 to-green-500 text-white' : 'glass-card text-slate-400'}`}>Week View</button>
-              <button onClick={() => setViewMode('month')} className={`flex-1 py-3 rounded-xl font-medium text-sm transition-all ${viewMode === 'month' ? 'bg-gradient-to-r from-emerald-500 to-green-500 text-white' : 'glass-card text-slate-400'}`}>Month View</button>
+            {/* View Toggle */}
+            <div className="flex bg-white/5 p-1 rounded-xl mb-6">
+              <button onClick={() => setPatternsViewMode('week')} className={`flex-1 py-3 rounded-xl font-medium text-sm transition-all ${patternsViewMode === 'week' ? 'bg-gradient-to-r from-emerald-500 to-green-500 text-white' : 'text-slate-400'}`}>Week View</button>
+              <button onClick={() => setPatternsViewMode('month')} className={`flex-1 py-3 rounded-xl font-medium text-sm transition-all ${patternsViewMode === 'month' ? 'bg-gradient-to-r from-emerald-500 to-green-500 text-white' : 'text-slate-400'}`}>Month View</button>
             </div>
 
-            {viewMode === 'week' ? (
+            {patternsViewMode === 'week' ? (
               <>
                 <div className="glass-card rounded-2xl p-4 mb-4">
                   <div className="flex items-center justify-between mb-4">
@@ -5621,7 +5689,7 @@ const LifeArchitect = () => {
               </>
             )}
           </>
-        ) : activeSection === 'tasks' ? (
+        ) : patternsActiveSection === 'tasks' ? (
           <>
             {/* Tasks Stats Overview Cards */}
             <div className="grid grid-cols-3 gap-3 mb-6">
@@ -5644,11 +5712,11 @@ const LifeArchitect = () => {
 
             {/* View Toggle */}
             <div className="flex gap-2 mb-6">
-              <button onClick={() => setViewMode('week')} className={`flex-1 py-3 rounded-xl font-medium text-sm transition-all ${viewMode === 'week' ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white' : 'glass-card text-slate-400'}`}>Week View</button>
-              <button onClick={() => setViewMode('month')} className={`flex-1 py-3 rounded-xl font-medium text-sm transition-all ${viewMode === 'month' ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white' : 'glass-card text-slate-400'}`}>Month View</button>
+              <button onClick={() => setPatternsViewMode('week')} className={`flex-1 py-3 rounded-xl font-medium text-sm transition-all ${patternsViewMode === 'week' ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white' : 'glass-card text-slate-400'}`}>Week View</button>
+              <button onClick={() => setPatternsViewMode('month')} className={`flex-1 py-3 rounded-xl font-medium text-sm transition-all ${patternsViewMode === 'month' ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white' : 'glass-card text-slate-400'}`}>Month View</button>
             </div>
 
-            {viewMode === 'week' ? (
+            {patternsViewMode === 'week' ? (
               <>
                 {/* Tasks Completed - Week Chart */}
                 <div className="glass-card rounded-2xl p-4 mb-4">
@@ -5804,13 +5872,13 @@ const LifeArchitect = () => {
                 <p className="text-slate-400 text-xs">This Week</p>
               </div>
             </div>
-
-            <div className="flex gap-2 mb-6">
-              <button onClick={() => setViewMode('week')} className={`flex-1 py-3 rounded-xl font-medium text-sm transition-all ${viewMode === 'week' ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white' : 'glass-card text-slate-400'}`}>Week View</button>
-              <button onClick={() => setViewMode('month')} className={`flex-1 py-3 rounded-xl font-medium text-sm transition-all ${viewMode === 'month' ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white' : 'glass-card text-slate-400'}`}>Month View</button>
+            {/* Reflect Stats View Toggle */}
+            <div className="flex bg-white/5 p-1 rounded-xl mb-6">
+              <button onClick={() => setPatternsViewMode('week')} className={`flex-1 py-3 rounded-xl font-medium text-sm transition-all ${patternsViewMode === 'week' ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white' : 'glass-card text-slate-400'}`}>Week View</button>
+              <button onClick={() => setPatternsViewMode('month')} className={`flex-1 py-3 rounded-xl font-medium text-sm transition-all ${patternsViewMode === 'month' ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white' : 'glass-card text-slate-400'}`}>Month View</button>
             </div>
 
-            {viewMode === 'week' ? (
+            {patternsViewMode === 'week' ? (
               <>
                 <div className="glass-card rounded-2xl p-4 mb-4">
                   <div className="flex items-center justify-between mb-4">
@@ -5908,6 +5976,7 @@ const LifeArchitect = () => {
             )}
           </>
         )}
+
       </div>
     );
   };
@@ -5953,15 +6022,15 @@ const LifeArchitect = () => {
 
     // Quick reminder state
     const [newReminderText, setNewReminderText] = useState('');
-    const [showMoveModal, setShowMoveModal] = useState(false);
-    const [reminderToMove, setReminderToMove] = useState(null);
-    const [remindersExpanded, setRemindersExpanded] = useState(false);
-    const [editingReminder, setEditingReminder] = useState(null);
+    // projectsShowMoveModal, reminderToMove, editingReminder lifted to App
     const [editReminderName, setEditReminderName] = useState('');
     const [editReminderIcon, setEditReminderIcon] = useState('📝');
 
     // Icon options for reminders
     const reminderIcons = ['📝', '💡', '🎯', '📌', '⭐', '🔔', '📋', '💼', '🏠', '🛒', '📞', '✉️', '🎨', '🔧', '📚', '💪'];
+
+    const nonProjectReminders = reminders;
+
 
     // Add quick reminder
     const addQuickReminder = () => {
@@ -5978,42 +6047,42 @@ const LifeArchitect = () => {
 
     // Open edit reminder modal
     const openEditReminder = (reminder) => {
-      setEditingReminder(reminder);
+      setProjectsEditingReminder(reminder);
       setEditReminderName(reminder.name);
       setEditReminderIcon(reminder.icon || '📝');
     };
 
     // Save reminder edits
     const saveReminderEdit = () => {
-      if (!editReminderName.trim() || !editingReminder) return;
+      if (!editReminderName.trim() || !projectsEditingReminder) return;
       setReminders(prev => prev.map(r =>
-        r.id === editingReminder.id
+        r.id === projectsEditingReminder.id
           ? { ...r, name: editReminderName.trim(), icon: editReminderIcon }
           : r
       ));
-      setEditingReminder(null);
+      setProjectsEditingReminder(null);
     };
 
     // Close edit modal
     const closeEditReminder = () => {
-      setEditingReminder(null);
+      setProjectsEditingReminder(null);
       setEditReminderName('');
       setEditReminderIcon('📝');
     };
 
     // Open move modal
     const openMoveModal = (reminder) => {
-      setReminderToMove(reminder);
-      setShowMoveModal(true);
+      setProjectsReminderToMove(reminder);
+      setProjectsShowMoveModal(true);
     };
 
     // Move reminder to project as task
     const moveReminderToProject = (projectId) => {
-      if (!reminderToMove) return;
+      if (!projectsReminderToMove) return;
 
       const newTask = {
         id: Date.now(),
-        title: reminderToMove.name,
+        title: projectsReminderToMove.name,
         value: 5,
         energy: 'medium',
         timeEstimate: 30,
@@ -6023,9 +6092,9 @@ const LifeArchitect = () => {
       };
 
       addProjectTask(projectId, newTask);
-      setReminders(prev => prev.filter(r => r.id !== reminderToMove.id));
-      setShowMoveModal(false);
-      setReminderToMove(null);
+      setReminders(prev => prev.filter(r => r.id !== projectsReminderToMove.id));
+      setProjectsShowMoveModal(false);
+      setProjectsReminderToMove(null);
     };
 
     // Delete reminder
@@ -6079,23 +6148,23 @@ const LifeArchitect = () => {
     };
 
     // Notes editing state
-    const [isEditingNotes, setIsEditingNotes] = useState(false);
+    // projectsIsEditingNotes lifted to App as projectsIsEditingNotes
     const [notesText, setNotesText] = useState('');
 
     const startEditingNotes = (project) => {
       setNotesText(project?.notes || '');
-      setIsEditingNotes(true);
+      setProjectsIsEditingNotes(true);
     };
 
     const saveNotes = () => {
       if (selectedProject) {
         updateProject(selectedProject.id, { notes: notesText });
       }
-      setIsEditingNotes(false);
+      setProjectsIsEditingNotes(false);
     };
 
     const cancelEditingNotes = () => {
-      setIsEditingNotes(false);
+      setProjectsIsEditingNotes(false);
       setNotesText('');
     };
 
@@ -6205,29 +6274,26 @@ const LifeArchitect = () => {
           {/* Reminders Section */}
           <div className="mb-6">
             <button
-              onClick={() => setRemindersExpanded(!remindersExpanded)}
-              className="w-full rounded-2xl p-4 flex items-center gap-3 mb-3 hover:bg-white/10 transition-all"
-              style={{
-                background: 'linear-gradient(135deg, rgba(245,158,11,0.15) 0%, rgba(251,191,36,0.15) 100%)',
-                backdropFilter: 'blur(10px)',
-                border: '1px solid rgba(245,158,11,0.2)'
-              }}
+              onClick={() => setProjectsRemindersExpanded(!projectsRemindersExpanded)}
+              className="w-full flex items-center justify-between mb-3 text-slate-400 hover:text-white transition-colors"
             >
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center"
-                style={{ background: 'linear-gradient(135deg, rgba(245,158,11,0.3) 0%, rgba(251,191,36,0.3) 100%)' }}>
-                <span className="text-xl">💡</span>
+              <div className="flex items-center gap-2">
+                <span className="text-lg">💭</span>
+                <h3 className="font-medium">Quick Reminders</h3>
+                <span className="bg-slate-800 text-slate-400 text-xs px-2 py-0.5 rounded-full">
+                  {nonProjectReminders.length}
+                </span>
               </div>
-              <div className="flex-1 text-left">
-                <span className="text-white font-medium">Reminders</span>
-                <p className="text-amber-400/70 text-xs">{reminders.length} items</p>
-              </div>
-              <svg className={`w-5 h-5 text-amber-400 transition-transform ${remindersExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg
+                className={`w-5 h-5 transition-transform ${projectsRemindersExpanded ? 'rotate-180' : ''}`}
+                fill="none" viewBox="0 0 24 24" stroke="currentColor"
+              >
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
               </svg>
             </button>
 
-            {remindersExpanded && (
-              <div className="space-y-2 animate-fadeIn">
+            {projectsRemindersExpanded && (
+              <div className="animate-fadeIn">
                 {/* Quick Add Input */}
                 <div className="flex gap-2 mb-3">
                   <input
@@ -6390,7 +6456,7 @@ const LifeArchitect = () => {
           )}
 
           {/* Edit Reminder Modal */}
-          {editingReminder && (
+          {projectsEditingReminder && (
             <div className="fixed inset-0 z-50 flex items-end justify-center animate-fadeIn">
               <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={closeEditReminder} />
 
@@ -6462,7 +6528,7 @@ const LifeArchitect = () => {
                   {/* Delete Button */}
                   <button
                     onClick={() => {
-                      deleteReminder(editingReminder.id);
+                      deleteReminder(projectsEditingReminder.id);
                       closeEditReminder();
                     }}
                     className="w-full py-3 rounded-xl font-medium text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 transition-all"
@@ -6475,9 +6541,9 @@ const LifeArchitect = () => {
           )}
 
           {/* Move Reminder to Project Modal */}
-          {showMoveModal && reminderToMove && (
+          {projectsShowMoveModal && projectsReminderToMove && (
             <div className="fixed inset-0 z-50 flex items-end justify-center animate-fadeIn">
-              <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowMoveModal(false)} />
+              <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setProjectsShowMoveModal(false)} />
 
               <div
                 className="relative w-full max-w-md mx-4 mb-4 rounded-3xl overflow-hidden animate-slideUp max-h-[70vh] overflow-y-auto"
@@ -6491,7 +6557,7 @@ const LifeArchitect = () => {
                   <div className="flex items-center justify-between">
                     <h2 className="text-lg font-semibold text-white">Move to Project</h2>
                     <button
-                      onClick={() => setShowMoveModal(false)}
+                      onClick={() => setProjectsShowMoveModal(false)}
                       className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-slate-400"
                     >
                       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -6500,7 +6566,7 @@ const LifeArchitect = () => {
                     </button>
                   </div>
                   <p className="text-slate-400 text-sm mt-2">
-                    Moving: <span className="text-cyan-400">{reminderToMove.name}</span>
+                    Moving: <span className="text-cyan-400">{projectsReminderToMove.name}</span>
                   </p>
                 </div>
 
@@ -6529,7 +6595,7 @@ const LifeArchitect = () => {
                       <p className="text-slate-400 mb-4">No projects yet</p>
                       <button
                         onClick={() => {
-                          setShowMoveModal(false);
+                          setProjectsShowMoveModal(false);
                           openNewProject();
                         }}
                         className="px-4 py-2 bg-cyan-500/20 text-cyan-400 rounded-xl font-medium hover:bg-cyan-500/30 transition-all"
@@ -6765,7 +6831,7 @@ const LifeArchitect = () => {
               <span className="text-lg">📝</span>
               <h3 className="text-slate-400 text-sm font-medium uppercase tracking-wider">Notes</h3>
             </div>
-            {!isEditingNotes && (
+            {!projectsIsEditingNotes && (
               <button
                 onClick={() => startEditingNotes(currentProject)}
                 className="text-cyan-400 text-xs hover:text-cyan-300 transition-colors"
@@ -6775,7 +6841,7 @@ const LifeArchitect = () => {
             )}
           </div>
 
-          {isEditingNotes ? (
+          {projectsIsEditingNotes ? (
             <div className="space-y-3">
               <textarea
                 value={notesText}
@@ -7247,6 +7313,21 @@ const LifeArchitect = () => {
     </button>
   );
 
+  // Check if any edit modal is open
+  const isEditing = showProjectModal ||
+    showProjectTaskModal ||
+    projectsShowMoveModal ||
+    projectsEditingReminder ||
+    executeShowNewTaskModal ||
+    planShowNewReminder ||
+    planEditingReminder ||
+    planEditingTask ||
+    editingProjectTask ||
+    showGlobalTaskModal ||
+    reviewShowPhotoModal ||
+    projectsIsEditingNotes ||
+    editingProject;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
       {/* Ambient Background Effects */}
@@ -7266,7 +7347,7 @@ const LifeArchitect = () => {
       </div>
 
       {/* Bottom Navigation - Liquid Glass */}
-      <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-[400px] rounded-full backdrop-blur-2xl bg-black/40 border border-white/10 shadow-2xl shadow-black/50 z-50">
+      <nav className={`fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-[400px] rounded-full backdrop-blur-2xl bg-black/40 border border-white/10 shadow-2xl shadow-black/50 z-50 transition-all duration-500 ${isEditing ? 'translate-y-[200%] opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'}`}>
         <div className="max-w-md mx-auto flex justify-around items-end py-2">
           <NavItem
             id="projects"
