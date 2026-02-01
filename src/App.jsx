@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 
 // ============================================
 // LIFE ARCHITECT - AI Productivity Coach
@@ -233,6 +233,509 @@ const ReflectionInput = ({ question, description, placeholder, icon, defaultValu
   );
 };
 
+const durationOptions = [
+  { label: '15 min', value: 15 },
+  { label: '30 min', value: 30 },
+  { label: '45 min', value: 45 },
+  { label: '1 hour', value: 60 },
+  { label: '1.5 hours', value: 90 },
+  { label: '2 hours', value: 120 },
+  { label: '3 hours', value: 180 },
+  { label: '4 hours', value: 240 },
+  { label: '6 hours', value: 360 },
+  { label: '8 hours', value: 480 },
+];
+
+const globalAlertOptions = [
+  { label: 'At start', value: 0 },
+  { label: '5 min before', value: 5 },
+  { label: '15 min before', value: 15 },
+  { label: '30 min before', value: 30 },
+  { label: '1 hour before', value: 60 },
+  { label: '2 hours before', value: 120 },
+  { label: '1 day before', value: 1440 },
+  { label: '2 days before', value: 2880 },
+  { label: '1 week before', value: 10080 },
+];
+
+const weekDays = [
+  { label: 'M', full: 'Monday', value: 1 },
+  { label: 'T', full: 'Tuesday', value: 2 },
+  { label: 'W', full: 'Wednesday', value: 3 },
+  { label: 'T', full: 'Thursday', value: 4 },
+  { label: 'F', full: 'Friday', value: 5 },
+  { label: 'S', full: 'Saturday', value: 6 },
+  { label: 'S', full: 'Sunday', value: 0 },
+];
+
+const RepeatPicker = ({ repeat, onSelect, themeColor = 'amber' }) => {
+  const getThemeClasses = (isSelected) => {
+    if (!isSelected) return 'bg-white/5 text-slate-400 hover:bg-white/10';
+    switch (themeColor) {
+      case 'cyan': return 'bg-cyan-500/20 text-cyan-400 ring-1 ring-cyan-500/50';
+      case 'purple': return 'bg-purple-500/20 text-purple-400 ring-1 ring-purple-500/50';
+      default: return 'bg-amber-500/20 text-amber-400 ring-1 ring-amber-500/50';
+    }
+  };
+
+  const setType = (type) => {
+    let label = 'None';
+    let days = [];
+    if (type === 'daily') label = 'Daily';
+    if (type === 'weekly') label = 'Weekly';
+    if (type === 'custom') label = 'Custom Days';
+    onSelect({ ...repeat, type, label, days });
+  };
+
+  const toggleDay = (dayValue) => {
+    let newDays = [...(repeat.days || [])];
+    if (newDays.includes(dayValue)) {
+      newDays = newDays.filter(d => d !== dayValue);
+    } else {
+      newDays.push(dayValue);
+    }
+
+    // Sort days M-S
+    newDays.sort((a, b) => {
+      const aIdx = weekDays.findIndex(d => d.value === a);
+      const bIdx = weekDays.findIndex(d => d.value === b);
+      return aIdx - bIdx;
+    });
+
+    let label = 'None';
+    if (newDays.length === 0) label = 'Specific Days';
+    else if (newDays.length === 7) label = 'Daily';
+    else {
+      label = newDays.map(dv => weekDays.find(wd => wd.wdValue === dv || wd.value === dv).label).join(', ');
+    }
+
+    onSelect({ ...repeat, type: 'custom', days: newDays, label });
+  };
+
+  return (
+    <div className="p-4 bg-white/5 border border-white/10 rounded-2xl animate-fadeIn mb-6">
+      <div className="grid grid-cols-4 gap-2 mb-4">
+        {[
+          { id: 'none', label: 'None' },
+          { id: 'daily', label: 'Daily' },
+          { id: 'weekly', label: 'Weekly' },
+          { id: 'custom', label: 'Custom' }
+        ].map(opt => (
+          <button
+            key={opt.id}
+            onClick={() => setType(opt.id)}
+            className={`py-2 px-1 rounded-xl text-[11px] font-medium transition-all ${getThemeClasses(repeat?.type === opt.id)}`}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+
+      {repeat?.type === 'custom' && (
+        <div className="animate-slideDown">
+          <label className="text-[10px] text-slate-500 uppercase tracking-wider mb-2 block">Select Days</label>
+          <div className="flex justify-between gap-1">
+            {weekDays.map(wd => (
+              <button
+                key={wd.value}
+                onClick={() => toggleDay(wd.value)}
+                className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold transition-all ${getThemeClasses(repeat.days?.includes(wd.value))}`}
+              >
+                {wd.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const TimePicker = ({
+  startHour,
+  startMinute,
+  endHour,
+  endMinute,
+  onStartChange,
+  onEndChange,
+  themeColor = 'amber'
+}) => {
+  const handleDurationSelect = (minutes) => {
+    let totalStartMinutes = startHour * 60 + startMinute;
+    let totalEndMinutes = totalStartMinutes + minutes;
+
+    let newEndHour = Math.floor(totalEndMinutes / 60) % 24;
+    let newEndMinute = totalEndMinutes % 60;
+
+    onEndChange({ hour: newEndHour, minute: newEndMinute });
+  };
+
+  const getThemeClasses = () => {
+    switch (themeColor) {
+      case 'cyan': return 'focus:ring-cyan-500/30 text-cyan-400 border-cyan-500/20';
+      case 'purple': return 'focus:ring-purple-500/30 text-purple-400 border-purple-500/20';
+      default: return 'focus:ring-amber-500/30 text-amber-400 border-amber-500/20';
+    }
+  };
+
+  const getButtonTheme = (isSelected) => {
+    if (!isSelected) return 'bg-white/5 text-slate-400 hover:bg-white/10';
+    switch (themeColor) {
+      case 'cyan': return 'bg-cyan-500/20 text-cyan-400 ring-1 ring-cyan-500/50';
+      case 'purple': return 'bg-purple-500/20 text-purple-400 ring-1 ring-purple-500/50';
+      default: return 'bg-amber-500/20 text-amber-400 ring-1 ring-amber-500/50';
+    }
+  };
+
+  const currentDuration = (endHour * 60 + endMinute) - (startHour * 60 + startMinute);
+
+  return (
+    <div className="mb-6 p-4 rounded-2xl bg-white/5 border border-white/5 animate-fadeIn">
+      {/* Time Controls */}
+      <div className="flex items-center gap-3 mb-6">
+        <div className="flex-1">
+          <p className="text-[10px] text-slate-500 mb-1">From</p>
+          <div className="flex gap-1">
+            <select
+              value={startHour}
+              onChange={(e) => onStartChange({ hour: parseInt(e.target.value), minute: startMinute })}
+              className={`flex-1 px-2 py-2.5 bg-white/10 border border-white/10 rounded-xl text-white text-center outline-none cursor-pointer focus:ring-2 ${getThemeClasses()}`}
+            >
+              {Array.from({ length: 24 }, (_, i) => i).map(h => (
+                <option key={h} value={h} className="bg-slate-800 text-white">{h}</option>
+              ))}
+            </select>
+            <span className="text-white/50 self-center">.</span>
+            <select
+              value={startMinute}
+              onChange={(e) => onStartChange({ hour: startHour, minute: parseInt(e.target.value) })}
+              className={`flex-1 px-2 py-2.5 bg-white/10 border border-white/10 rounded-xl text-white text-center outline-none cursor-pointer focus:ring-2 ${getThemeClasses()}`}
+            >
+              {[0, 15, 30, 45].map(m => (
+                <option key={m} value={m} className="bg-slate-800 text-white">{m.toString().padStart(2, '0')}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <svg className={`w-6 h-6 flex-shrink-0 mt-4 ${themeColor === 'cyan' ? 'text-cyan-400/60' : themeColor === 'purple' ? 'text-purple-400/60' : 'text-amber-400/60'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+        </svg>
+
+        <div className="flex-1">
+          <p className="text-[10px] text-slate-500 mb-1">To</p>
+          <div className="flex gap-1">
+            <select
+              value={endHour}
+              onChange={(e) => onEndChange({ hour: parseInt(e.target.value), minute: endMinute })}
+              className={`flex-1 px-2 py-2.5 bg-white/10 border border-white/10 rounded-xl text-white text-center outline-none cursor-pointer focus:ring-2 ${getThemeClasses()}`}
+            >
+              {Array.from({ length: 24 }, (_, i) => i).map(h => (
+                <option key={h} value={h} className="bg-slate-800 text-white">{h}</option>
+              ))}
+            </select>
+            <span className="text-white/50 self-center">.</span>
+            <select
+              value={endMinute}
+              onChange={(e) => onEndChange({ hour: endHour, minute: parseInt(e.target.value) })}
+              className={`flex-1 px-2 py-2.5 bg-white/10 border border-white/10 rounded-xl text-white text-center outline-none cursor-pointer focus:ring-2 ${getThemeClasses()}`}
+            >
+              {[0, 15, 30, 45].map(m => (
+                <option key={m} value={m} className="bg-slate-800 text-white">{m.toString().padStart(2, '0')}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* Duration Grid */}
+      <div className="grid grid-cols-5 gap-2">
+        {durationOptions.map(opt => (
+          <button
+            key={opt.value}
+            onClick={() => handleDurationSelect(opt.value)}
+            className={`py-2 px-1 rounded-xl text-[10px] font-medium transition-all ${getButtonTheme(currentDuration === opt.value)}`}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// iOS-style Details List Row
+const DetailsRow = ({ icon, label, value, subValue, onClick, isLast, themeColor = 'amber' }) => {
+  const isTime = label.includes('Time');
+  const isAlerts = label === 'Alerts';
+
+  // Dynamic color mapping
+  const getColorClasses = () => {
+    switch (themeColor) {
+      case 'cyan':
+        return isTime ? 'bg-cyan-500 text-white' : 'bg-cyan-500/20 text-cyan-400';
+      case 'rose':
+        return isTime ? 'bg-rose-500 text-white' : 'bg-rose-500/20 text-rose-400';
+      case 'purple':
+        return isTime ? 'bg-purple-500 text-white' : 'bg-purple-500/20 text-purple-400';
+      case 'emerald':
+        return isTime ? 'bg-emerald-500 text-white' : 'bg-emerald-500/20 text-emerald-400';
+      default: // amber
+        return isTime ? 'bg-amber-500 text-white' : 'bg-amber-500/20 text-amber-500';
+    }
+  };
+
+  return (
+    <button
+      onClick={onClick}
+      className={`w-full flex items-center gap-3 py-3 pr-4 active:bg-white/5 transition-colors group ${!isLast ? 'border-b border-white/5' : ''}`}
+    >
+      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${getColorClasses()}`}>
+        {icon}
+      </div>
+
+      <div className="flex-1 flex items-center justify-between">
+        <div className="text-left">
+          <span className="text-white text-[15px] block">{value}</span>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {subValue && <span className="text-slate-500 text-[15px]">{subValue}</span>}
+          <svg className="w-4 h-4 text-slate-600 group-hover:text-slate-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </div>
+      </div>
+    </button>
+  );
+};
+
+const DatePicker = ({ selectedDate, onSelect, themeColor = 'amber' }) => {
+  const [viewDate, setViewDate] = useState(selectedDate || new Date());
+
+  const getDaysInMonth = (year, month) => new Date(year, month + 1, 0).getDate();
+  const getFirstDayOfMonth = (year, month) => new Date(year, month, 1).getDay();
+
+  const year = viewDate.getFullYear();
+  const month = viewDate.getMonth();
+  const daysInMonth = getDaysInMonth(year, month);
+  const firstDay = getFirstDayOfMonth(year, month);
+  const today = new Date();
+
+  // Navigation
+  const nextMonth = () => setViewDate(new Date(year, month + 1, 1));
+  const prevMonth = () => setViewDate(new Date(year, month - 1, 1));
+
+  const handleDayClick = (day) => {
+    const newDate = new Date(year, month, day);
+    onSelect(newDate);
+  };
+
+  const monthNames = ["January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
+  ];
+
+  const getThemeClasses = (isSelected, isToday) => {
+    const baseSelected = 'text-white shadow-lg';
+    const baseToday = 'bg-white/10 border';
+
+    switch (themeColor) {
+      case 'cyan':
+        if (isSelected) return `bg-cyan-500 ${baseSelected} shadow-cyan-500/30`;
+        if (isToday) return `${baseToday} text-cyan-500 border-cyan-500/30`;
+        return 'text-slate-300 hover:bg-white/10';
+      case 'rose':
+        if (isSelected) return `bg-rose-500 ${baseSelected} shadow-rose-500/30`;
+        if (isToday) return `${baseToday} text-rose-500 border-rose-500/30`;
+        return 'text-slate-300 hover:bg-white/10';
+      case 'purple':
+        if (isSelected) return `bg-purple-500 ${baseSelected} shadow-purple-500/30`;
+        if (isToday) return `${baseToday} text-purple-500 border-purple-500/30`;
+        return 'text-slate-300 hover:bg-white/10';
+      case 'emerald':
+        if (isSelected) return `bg-emerald-500 ${baseSelected} shadow-emerald-500/30`;
+        if (isToday) return `${baseToday} text-emerald-500 border-emerald-500/30`;
+        return 'text-slate-300 hover:bg-white/10';
+      default: // amber
+        if (isSelected) return `bg-amber-500 ${baseSelected} shadow-amber-500/30`;
+        if (isToday) return `${baseToday} text-amber-500 border-amber-500/30`;
+        return 'text-slate-300 hover:bg-white/10';
+    }
+  };
+
+  return (
+    <div className="p-4 bg-white/5 border border-white/10 rounded-2xl animate-fadeIn mb-6">
+      <div className="flex items-center justify-between mb-4">
+        <button onClick={prevMonth} className="p-1 text-slate-400 hover:text-white transition-colors">
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+        <span className="font-semibold text-white">{monthNames[month]} {year}</span>
+        <button onClick={nextMonth} className="p-1 text-slate-400 hover:text-white transition-colors">
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+      </div>
+
+      <div className="grid grid-cols-7 gap-1 mb-2">
+        {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(d => (
+          <div key={d} className="text-center text-xs text-slate-500 font-medium py-1">{d}</div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-7 gap-1">
+        {Array.from({ length: firstDay }).map((_, i) => (
+          <div key={`empty-${i}`} />
+        ))}
+        {Array.from({ length: daysInMonth }).map((_, i) => {
+          const day = i + 1;
+          const date = new Date(year, month, day);
+          const isSelected = selectedDate && date.toDateString() === selectedDate.toDateString();
+          const isToday = date.toDateString() === today.toDateString();
+
+          return (
+            <button
+              key={day}
+              onClick={() => handleDayClick(day)}
+              className={`h-9 w-9 rounded-full flex items-center justify-center text-sm font-medium transition-all
+                  ${getThemeClasses(isSelected, isToday)}`}
+            >
+              {day}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+const TaskDetailsList = ({
+  date,
+  startTime,
+  endTime,
+  alerts,
+  repeat,
+  onDateClick,
+  onTimeClick,
+  onAlertsClick,
+  onRepeatClick,
+  themeColor = 'amber',
+  showDatePicker = false,
+  onDateChange,
+  showTimePicker = false,
+  onStartTimeChange,
+  onEndTimeChange,
+  showRepeatPicker = false,
+  onRepeatChange
+}) => {
+  const formatDate = (d) => {
+    // Basic date formatting, matching the image style roughly
+    const day = d.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+    const isToday = new Date().toDateString() === d.toDateString();
+    return { text: day, label: isToday ? 'Today' : '' };
+  };
+
+  const getDurationString = (start, end) => {
+    try {
+      if (!start || !end) return '';
+      // Parse HH:MM
+      const [sh, sm] = start.split(':').map(Number);
+      const [eh, em] = end.split(':').map(Number);
+
+      let diff = (eh * 60 + em) - (sh * 60 + sm);
+      if (diff < 0) diff += 24 * 60; // Handle overnight
+      if (diff <= 0) return '';
+
+      const h = Math.floor(diff / 60);
+      const m = diff % 60;
+
+      return `${h > 0 ? h + 'h ' : ''}${m > 0 ? m + 'min' : ''}`;
+    } catch (e) { return ''; }
+  };
+
+  const formattedDate = formatDate(date);
+  const duration = getDurationString(startTime, endTime);
+
+  return (
+    <div className="bg-[#1C1C1E] rounded-[14px] overflow-hidden mb-6">
+      <DetailsRow
+        icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>}
+        label={formattedDate.label || 'Date'}
+        value={formattedDate.text}
+        onClick={onDateClick}
+        themeColor={themeColor}
+      />
+
+      {/* Inline Date Picker */}
+      {showDatePicker && (
+        <div className="border-b border-white/5 animate-slideDown">
+          <DatePicker
+            selectedDate={date}
+            onSelect={onDateChange}
+            themeColor={themeColor}
+          />
+        </div>
+      )}
+
+      <DetailsRow
+        icon={<svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm4.2 14.2L11 13V7h1.5v5.2l4.5 2.7-.8 1.3z" /></svg>}
+        label="Time"
+        value={`${startTime} - ${endTime}`}
+        subValue={duration}
+        onClick={onTimeClick}
+        isLast={false}
+        themeColor={themeColor}
+      />
+
+      {/* Inline Time Picker */}
+      {showTimePicker && (
+        <div className="border-b border-white/5 animate-slideDown px-1">
+          <TimePicker
+            startHour={parseInt(startTime.split(':')[0])}
+            startMinute={parseInt(startTime.split(':')[1])}
+            endHour={parseInt(endTime.split(':')[0])}
+            endMinute={parseInt(endTime.split(':')[1])}
+            onStartChange={onStartTimeChange}
+            onEndChange={onEndTimeChange}
+            themeColor={themeColor}
+          />
+        </div>
+      )}
+
+      <DetailsRow
+        icon="🔔"
+        label="Alerts"
+        value={alerts.length > 0 ? `${alerts.length} alerts set` : 'No alerts'}
+        onClick={onAlertsClick}
+        isLast={false}
+        themeColor={themeColor}
+      />
+
+      <DetailsRow
+        icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>}
+        label="Repeat"
+        value={repeat?.label || 'None'}
+        onClick={onRepeatClick}
+        isLast={true}
+        themeColor={themeColor}
+      />
+
+      {/* Inline Repeat Picker */}
+      {showRepeatPicker && (
+        <div className="border-t border-white/5 animate-slideDown px-3 pt-3">
+          <RepeatPicker
+            repeat={repeat || { type: 'none', label: 'None', days: [] }}
+            onSelect={onRepeatChange}
+            themeColor={themeColor}
+          />
+        </div>
+      )}
+    </div>
+  );
+};
+
 // Simple localStorage helpers - no persistence for now to avoid issues
 const loadFromStorage = (key, defaultValue) => defaultValue;
 const saveToStorage = (key, value) => { };
@@ -329,6 +832,17 @@ const LifeArchitect = () => {
   const [executeShowNewTaskModal, setExecuteShowNewTaskModal] = useState(false);
   const [executeEditingTask, setExecuteEditingTask] = useState(null);
   const [executeEditingRoutine, setExecuteEditingRoutine] = useState(null);
+
+  // Edit Task State
+  const [editTaskAlerts, setEditTaskAlerts] = useState([]);
+  const [editTaskShowTime, setEditTaskShowTime] = useState(false);
+  const [editTaskShowAlerts, setEditTaskShowAlerts] = useState(false);
+  const [editTaskDate, setEditTaskDate] = useState(new Date()); // For date editing
+
+  // Consistency fields
+  const [editTaskValue, setEditTaskValue] = useState(5);
+  const [editTaskNotes, setEditTaskNotes] = useState('');
+
   // Plan Screen
   const [planShowNewReminder, setPlanShowNewReminder] = useState(false);
   const [planEditingReminder, setPlanEditingReminder] = useState(null);
@@ -449,6 +963,31 @@ const LifeArchitect = () => {
     return `${year}-${month}-${day}`;
   };
 
+  const isItemDueOnDate = (item, targetDate) => {
+    if (!item.repeat || item.repeat.type === 'none') return false;
+
+    const itemDate = new Date(item.startTime || item.date);
+    const target = new Date(targetDate);
+    target.setHours(0, 0, 0, 0);
+    itemDate.setHours(0, 0, 0, 0);
+
+    // Don't show if target is before the creation/start date
+    if (target < itemDate) return false;
+
+    if (item.repeat.type === 'daily') return true;
+
+    if (item.repeat.type === 'weekly') {
+      return itemDate.getDay() === target.getDay();
+    }
+
+    if (item.repeat.type === 'custom') {
+      const dayName = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][target.getDay()];
+      return item.repeat.days?.includes(dayName);
+    }
+
+    return false;
+  };
+
   // Get today's date with time set to midnight for proper comparison
   const getToday = () => {
     const d = new Date();
@@ -478,6 +1017,80 @@ const LifeArchitect = () => {
 
   // Store tasks by date
   const [tasksByDate, setTasksByDate] = useState({});
+
+  // Collect all unique recurring templates from tasksByDate and reminders
+  const recurringTemplates = useMemo(() => {
+    const templates = new Map();
+
+    // Scan reminders
+    if (Array.isArray(reminders)) {
+      reminders.forEach(r => {
+        if (r.repeat && r.repeat.type !== 'none') {
+          templates.set(`reminder-${r.id}`, { ...r, originType: 'reminder' });
+        }
+      });
+    }
+
+    // Scan all tasks in tasksByDate
+    Object.values(tasksByDate || {}).forEach(dayTasks => {
+      dayTasks.forEach(t => {
+        if (t.repeat && t.repeat.type !== 'none') {
+          templates.set(`task-${t.id}`, { ...t, originType: 'task' });
+        }
+      });
+    });
+
+    // Scan all project tasks
+    if (Array.isArray(projects)) {
+      projects.forEach(p => {
+        if (Array.isArray(p.tasks)) {
+          p.tasks.forEach(t => {
+            if (t.repeat && t.repeat.type !== 'none') {
+              templates.set(`project-task-${t.id}`, { ...t, originType: 'task', projectId: p.id, projectTaskId: t.id });
+            }
+          });
+        }
+      });
+    }
+
+    return Array.from(templates.values());
+  }, [reminders, tasksByDate, projects]);
+
+  // Helper to get resolved tasks for a date (hardened + virtual)
+  const getResolvedTasksForDate = useCallback((date) => {
+    const dateKey = getDateKey(date);
+    const hardenedTasks = tasksByDate[dateKey] || [];
+
+    // Find virtual tasks that should be here
+    const virtualTasks = recurringTemplates
+      .filter(tpl => tpl.originType === 'task')
+      .filter(tpl => isItemDueOnDate(tpl, date))
+      .filter(tpl => !hardenedTasks.some(ht => ht.id === tpl.id))
+      .map(tpl => ({
+        ...tpl,
+        startTime: new Date(new Date(date).setHours(new Date(tpl.startTime).getHours(), new Date(tpl.startTime).getMinutes(), 0, 0)),
+        endTime: new Date(new Date(date).setHours(new Date(tpl.endTime).getHours(), new Date(tpl.endTime).getMinutes(), 0, 0)),
+        isVirtual: true
+      }));
+
+    return [...hardenedTasks, ...virtualTasks].sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
+  }, [tasksByDate, recurringTemplates]);
+
+  // Helper to get resolved reminders for a date
+  const getResolvedRemindersForDate = useCallback((date) => {
+    const targetDateKey = getDateKey(date);
+
+    return reminders.map(r => {
+      const rDateKey = r.date ? getDateKey(r.date) : null;
+      const isFloating = !r.date && (!r.repeat || r.repeat.type === 'none');
+      const isSpecific = rDateKey === targetDateKey;
+      const isRecurringDue = isItemDueOnDate(r, date);
+
+      if (isSpecific || isFloating) return { ...r, isVirtual: false };
+      if (isRecurringDue) return { ...r, isVirtual: true, date: new Date(date).toISOString() };
+      return null;
+    }).filter(Boolean);
+  }, [reminders, recurringTemplates]);
 
   // Default routines
   const defaultRoutines = {
@@ -659,7 +1272,7 @@ const LifeArchitect = () => {
   };
 
   // Get tasks for Execute screen's selected date
-  const tasks = tasksByDate[getDateKey(selectedExecuteDate)] || [];
+  const tasks = getResolvedTasksForDate(selectedExecuteDate);
 
   // Set tasks for a specific date
   const setTasksForDate = (date, newTasks) => {
@@ -743,6 +1356,17 @@ const LifeArchitect = () => {
   const [globalTaskMode, setGlobalTaskMode] = useState('task'); // 'task', 'reminder', or 'priority'
   const [globalTaskPrioritySlot, setGlobalTaskPrioritySlot] = useState(null); // Which priority slot to add to
 
+  const [globalTaskDate, setGlobalTaskDate] = useState(new Date());
+  const [globalTaskAlerts, setGlobalTaskAlerts] = useState([]);
+  const [globalTaskShowTime, setGlobalTaskShowTime] = useState(false);
+  const [globalTaskShowAlerts, setGlobalTaskShowAlerts] = useState(false);
+  const [globalTaskShowDate, setGlobalTaskShowDate] = useState(false);
+  const [globalTaskShowIconPicker, setGlobalTaskShowIconPicker] = useState(false);
+  const [globalTaskRepeat, setGlobalTaskRepeat] = useState({ type: 'none', label: 'None', days: [] });
+  const [globalTaskShowRepeat, setGlobalTaskShowRepeat] = useState(false);
+  const [globalTaskValue, setGlobalTaskValue] = useState(5);
+  const [globalTaskNotes, setGlobalTaskNotes] = useState('');
+
   const globalIconOptions = [
     '📌', '📧', '💪', '📝', '📞', '📚', '🧘', '🎯', '💼', '🏃',
     '🍎', '💡', '🎨', '🎵', '📊', '🛒', '🏠', '💰', '✈️', '🎮',
@@ -762,6 +1386,10 @@ const LifeArchitect = () => {
   const openGlobalTaskModal = (mode = 'task', prioritySlot = null) => {
     const now = new Date();
     const nextHour = Math.min(22, now.getHours() + 1);
+
+    // Choose date based on view or default to today
+    const defaultDate = activeTab === 'execute' ? selectedExecuteDate : selectedPlanDate;
+
     setGlobalTaskName('');
     setGlobalTaskIcon('📌');
     setGlobalTaskEnergy('medium');
@@ -771,6 +1399,17 @@ const LifeArchitect = () => {
     setGlobalTaskEndMinute(0);
     setGlobalTaskReminder(null);
     setGlobalTaskIsNonNegotiable(false);
+
+    setGlobalTaskDate(defaultDate ? new Date(defaultDate) : new Date());
+    setGlobalTaskAlerts([]);
+    setGlobalTaskValue(5);
+    setGlobalTaskNotes('');
+    setGlobalTaskShowTime(false);
+    setGlobalTaskShowAlerts(false);
+    setGlobalTaskShowDate(false);
+    setGlobalTaskShowRepeat(false);
+    setGlobalTaskShowIconPicker(false);
+
     setGlobalTaskMode(mode);
     setGlobalTaskPrioritySlot(prioritySlot);
     setShowGlobalTaskModal(true);
@@ -782,11 +1421,26 @@ const LifeArchitect = () => {
 
     if (globalTaskMode === 'reminder') {
       // Add as reminder
+      // Should we support Date/Time for global new reminders?
+      // Yes, if we want consistency.
+      const sTime = new Date(globalTaskDate);
+      sTime.setHours(globalTaskStartHour, globalTaskStartMinute, 0, 0);
+
+      const eTime = new Date(globalTaskDate);
+      eTime.setHours(globalTaskEndHour, globalTaskEndMinute, 0, 0);
+
       const newReminder = {
         id: Date.now(),
         icon: globalTaskIcon,
         name: globalTaskName.trim(),
-        energy: globalTaskEnergy
+        energy: globalTaskEnergy,
+        alerts: globalTaskAlerts,
+        date: globalTaskDate.toISOString(),
+        startTime: sTime.toISOString(),
+        endTime: eTime.toISOString(),
+        repeat: globalTaskRepeat,
+        value: globalTaskValue,
+        notes: globalTaskNotes
       };
       setReminders(prev => [...prev, newReminder]);
     } else if (globalTaskMode === 'priority' && globalTaskPrioritySlot !== null) {
@@ -795,7 +1449,10 @@ const LifeArchitect = () => {
         id: Date.now(),
         icon: globalTaskIcon,
         name: globalTaskName.trim(),
-        energy: globalTaskEnergy
+        energy: globalTaskEnergy,
+        value: globalTaskValue,
+        notes: globalTaskNotes
+        // Priorities don't usually have scheduled time in this model
       };
       const newPriorities = [...priorities];
       newPriorities[globalTaskPrioritySlot] = {
@@ -807,7 +1464,7 @@ const LifeArchitect = () => {
       setPriorities(newPriorities);
     } else {
       // Add as scheduled task
-      const targetDate = activeTab === 'execute' ? selectedExecuteDate : selectedPlanDate;
+      const targetDate = globalTaskDate; // Use the selected date from modal
       const startTime = new Date(targetDate);
       startTime.setHours(globalTaskStartHour, globalTaskStartMinute, 0, 0);
 
@@ -825,10 +1482,12 @@ const LifeArchitect = () => {
         energy: globalTaskEnergy,
         startTime: startTime,
         endTime: endTime,
-        duration: `${Math.round((endTime - startTime) / 60000)}m`,
-        completed: false,
         isNonNegotiable: globalTaskIsNonNegotiable,
-        reminder: globalTaskReminder
+        alerts: globalTaskAlerts,
+        repeat: globalTaskRepeat,
+        value: globalTaskValue,
+        notes: globalTaskNotes,
+        completed: false
       };
 
       const dateKey = getDateKey(targetDate);
@@ -955,7 +1614,7 @@ const LifeArchitect = () => {
       let colorIndex = 0;
 
       // Get existing tasks for this date to preserve completed status
-      const existingTasks = tasksByDate[dateKey] || [];
+      const existingTasks = getResolvedTasksForDate(dateObj);
 
       // Add priorities
       plan.priorities?.forEach((p, idx) => {
@@ -1034,7 +1693,7 @@ const LifeArchitect = () => {
 
   const addToNextSlot = (reminder) => {
     // Create a copy of the reminder for the slot (don't remove from reminders)
-    const taskCopy = { ...reminder, id: Date.now() }; // New ID so it's independent
+    const taskCopy = { ...reminder, id: Date.now(), isVirtual: false }; // New ID so it's independent, and harden it
 
     // Fill priorities 1, 2, 3
     for (let i = 0; i < 3; i++) {
@@ -1128,18 +1787,26 @@ const LifeArchitect = () => {
     const dateKey = getDateKey(selectedExecuteDate);
     const task = tasks.find(t => t.id === taskId);
 
-    setTasksByDate(prev => ({
-      ...prev,
-      [dateKey]: (prev[dateKey] || []).map(t =>
-        t.id === taskId ? { ...t, completed: true } : t
-      )
-    }));
+    if (task && task.isVirtual) {
+      setTasksByDate(prev => ({
+        ...prev,
+        [dateKey]: [...(prev[dateKey] || []), { ...task, isVirtual: false, completed: true }].sort((a, b) => a.startTime - b.startTime)
+      }));
+    } else {
+      setTasksByDate(prev => ({
+        ...prev,
+        [dateKey]: (prev[dateKey] || []).map(t =>
+          t.id === taskId ? { ...t, completed: true } : t
+        )
+      }));
+    }
 
     if (task) {
-      setCompletedTasks(prev => [...prev, { ...task, completed: true }]);
+      setCompletedTasks(prev => [...prev, { ...task, isVirtual: false, completed: true }]);
 
       // If this task came from a project, mark the project task as completed too
-      if (task.projectId && task.projectTaskId) {
+      // ONLY if it's NOT a recurring task. Recurring project tasks should stay active as templates.
+      if (task.projectId && task.projectTaskId && (!task.repeat || task.repeat.type === 'none')) {
         toggleProjectTask(task.projectId, task.projectTaskId);
       }
     }
@@ -1197,21 +1864,49 @@ const LifeArchitect = () => {
     const [newReminderEnergy, setNewReminderEnergy] = useState('medium');
 
     // Edit reminder state
-    // planEditingReminder lifted to App as planEditingReminder
+    const [planEditingReminder, setPlanEditingReminder] = useState(null);
     const [editReminderName, setEditReminderName] = useState('');
-    const [editReminderIcon, setEditReminderIcon] = useState('📌');
-    const [editReminderEnergy, setEditReminderEnergy] = useState('medium');
+    const [editReminderIcon, setEditReminderIcon] = useState('📝');
+    const [editReminderEnergy, setEditReminderEnergy] = useState('low');
+    const [editReminderValue, setEditReminderValue] = useState(5);
+    const [editReminderNotes, setEditReminderNotes] = useState('');
+
+    // Edit Reminder Alerts & Time State
+    const [editReminderAlerts, setEditReminderAlerts] = useState([]);
+    const [editReminderDate, setEditReminderDate] = useState(new Date());
+    const [editReminderStartHour, setEditReminderStartHour] = useState(9);
+    const [editReminderStartMinute, setEditReminderStartMinute] = useState(0);
+    const [editReminderEndHour, setEditReminderEndHour] = useState(10);
+    const [editReminderEndMinute, setEditReminderEndMinute] = useState(0);
+    const [editReminderShowTime, setEditReminderShowTime] = useState(false);
+    const [editReminderShowAlerts, setEditReminderShowAlerts] = useState(false);
+    const [editReminderShowDate, setEditReminderShowDate] = useState(false);
+    const [editReminderShowIconPicker, setEditReminderShowIconPicker] = useState(false);
+    const [editReminderRepeat, setEditReminderRepeat] = useState({ type: 'none', label: 'None', days: [] });
+    const [editReminderShowRepeat, setEditReminderShowRepeat] = useState(false);
 
     // Edit project task state (for editing in Plan screen)
     // planEditingTask, planEditingTaskProject lifted to App as planEditingTask, planEditingTaskProject
     const [planTaskData, setPlanTaskData] = useState({
       title: '',
+      icon: '📝', // Default icon
       value: 5,
       energy: 'medium',
       timeEstimate: 30,
       dueDate: '',
-      notes: ''
+      notes: '',
+      alerts: [],
+      repeat: { type: 'none', label: 'None', days: [] },
+      date: new Date(),
+      startTime: '',
+      endTime: ''
     });
+
+    const [planEditShowTime, setPlanEditShowTime] = useState(false);
+    const [planEditShowAlerts, setPlanEditShowAlerts] = useState(false);
+    const [planEditShowDate, setPlanEditShowDate] = useState(false);
+    const [planEditShowRepeat, setPlanEditShowRepeat] = useState(false);
+    const [planEditShowIconPicker, setPlanEditShowIconPicker] = useState(false); // New state for icon picker toggle
 
     const timeOptions = [
       { value: 15, label: '15 min' },
@@ -1225,21 +1920,64 @@ const LifeArchitect = () => {
     ];
 
     const openPlanTaskEdit = (task, project) => {
+      // Helper to get formatted time string from date or defaults
+      const getStartTime = (t) => t.startTime ? new Date(t.startTime) : new Date(new Date().setHours(9, 0, 0, 0));
+      const getEndTime = (t) => t.endTime ? new Date(t.endTime) : new Date(new Date().setHours(10, 0, 0, 0));
+
+      const sTime = getStartTime(task);
+      const eTime = getEndTime(task);
+
+      const formatTime = (d) => `${d.getHours()}:${d.getMinutes().toString().padStart(2, '0')}`;
+
       setPlanTaskData({
-        title: task.title || '',
+        title: task.title || task.name || '',
+        icon: task.icon || '📝',
         value: task.value || 5,
         energy: task.energy || 'medium',
         timeEstimate: task.timeEstimate || 30,
         dueDate: task.dueDate || '',
-        notes: task.notes || ''
+        notes: task.notes || '',
+        alerts: task.alerts || [],
+        repeat: task.repeat || { type: 'none', label: 'None', days: [] },
+        date: task.date ? new Date(task.date) : new Date(),
+        startTime: formatTime(sTime),
+        endTime: formatTime(eTime)
       });
+      setPlanEditShowTime(false);
+      setPlanEditShowAlerts(false);
+      setPlanEditShowDate(false);
+      setPlanEditShowRepeat(false);
+      setPlanEditShowIconPicker(false);
       setPlanEditingTask(task);
       setPlanEditingTaskProject(project);
     };
 
     const savePlanTask = () => {
       if (!planTaskData.title.trim() || !planEditingTaskProject) return;
-      updateProjectTask(planEditingTaskProject.id, planEditingTask.id, planTaskData);
+
+      const sDate = new Date(planTaskData.date);
+      const [sh, sm] = planTaskData.startTime.split(':').map(Number);
+      sDate.setHours(sh, sm, 0, 0);
+
+      const eDate = new Date(planTaskData.date);
+      const [eh, em] = planTaskData.endTime.split(':').map(Number);
+      eDate.setHours(eh, em, 0, 0);
+
+      const updates = {
+        title: planTaskData.title,
+        icon: planTaskData.icon,
+        value: planTaskData.value,
+        energy: planTaskData.energy,
+        timeEstimate: planTaskData.timeEstimate,
+        notes: planTaskData.notes,
+        alerts: planTaskData.alerts,
+        repeat: planTaskData.repeat,
+        date: planTaskData.date instanceof Date ? planTaskData.date.toISOString() : planTaskData.date,
+        startTime: sDate.toISOString(),
+        endTime: eDate.toISOString()
+      };
+
+      updateProjectTask(planEditingTaskProject.id, planEditingTask.id, updates);
       setPlanEditingTask(null);
       setPlanEditingTaskProject(null);
     };
@@ -1261,6 +1999,35 @@ const LifeArchitect = () => {
       setEditReminderName(reminder.name);
       setEditReminderIcon(reminder.icon);
       setEditReminderEnergy(reminder.energy || 'medium');
+      setEditReminderValue(reminder.value || 5);
+      setEditReminderNotes(reminder.notes || '');
+
+      // Initialize new fields with defaults or existing values
+      setEditReminderAlerts(reminder.alerts || []);
+      setEditReminderRepeat(reminder.repeat || { type: 'none', label: 'None', days: [] });
+      setEditReminderDate(reminder.date ? new Date(reminder.date) : new Date());
+
+      if (reminder.startTime) {
+        setEditReminderStartHour(new Date(reminder.startTime).getHours());
+        setEditReminderStartMinute(new Date(reminder.startTime).getMinutes());
+      } else {
+        setEditReminderStartHour(9);
+        setEditReminderStartMinute(0);
+      }
+
+      if (reminder.endTime) {
+        setEditReminderEndHour(new Date(reminder.endTime).getHours());
+        setEditReminderEndMinute(new Date(reminder.endTime).getMinutes());
+      } else {
+        setEditReminderEndHour(10);
+        setEditReminderEndMinute(0);
+      }
+
+      setEditReminderShowTime(false);
+      setEditReminderShowAlerts(false);
+      setEditReminderShowDate(false);
+      setEditReminderShowRepeat(false);
+      setEditReminderShowIconPicker(false);
     };
 
     // Save reminder edits
@@ -1269,12 +2036,34 @@ const LifeArchitect = () => {
 
       setReminders(prev => prev.map(r => {
         if (r.id === planEditingReminder.id) {
-          return {
-            ...r,
+          // specific handling for saving start/end time.
+          const sTime = new Date(editReminderDate);
+          sTime.setHours(editReminderStartHour, editReminderStartMinute, 0, 0);
+
+          const eTime = new Date(editReminderDate);
+          eTime.setHours(editReminderEndHour, editReminderEndMinute, 0, 0);
+
+          const updatedData = {
             name: editReminderName.trim(),
             icon: editReminderIcon,
-            energy: editReminderEnergy
+            energy: editReminderEnergy,
+            alerts: editReminderAlerts,
+            repeat: editReminderRepeat,
+            date: editReminderDate.toISOString(),
+            startTime: sTime.toISOString(),
+            endTime: eTime.toISOString(),
+            value: editReminderValue,
+            notes: editReminderNotes,
+            isVirtual: false
           };
+
+          setReminders(prev => {
+            if (planEditingReminder.isVirtual) {
+              return [{ ...planEditingReminder, ...updatedData, id: Date.now() }, ...prev];
+            } else {
+              return prev.map(r => r.id === planEditingReminder.id ? { ...r, ...updatedData } : r);
+            }
+          });
         }
         return r;
       }));
@@ -1857,241 +2646,237 @@ const LifeArchitect = () => {
           </div>
         )}
 
-        {/* Projects Section */}
-        <div className="mb-4">
+        {/* Projects & Reminders Quick Access Grid */}
+        <div className="grid grid-cols-2 gap-3 mb-6">
           <button
-            onClick={() => setProjectsExpanded(!projectsExpanded)}
-            className="w-full glass-card rounded-2xl p-4 flex items-center gap-3 mb-3 hover:bg-white/10 transition-all"
+            onClick={() => {
+              setProjectsExpanded(!projectsExpanded);
+              if (remindersExpanded) setRemindersExpanded(false);
+            }}
+            className="glass-card rounded-2xl p-4 flex items-center gap-3 hover:bg-white/10 transition-all text-left"
             style={{
-              background: 'linear-gradient(135deg, rgba(6,182,212,0.15) 0%, rgba(139,92,246,0.15) 100%)',
+              background: 'linear-gradient(135deg, rgba(6,182,212,0.1) 0%, rgba(59,130,246,0.1) 100%)',
               backdropFilter: 'blur(10px)',
               border: '1px solid rgba(6,182,212,0.2)'
             }}
           >
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center"
-              style={{ background: 'linear-gradient(135deg, rgba(6,182,212,0.3) 0%, rgba(139,92,246,0.3) 100%)' }}>
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-cyan-500/20">
               <span className="text-xl">📁</span>
             </div>
-            <div className="flex-1 text-left">
-              <span className="text-white font-medium">Projects</span>
-              <p className="text-cyan-400/70 text-xs">{projects.filter(p => p.status === 'active').length} active</p>
+            <div className="flex-1 min-w-0">
+              <span className="text-white font-medium block truncate">Projects</span>
+              <p className="text-cyan-400/70 text-[11px]">{projects.filter(p => p.status === 'active').length} active</p>
             </div>
-            <svg className={`w-5 h-5 text-cyan-400 transition-transform duration-300 ${projectsExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className={`w-4 h-4 text-cyan-400 transition-transform duration-300 ${projectsExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
             </svg>
           </button>
 
-          <div className={`space-y-2 overflow-hidden transition-all duration-300 ${projectsExpanded ? 'max-h-[1200px] opacity-100' : 'max-h-0 opacity-0'}`}>
-            {projects.filter(p => p.status === 'active' || p.status === 'not-started').map(project => {
-              const progress = getProjectProgress(project);
-              const pendingTasks = project.tasks?.filter(t => !t.completed) || [];
-              const isExpanded = expandedProjectId === project.id;
-
-              return (
-                <div key={project.id} className="rounded-2xl overflow-hidden"
-                  style={{
-                    background: 'linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%)',
-                    backdropFilter: 'blur(10px)',
-                    border: '1px solid rgba(255,255,255,0.1)'
-                  }}>
-                  {/* Project Header - Click to expand/collapse */}
-                  <button
-                    onClick={() => setExpandedProjectId(isExpanded ? null : project.id)}
-                    className="w-full p-4 flex items-center gap-3 hover:bg-white/5 transition-all"
-                  >
-                    <div className={`w-5 h-5 rounded-lg bg-cyan-500/20 flex items-center justify-center transition-transform duration-300 ${isExpanded ? 'rotate-90' : ''}`}>
-                      <svg className="w-3 h-3 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
-                    </div>
-                    <div className="flex-1 text-left">
-                      <div className="flex items-center gap-2">
-                        <span className="text-white font-medium">{project.title}</span>
-                        <span className="text-cyan-400 text-xs">{progress}%</span>
-                      </div>
-                      <div className="h-1.5 bg-white/10 rounded-full mt-1.5 overflow-hidden">
-                        <div
-                          className="h-full rounded-full"
-                          style={{
-                            width: `${progress}%`,
-                            background: 'linear-gradient(90deg, rgba(6,182,212,0.8) 0%, rgba(139,92,246,0.8) 100%)'
-                          }}
-                        />
-                      </div>
-                    </div>
-                    <span className="text-slate-500 text-xs">{pendingTasks.length} tasks</span>
-                  </button>
-
-                  {/* Project Tasks - Expandable */}
-                  <div className={`overflow-hidden transition-all duration-300 ${isExpanded ? 'max-h-[600px]' : 'max-h-0'}`}>
-                    <div className="px-4 pb-4 space-y-2">
-                      {pendingTasks.map(task => (
-                        <div
-                          key={task.id}
-                          onClick={() => openPlanTaskEdit(task, project)}
-                          className="flex items-center justify-between p-3 rounded-xl
-                            hover:bg-white/10 transition-all duration-200 cursor-pointer select-none hover:scale-[1.01]"
-                          style={{ background: 'rgba(255,255,255,0.03)' }}
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="text-slate-500">
-                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                              </svg>
-                            </div>
-                            <div>
-                              <span className="text-slate-200 font-medium text-sm">{task.title}</span>
-                              <div className="flex items-center gap-2 mt-0.5">
-                                <span className={`text-xs px-1.5 py-0.5 rounded ${task.energy === 'high' ? 'bg-rose-500/20 text-rose-400' :
-                                  task.energy === 'medium' ? 'bg-amber-500/20 text-amber-400' :
-                                    'bg-emerald-500/20 text-emerald-400'
-                                  }`}>
-                                  {task.energy}
-                                </span>
-                                <span className="text-slate-500 text-xs">Impact: {task.value}</span>
-                              </div>
-                            </div>
-                          </div>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              // Add project task to next available priority slot
-                              const taskToAdd = {
-                                id: Date.now(),
-                                icon: '📋',
-                                name: task.title,
-                                energy: task.energy,
-                                time: task.timeEstimate,
-                                projectId: project.id,
-                                projectTaskId: task.id,
-                                projectTitle: project.title
-                              };
-                              const emptySlotIndex = priorities.findIndex(p => !p.task);
-                              if (emptySlotIndex !== -1) {
-                                const newPriorities = [...priorities];
-                                newPriorities[emptySlotIndex] = {
-                                  ...newPriorities[emptySlotIndex],
-                                  task: taskToAdd,
-                                  energy: task.energy,
-                                  time: task.timeEstimate
-                                };
-                                setPriorities(newPriorities);
-                              }
-                            }}
-                            className="w-7 h-7 rounded-lg bg-cyan-500/30 text-cyan-300 flex items-center justify-center hover:bg-cyan-500/50 hover:scale-105 transition-all duration-200"
-                          >
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-                            </svg>
-                          </button>
-                        </div>
-                      ))}
-
-                      {pendingTasks.length === 0 && (
-                        <div className="text-center py-3 text-slate-500 text-sm">
-                          All tasks completed! 🎉
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-
-            {/* View All Projects Button */}
-            <button
-              onClick={() => setActiveTab('projects')}
-              className="w-full p-3.5 rounded-2xl border border-dashed border-white/20 text-slate-500 
-                hover:border-cyan-500/50 hover:text-cyan-400 hover:bg-cyan-500/10 
-                transition-all duration-200 flex items-center justify-center gap-2"
-            >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-              </svg>
-              <span className="font-medium">Manage Projects</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Reminders Section */}
-        <div className="mb-8">
           <button
-            onClick={() => setRemindersExpanded(!remindersExpanded)}
-            className="w-full glass-card rounded-2xl p-4 flex items-center gap-3 mb-3 hover:bg-white/10 transition-all"
+            onClick={() => {
+              setRemindersExpanded(!remindersExpanded);
+              if (projectsExpanded) setProjectsExpanded(false);
+            }}
+            className="glass-card rounded-2xl p-4 flex items-center gap-3 hover:bg-white/10 transition-all text-left"
             style={{
-              background: 'linear-gradient(135deg, rgba(168,85,247,0.15) 0%, rgba(236,72,153,0.15) 100%)',
+              background: 'linear-gradient(135deg, rgba(168,85,247,0.1) 0%, rgba(236,72,153,0.1) 100%)',
               backdropFilter: 'blur(10px)',
               border: '1px solid rgba(168,85,247,0.2)'
             }}
           >
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center"
-              style={{ background: 'linear-gradient(135deg, rgba(168,85,247,0.3) 0%, rgba(236,72,153,0.3) 100%)' }}>
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-purple-500/20">
               <span className="text-xl">💡</span>
             </div>
-            <div className="flex-1 text-left">
-              <span className="text-white font-medium">Reminders</span>
-              <p className="text-purple-400/70 text-xs">{reminders.length} items</p>
+            <div className="flex-1 min-w-0">
+              <span className="text-white font-medium block truncate">Reminders</span>
+              <p className="text-purple-400/70 text-[11px]">{reminders.length} items</p>
             </div>
-            <svg className={`w-5 h-5 text-purple-400 transition-transform duration-300 ${remindersExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className={`w-4 h-4 text-purple-400 transition-transform duration-300 ${remindersExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
             </svg>
           </button>
+        </div>
 
-          <div className={`space-y-2 overflow-hidden transition-all duration-300 ${remindersExpanded ? 'max-h-[600px] opacity-100' : 'max-h-0 opacity-0'}`}>
-            {reminders.map(reminder => (
-              <div
-                key={reminder.id}
-                onClick={() => openReminderEdit(reminder)}
-                className="flex items-center justify-between p-3.5 rounded-2xl
-                  hover:bg-white/10 transition-all duration-200 cursor-pointer select-none hover:scale-[1.01]"
+        {/* Expanded Projects List */}
+        <div className={`space-y-2 overflow-hidden transition-all duration-300 mb-6 ${projectsExpanded ? 'max-h-[1200px] opacity-100' : 'max-h-0 opacity-0'}`}>
+          {projects.filter(p => p.status === 'active' || p.status === 'not-started').map(project => {
+            const progress = getProjectProgress(project);
+            const pendingTasks = project.tasks?.filter(t => !t.completed) || [];
+            const isExpanded = expandedProjectId === project.id;
+
+            return (
+              <div key={project.id} className="rounded-2xl overflow-hidden"
                 style={{
                   background: 'linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%)',
                   backdropFilter: 'blur(10px)',
                   border: '1px solid rgba(255,255,255,0.1)'
-                }}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="text-slate-500">
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                }}>
+                <button
+                  onClick={() => setExpandedProjectId(isExpanded ? null : project.id)}
+                  className="w-full p-4 flex items-center gap-3 hover:bg-white/5 transition-all"
+                >
+                  <div className={`w-5 h-5 rounded-lg bg-cyan-500/20 flex items-center justify-center transition-transform duration-300 ${isExpanded ? 'rotate-90' : ''}`}>
+                    <svg className="w-3 h-3 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                     </svg>
                   </div>
-                  <span className="text-xl">{reminder.icon}</span>
-                  <span className="text-slate-200 font-medium flex-1 truncate">{reminder.name}</span>
-                  <EnergyBadge energy={reminder.energy} />
-                </div>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    addToNextSlot(reminder);
-                  }}
-                  className="w-8 h-8 rounded-xl text-purple-300 flex items-center justify-center hover:scale-105 transition-all duration-200 ml-2"
-                  style={{ background: 'linear-gradient(135deg, rgba(168,85,247,0.3) 0%, rgba(236,72,153,0.3) 100%)' }}
-                >
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-                  </svg>
+                  <div className="flex-1 text-left">
+                    <div className="flex items-center gap-2">
+                      <span className="text-white font-medium">{project.title}</span>
+                      <span className="text-cyan-400 text-xs">{progress}%</span>
+                    </div>
+                    <div className="h-1.5 bg-white/10 rounded-full mt-1.5 overflow-hidden">
+                      <div
+                        className="h-full rounded-full"
+                        style={{
+                          width: `${progress}%`,
+                          background: 'linear-gradient(90deg, rgba(6,182,212,0.8) 0%, rgba(139,92,246,0.8) 100%)'
+                        }}
+                      />
+                    </div>
+                  </div>
+                  <span className="text-slate-500 text-xs">{pendingTasks.length} tasks</span>
                 </button>
-              </div>
-            ))}
 
-            {/* New Reminder Button */}
-            <button
-              onClick={() => openGlobalTaskModal('reminder')}
-              className="w-full p-3.5 rounded-2xl text-slate-500 
-                hover:text-purple-400 
-                transition-all duration-200 flex items-center justify-center gap-2"
+                <div className={`overflow-hidden transition-all duration-300 ${isExpanded ? 'max-h-[600px]' : 'max-h-0'}`}>
+                  <div className="px-4 pb-4 space-y-2">
+                    {pendingTasks.map(task => (
+                      <div
+                        key={task.id}
+                        onClick={() => openPlanTaskEdit(task, project)}
+                        className="flex items-center justify-between p-3 rounded-xl
+                          hover:bg-white/10 transition-all duration-200 cursor-pointer select-none hover:scale-[1.01]"
+                        style={{ background: 'rgba(255,255,255,0.03)' }}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="text-slate-500">
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                          </div>
+                          <div>
+                            <span className="text-slate-200 font-medium text-sm">{task.title}</span>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <span className={`text-xs px-1.5 py-0.5 rounded ${task.energy === 'high' ? 'bg-rose-500/20 text-rose-400' :
+                                task.energy === 'medium' ? 'bg-amber-500/20 text-amber-400' :
+                                  'bg-emerald-500/20 text-emerald-400'
+                                }`}>
+                                {task.energy}
+                              </span>
+                              <span className="text-slate-500 text-xs">Impact: {task.value}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const taskToAdd = {
+                              id: Date.now(),
+                              icon: '📋',
+                              name: task.title,
+                              energy: task.energy,
+                              time: task.timeEstimate,
+                              projectId: project.id,
+                              projectTaskId: task.id,
+                              projectTitle: project.title
+                            };
+                            const emptySlotIndex = priorities.findIndex(p => !p.task);
+                            if (emptySlotIndex !== -1) {
+                              const newPriorities = [...priorities];
+                              newPriorities[emptySlotIndex] = {
+                                ...newPriorities[emptySlotIndex],
+                                task: taskToAdd,
+                                energy: task.energy,
+                                time: task.timeEstimate
+                              };
+                              setPriorities(newPriorities);
+                            }
+                          }}
+                          className="w-7 h-7 rounded-lg bg-cyan-500/30 text-cyan-300 flex items-center justify-center hover:bg-cyan-500/50 hover:scale-105 transition-all duration-200"
+                        >
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+                          </svg>
+                        </button>
+                      </div>
+                    ))}
+                    {pendingTasks.length === 0 && (
+                      <div className="text-center py-3 text-slate-500 text-sm">
+                        All tasks completed! 🎉
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+
+          <button
+            onClick={() => setActiveTab('projects')}
+            className="w-full p-3.5 rounded-2xl border border-dashed border-white/20 text-slate-500 
+              hover:border-cyan-500/50 hover:text-cyan-400 hover:bg-cyan-500/10 
+              transition-all duration-200 flex items-center justify-center gap-2"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+            </svg>
+            <span className="font-medium">Manage Projects</span>
+          </button>
+        </div>
+
+        {/* Expanded Reminders List */}
+        <div className={`space-y-2 overflow-hidden transition-all duration-300 mb-8 ${remindersExpanded ? 'max-h-[1200px] opacity-100' : 'max-h-0 opacity-0'}`}>
+          {getResolvedRemindersForDate(selectedExecuteDate).map(reminder => (
+            <div
+              key={reminder.id}
+              onClick={() => openReminderEdit(reminder)}
+              className="flex items-center justify-between p-3.5 rounded-2xl
+                hover:bg-white/10 transition-all duration-200 cursor-pointer select-none hover:scale-[1.01]"
               style={{
-                background: 'transparent',
-                border: '1px dashed rgba(168,85,247,0.3)'
+                background: 'linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%)',
+                backdropFilter: 'blur(10px)',
+                border: '1px solid rgba(255,255,255,0.1)'
               }}
             >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              <span className="font-medium">New Reminder</span>
-            </button>
-          </div>
+              <div className="flex items-center gap-3">
+                <div className="text-slate-500">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
+                <span className="text-xl">{reminder.icon}</span>
+                <span className="text-slate-200 font-medium flex-1 truncate">{reminder.name}</span>
+                <EnergyBadge energy={reminder.energy} />
+              </div>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  addToNextSlot(reminder);
+                }}
+                className="w-8 h-8 rounded-xl text-purple-300 flex items-center justify-center hover:scale-105 transition-all duration-200 ml-2"
+                style={{ background: 'linear-gradient(135deg, rgba(168,85,247,0.3) 0%, rgba(236,72,153,0.3) 100%)' }}
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+                </svg>
+              </button>
+            </div>
+          ))}
+
+          {/* New Reminder Button */}
+          <button
+            onClick={() => openGlobalTaskModal('reminder')}
+            className="w-full p-3.5 rounded-2xl text-slate-500 hover:text-purple-400 transition-all duration-200 flex items-center justify-center gap-2"
+            style={{
+              background: 'transparent',
+              border: '1px dashed rgba(168,85,247,0.3)'
+            }}
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            <span className="font-medium">New Reminder</span>
+          </button>
         </div>
 
         {/* Priorities */}
@@ -2108,7 +2893,7 @@ const LifeArchitect = () => {
                 onMouseLeave={handleSlotMouseLeave}
                 onClick={() => !priority.task && !isDragging && openGlobalTaskModal('priority', idx)}
                 className={`p-4 glass-card rounded-2xl transition-all duration-200 ease-out select-none
-                  ${priority.task ? 'ring-1 ring-purple-500/30 cursor-grab active:cursor-grabbing' : 'cursor-pointer hover:bg-white/10 hover:scale-[1.01]'} 
+                  ${priority.task ? 'ring-1 ring-purple-500/30 cursor-grab active:cursor-grabbing' : 'cursor-pointer hover:bg-white/10 hover:scale-[1.01]'}
                   ${isDragging && dragOverSlot?.type === 'p' && dragOverSlot?.index === idx
                     ? 'ring-2 ring-purple-400 scale-[1.02] bg-purple-500/20 shadow-lg shadow-purple-500/20'
                     : ''}
@@ -2282,62 +3067,182 @@ const LifeArchitect = () => {
 
               {/* Body */}
               <div className="px-5 py-4 max-h-[60vh] overflow-y-auto">
-                {/* Icon Picker */}
+                {/* Title & Icon Header */}
                 <div className="mb-4">
-                  <label className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-2 block">Icon</label>
-                  <div className="flex flex-wrap gap-1.5">
-                    {iconOptions.map(icon => (
-                      <button
-                        key={icon}
-                        onClick={() => setEditReminderIcon(icon)}
-                        className={`w-9 h-9 rounded-xl flex items-center justify-center text-lg transition-all duration-150
-                          ${editReminderIcon === icon
-                            ? 'bg-purple-500 scale-110 shadow-lg shadow-purple-500/30'
-                            : 'bg-white/10 hover:bg-white/20 hover:scale-105'}`}
-                      >
-                        {icon}
-                      </button>
-                    ))}
+                  <label className="text-slate-400 text-sm mb-2 block">Reminder</label>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setEditReminderShowIconPicker(!editReminderShowIconPicker)}
+                      className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-2xl hover:bg-white/10 transition-colors"
+                    >
+                      {editReminderIcon}
+                    </button>
+                    <input
+                      type="text"
+                      value={editReminderName}
+                      onChange={(e) => setEditReminderName(e.target.value)}
+                      placeholder="What do you need to remember?"
+                      className="flex-1 px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-500 outline-none focus:border-purple-500/50"
+                    />
                   </div>
+
+                  {/* Icon Picker (Conditional) */}
+                  {editReminderShowIconPicker && (
+                    <div className="mt-4 p-4 rounded-xl bg-white/5 border border-white/5 animate-fadeIn">
+                      <div className="flex flex-wrap gap-2">
+                        {globalIconOptions.map(icon => (
+                          <button
+                            key={icon}
+                            onClick={() => {
+                              setEditReminderIcon(icon);
+                              setEditReminderShowIconPicker(false);
+                            }}
+                            className={`w-10 h-10 rounded-lg flex items-center justify-center text-xl transition-colors
+                              ${editReminderIcon === icon ? 'bg-purple-500/20 text-purple-400' : 'hover:bg-white/10'}`}
+                          >
+                            {icon}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
-                {/* Reminder Name */}
+                {/* Details List (iOS Style) - Moved Up */}
+                <TaskDetailsList
+                  date={editReminderDate}
+                  startTime={`${editReminderStartHour}:${editReminderStartMinute.toString().padStart(2, '0')}`}
+                  endTime={`${editReminderEndHour}:${editReminderEndMinute.toString().padStart(2, '0')}`}
+                  alerts={editReminderAlerts}
+                  onDateClick={() => {
+                    setEditReminderShowDate(!editReminderShowDate);
+                    setEditReminderShowTime(false);
+                    setEditReminderShowAlerts(false);
+                    setEditReminderShowRepeat(false);
+                  }}
+                  onTimeClick={() => {
+                    setEditReminderShowTime(!editReminderShowTime);
+                    setEditReminderShowAlerts(false);
+                    setEditReminderShowDate(false);
+                    setEditReminderShowRepeat(false);
+                  }}
+                  onAlertsClick={() => {
+                    setEditReminderShowAlerts(!editReminderShowAlerts);
+                    setEditReminderShowTime(false);
+                    setEditReminderShowDate(false);
+                    setEditReminderShowRepeat(false);
+                  }}
+                  onRepeatClick={() => {
+                    setEditReminderShowRepeat(!editReminderShowRepeat);
+                    setEditReminderShowAlerts(false);
+                    setEditReminderShowTime(false);
+                    setEditReminderShowDate(false);
+                  }}
+                  themeColor="purple"
+                  showDatePicker={editReminderShowDate}
+                  onDateChange={(date) => {
+                    setEditReminderDate(date);
+                    setEditReminderShowDate(false);
+                  }}
+                  showTimePicker={editReminderShowTime}
+                  onStartTimeChange={({ hour, minute }) => {
+                    setEditReminderStartHour(hour);
+                    setEditReminderStartMinute(minute);
+                  }}
+                  onEndTimeChange={({ hour, minute }) => {
+                    setEditReminderEndHour(hour);
+                    setEditReminderEndMinute(minute);
+                  }}
+                  repeat={editReminderRepeat}
+                  showRepeatPicker={editReminderShowRepeat}
+                  onRepeatChange={(repeat) => setEditReminderRepeat(repeat)}
+                />
+
+
+                {/* Alerts Picker (Collapsible) */}
+                {editReminderShowAlerts && (
+                  <div className="mb-6 p-4 rounded-2xl bg-white/5 border border-white/5 animate-fadeIn">
+                    <label className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-3 block">Manage Alerts</label>
+                    <div className="space-y-2">
+                      {editReminderAlerts.map((alert, index) => (
+                        <div key={index} className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5">
+                          <span className="text-sm text-slate-200">{alert.label}</span>
+                          <button
+                            onClick={() => setEditReminderAlerts(editReminderAlerts.filter((_, i) => i !== index))}
+                            className="text-rose-400 hover:text-rose-300 p-1"
+                          >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </div>
+                      ))}
+                      <div className="pt-2 grid grid-cols-3 gap-2">
+                        {globalAlertOptions.map(opt => (
+                          <button
+                            key={opt.label}
+                            onClick={() => {
+                              if (!editReminderAlerts.some(a => a.value === opt.value)) {
+                                setEditReminderAlerts([...editReminderAlerts, opt]);
+                              }
+                            }}
+                            className="p-2 rounded-lg bg-indigo-500/10 text-indigo-300 text-[10px] font-medium border border-indigo-500/20 hover:bg-indigo-500/20 transition-all text-left"
+                          >
+                            + {opt.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Value (Impact) */}
                 <div className="mb-4">
-                  <label className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-2 block">Reminder Name</label>
+                  <label className="text-slate-400 text-sm mb-2 block">Impact Value: {editReminderValue || 5}/10</label>
                   <input
-                    type="text"
-                    value={editReminderName}
-                    onChange={(e) => setEditReminderName(e.target.value)}
-                    placeholder="What do you need to remember?"
-                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 outline-none transition-all text-white placeholder:text-slate-500"
+                    type="range"
+                    min="1"
+                    max="10"
+                    value={editReminderValue || 5}
+                    onChange={(e) => setEditReminderValue(parseInt(e.target.value))}
+                    className="w-full accent-purple-500"
                   />
                 </div>
 
-                {/* Energy Level */}
-                <div className="mb-4">
-                  <label className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-2 block">Energy Level</label>
-                  <div className="flex gap-2">
-                    {['low', 'medium', 'high'].map(e => (
+                {/* Energy */}
+                <div className="mb-6">
+                  <label className="text-slate-400 text-sm mb-2 block">Energy Required</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {['low', 'medium', 'high'].map(level => (
                       <button
-                        key={e}
-                        onClick={() => setEditReminderEnergy(e)}
-                        className={`flex-1 py-2.5 rounded-xl font-medium text-sm transition-all duration-200
-                          ${editReminderEnergy === e
-                            ? e === 'low'
-                              ? 'bg-emerald-500/80 text-white shadow-lg shadow-emerald-500/30'
-                              : e === 'medium'
-                                ? 'bg-amber-500/80 text-white shadow-lg shadow-amber-500/30'
-                                : 'bg-rose-500/80 text-white shadow-lg shadow-rose-500/30'
-                            : 'bg-white/10 text-slate-400 hover:bg-white/20'}`}
+                        key={level}
+                        onClick={() => setEditReminderEnergy(level)}
+                        className={`py-2.5 px-3 rounded-xl text-sm font-medium capitalize transition-all ${editReminderEnergy === level
+                          ? level === 'high' ? 'bg-rose-500/30 text-rose-300 ring-2 ring-rose-500/50' :
+                            level === 'medium' ? 'bg-amber-500/30 text-amber-300 ring-2 ring-amber-500/50' :
+                              'bg-emerald-500/30 text-emerald-300 ring-2 ring-emerald-500/50'
+                          : 'bg-white/5 text-slate-400'
+                          }`}
                       >
-                        {e === 'low' ? '🌱 Low' : e === 'medium' ? '⚡ Med' : '🔥 High'}
+                        {level}
                       </button>
                     ))}
                   </div>
                 </div>
-              </div>
 
-              {/* Footer */}
+                {/* Notes */}
+                <div className="mb-4">
+                  <label className="text-slate-400 text-sm mb-2 block">Notes</label>
+                  <textarea
+                    value={editReminderNotes}
+                    onChange={(e) => setEditReminderNotes(e.target.value)}
+                    placeholder="Additional details..."
+                    rows={2}
+                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-500 outline-none focus:border-purple-500/50 resize-none"
+                  />
+                </div>
+
+              </div>
               <div className="px-5 py-4 border-t border-white/10">
                 <div className="flex gap-3">
                   <button
@@ -2367,144 +3272,246 @@ const LifeArchitect = () => {
                 </div>
               </div>
             </div>
-          </div>
+          </div >
         )}
 
         {/* Project Task Edit Modal */}
-        {planEditingTask && (
-          <div className="fixed inset-0 z-50 flex items-end justify-center animate-fadeIn">
-            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={closePlanTaskModal} />
+        {
+          planEditingTask && (
+            <div className="fixed inset-0 z-50 flex items-end justify-center animate-fadeIn">
+              <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={closePlanTaskModal} />
 
-            <div
-              className="relative w-full max-w-md mx-4 mb-4 rounded-3xl overflow-hidden animate-slideUp max-h-[85vh] overflow-y-auto"
-              style={{
-                background: 'linear-gradient(180deg, rgba(30,30,40,0.95) 0%, rgba(20,20,30,0.98) 100%)',
-                backdropFilter: 'blur(40px)',
-                border: '1px solid rgba(255,255,255,0.1)'
-              }}
-            >
-              <div className="px-5 pt-5 pb-4 border-b border-white/10">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="text-lg font-semibold text-white">Edit Task</h2>
-                    <p className="text-cyan-400 text-xs mt-0.5">{planEditingTaskProject?.title}</p>
+              <div
+                className="relative w-full max-w-md mx-4 mb-4 rounded-3xl overflow-hidden animate-slideUp max-h-[85vh] overflow-y-auto"
+                style={{
+                  background: 'linear-gradient(180deg, rgba(30,30,40,0.95) 0%, rgba(20,20,30,0.98) 100%)',
+                  backdropFilter: 'blur(40px)',
+                  border: '1px solid rgba(255,255,255,0.1)'
+                }}
+              >
+                <div className="px-5 pt-5 pb-4 border-b border-white/10">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h2 className="text-lg font-semibold text-white">Edit Task</h2>
+                      <p className="text-cyan-400 text-xs mt-0.5">{planEditingTaskProject?.title}</p>
+                    </div>
+                    <button
+                      onClick={closePlanTaskModal}
+                      className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-slate-400"
+                    >
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
                   </div>
+                </div>
+
+                <div className="p-5 space-y-4">
+                  {/* Title & Icon Header */}
+                  <div className="mb-4">
+                    <label className="text-slate-400 text-sm mb-2 block">Task</label>
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => setPlanEditShowIconPicker(!planEditShowIconPicker)}
+                        className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-2xl hover:bg-white/10 transition-colors"
+                      >
+                        {planTaskData.icon}
+                      </button>
+                      <input
+                        type="text"
+                        value={planTaskData.title}
+                        onChange={(e) => setPlanTaskData(prev => ({ ...prev, title: e.target.value }))}
+                        placeholder="Task name"
+                        className="flex-1 px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-500 outline-none focus:border-cyan-500/50"
+                      />
+                    </div>
+
+                    {/* Icon Picker (Conditional) */}
+                    {planEditShowIconPicker && (
+                      <div className="mt-4 p-4 rounded-xl bg-white/5 border border-white/5 animate-fadeIn">
+                        <div className="flex flex-wrap gap-2">
+                          {globalIconOptions.map(icon => (
+                            <button
+                              key={icon}
+                              onClick={() => {
+                                setPlanTaskData(prev => ({ ...prev, icon }));
+                                setPlanEditShowIconPicker(false);
+                              }}
+                              className={`w-10 h-10 rounded-lg flex items-center justify-center text-xl transition-colors
+                              ${planTaskData.icon === icon ? 'bg-cyan-500/20 text-cyan-400' : 'hover:bg-white/10'}`}
+                            >
+                              {icon}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Details List (iOS Style) - Moved Up */}
+                  <TaskDetailsList
+                    date={planTaskData.date}
+                    startTime={planTaskData.startTime}
+                    endTime={planTaskData.endTime}
+                    alerts={planTaskData.alerts}
+                    onDateClick={() => {
+                      setPlanEditShowDate(!planEditShowDate);
+                      setPlanEditShowTime(false);
+                      setPlanEditShowAlerts(false);
+                      setPlanEditShowRepeat(false);
+                    }}
+                    onTimeClick={() => {
+                      setPlanEditShowTime(!planEditShowTime);
+                      setPlanEditShowAlerts(false);
+                      setPlanEditShowDate(false);
+                      setPlanEditShowRepeat(false);
+                    }}
+                    onAlertsClick={() => {
+                      setPlanEditShowAlerts(!planEditShowAlerts);
+                      setPlanEditShowTime(false);
+                      setPlanEditShowDate(false);
+                      setPlanEditShowRepeat(false);
+                    }}
+                    onRepeatClick={() => {
+                      setPlanEditShowRepeat(!planEditShowRepeat);
+                      setPlanEditShowAlerts(false);
+                      setPlanEditShowTime(false);
+                      setPlanEditShowDate(false);
+                    }}
+                    themeColor="cyan"
+                    showDatePicker={planEditShowDate}
+                    onDateChange={(date) => {
+                      setPlanTaskData(prev => ({ ...prev, date }));
+                      setPlanEditShowDate(false);
+                    }}
+                    showTimePicker={planEditShowTime}
+                    onStartTimeChange={({ hour, minute }) => {
+                      const m = minute.toString().padStart(2, '0');
+                      setPlanTaskData(p => ({ ...p, startTime: `${hour}:${m}` }));
+                    }}
+                    onEndTimeChange={({ hour, minute }) => {
+                      const m = minute.toString().padStart(2, '0');
+                      setPlanTaskData(p => ({ ...p, endTime: `${hour}:${m}` }));
+                    }}
+                    repeat={planTaskData.repeat}
+                    showRepeatPicker={planEditShowRepeat}
+                    onRepeatChange={(repeat) => setPlanTaskData(prev => ({ ...prev, repeat }))}
+                  />
+
+
+                  {/* Alerts Picker (Collapsible) */}
+                  {planEditShowAlerts && (
+                    <div className="mb-6 p-4 rounded-2xl bg-white/5 border border-white/5 animate-fadeIn">
+                      <label className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-3 block">Manage Alerts</label>
+                      <div className="space-y-2">
+                        {planTaskData.alerts.map((alert, index) => (
+                          <div key={index} className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5">
+                            <span className="text-sm text-slate-200">{alert.label}</span>
+                            <button
+                              onClick={() => setPlanTaskData(p => ({ ...p, alerts: p.alerts.filter((_, i) => i !== index) }))}
+                              className="text-rose-400 hover:text-rose-300 p-1"
+                            >
+                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
+                          </div>
+                        ))}
+                        <div className="pt-2 grid grid-cols-3 gap-2">
+                          {globalAlertOptions.map(opt => (
+                            <button
+                              key={opt.label}
+                              onClick={() => {
+                                if (!planTaskData.alerts.some(a => a.value === opt.value)) {
+                                  setPlanTaskData(p => ({ ...p, alerts: [...p.alerts, opt] }));
+                                }
+                              }}
+                              className="p-2 rounded-lg bg-indigo-500/10 text-indigo-300 text-[10px] font-medium border border-indigo-500/20 hover:bg-indigo-500/20 transition-all text-left"
+                            >
+                              + {opt.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Value (Impact) */}
+                  <div>
+                    <label className="text-slate-400 text-sm mb-2 block">Impact Value: {planTaskData.value}/10</label>
+                    <input
+                      type="range"
+                      min="1"
+                      max="10"
+                      value={planTaskData.value}
+                      onChange={(e) => setPlanTaskData(prev => ({ ...prev, value: parseInt(e.target.value) }))}
+                      className="w-full accent-cyan-500"
+                    />
+                  </div>
+
+                  {/* Energy */}
+                  <div>
+                    <label className="text-slate-400 text-sm mb-2 block">Energy Required</label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {['low', 'medium', 'high'].map(level => (
+                        <button
+                          key={level}
+                          onClick={() => setPlanTaskData(prev => ({ ...prev, energy: level }))}
+                          className={`py-2.5 px-3 rounded-xl text-sm font-medium capitalize transition-all ${planTaskData.energy === level
+                            ? level === 'high' ? 'bg-rose-500/30 text-rose-300 ring-2 ring-rose-500/50' :
+                              level === 'medium' ? 'bg-amber-500/30 text-amber-300 ring-2 ring-amber-500/50' :
+                                'bg-emerald-500/30 text-emerald-300 ring-2 ring-emerald-500/50'
+                            : 'bg-white/5 text-slate-400'
+                            }`}
+                        >
+                          {level}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Notes */}
+                  <div>
+                    <label className="text-slate-400 text-sm mb-2 block">Notes</label>
+                    <textarea
+                      value={planTaskData.notes}
+                      onChange={(e) => setPlanTaskData(prev => ({ ...prev, notes: e.target.value }))}
+                      placeholder="Additional details..."
+                      rows={2}
+                      className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-500 outline-none focus:border-cyan-500/50 resize-none"
+                    />
+                  </div>
+
+                  {/* Save Button */}
+
+                  {/* Save Button */}
                   <button
-                    onClick={closePlanTaskModal}
-                    className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-slate-400"
+                    onClick={savePlanTask}
+                    disabled={!planTaskData.title.trim()}
+                    className="w-full py-4 rounded-xl font-semibold text-white transition-all disabled:opacity-50"
+                    style={{
+                      background: 'linear-gradient(135deg, rgba(6,182,212,0.8) 0%, rgba(139,92,246,0.8) 100%)'
+                    }}
                   >
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
+                    Save Changes
+                  </button>
+
+                  {/* Delete Button */}
+                  <button
+                    onClick={() => {
+                      deleteProjectTask(planEditingTaskProject.id, planEditingTask.id);
+                      closePlanTaskModal();
+                    }}
+                    className="w-full py-3 rounded-xl font-medium text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 transition-all"
+                  >
+                    Delete Task
                   </button>
                 </div>
               </div>
-
-              <div className="p-5 space-y-4">
-                {/* Title */}
-                <div>
-                  <label className="text-slate-400 text-sm mb-2 block">Title *</label>
-                  <input
-                    type="text"
-                    value={planTaskData.title}
-                    onChange={(e) => setPlanTaskData(prev => ({ ...prev, title: e.target.value }))}
-                    placeholder="Task name"
-                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-500 outline-none focus:border-cyan-500/50"
-                  />
-                </div>
-
-                {/* Value (Impact) */}
-                <div>
-                  <label className="text-slate-400 text-sm mb-2 block">Impact Value: {planTaskData.value}/10</label>
-                  <input
-                    type="range"
-                    min="1"
-                    max="10"
-                    value={planTaskData.value}
-                    onChange={(e) => setPlanTaskData(prev => ({ ...prev, value: parseInt(e.target.value) }))}
-                    className="w-full accent-cyan-500"
-                  />
-                </div>
-
-                {/* Energy */}
-                <div>
-                  <label className="text-slate-400 text-sm mb-2 block">Energy Required</label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {['low', 'medium', 'high'].map(level => (
-                      <button
-                        key={level}
-                        onClick={() => setPlanTaskData(prev => ({ ...prev, energy: level }))}
-                        className={`py-2.5 px-3 rounded-xl text-sm font-medium capitalize transition-all ${planTaskData.energy === level
-                          ? level === 'high' ? 'bg-rose-500/30 text-rose-300 ring-2 ring-rose-500/50' :
-                            level === 'medium' ? 'bg-amber-500/30 text-amber-300 ring-2 ring-amber-500/50' :
-                              'bg-emerald-500/30 text-emerald-300 ring-2 ring-emerald-500/50'
-                          : 'bg-white/5 text-slate-400'
-                          }`}
-                      >
-                        {level}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Time Estimate */}
-                <div>
-                  <label className="text-slate-400 text-sm mb-2 block">Time Estimate</label>
-                  <div className="grid grid-cols-4 gap-2">
-                    {timeOptions.map(opt => (
-                      <button
-                        key={opt.value}
-                        onClick={() => setPlanTaskData(prev => ({ ...prev, timeEstimate: opt.value }))}
-                        className={`py-2 px-2 rounded-xl text-xs font-medium transition-all ${planTaskData.timeEstimate === opt.value
-                          ? 'bg-cyan-500/30 text-cyan-300 ring-2 ring-cyan-500/50'
-                          : 'bg-white/5 text-slate-400'
-                          }`}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Notes */}
-                <div>
-                  <label className="text-slate-400 text-sm mb-2 block">Notes</label>
-                  <textarea
-                    value={planTaskData.notes}
-                    onChange={(e) => setPlanTaskData(prev => ({ ...prev, notes: e.target.value }))}
-                    placeholder="Additional details..."
-                    rows={2}
-                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-500 outline-none focus:border-cyan-500/50 resize-none"
-                  />
-                </div>
-
-                {/* Save Button */}
-                <button
-                  onClick={savePlanTask}
-                  disabled={!planTaskData.title.trim()}
-                  className="w-full py-4 rounded-xl font-semibold text-white transition-all disabled:opacity-50"
-                  style={{
-                    background: 'linear-gradient(135deg, rgba(6,182,212,0.8) 0%, rgba(139,92,246,0.8) 100%)'
-                  }}
-                >
-                  Save Changes
-                </button>
-
-                {/* Delete Button */}
-                <button
-                  onClick={() => {
-                    deleteProjectTask(planEditingTaskProject.id, planEditingTask.id);
-                    closePlanTaskModal();
-                  }}
-                  className="w-full py-3 rounded-xl font-medium text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 transition-all"
-                >
-                  Delete Task
-                </button>
-              </div>
             </div>
-          </div>
-        )}
-      </div>
+          )
+        }
+      </div >
     );
   };
 
@@ -2539,6 +3546,19 @@ const LifeArchitect = () => {
     const [editTaskStartMinute, setEditTaskStartMinute] = useState(0);
     const [editTaskEndHour, setEditTaskEndHour] = useState(10);
     const [editTaskEndMinute, setEditTaskEndMinute] = useState(0);
+
+    const [editTaskValue, setEditTaskValue] = useState(5);
+    const [editTaskNotes, setEditTaskNotes] = useState('');
+    const [editTaskAlerts, setEditTaskAlerts] = useState([]);
+    const [editTaskDate, setEditTaskDate] = useState(new Date());
+
+    // UI Toggles
+    const [editTaskShowTime, setEditTaskShowTime] = useState(false);
+    const [editTaskShowAlerts, setEditTaskShowAlerts] = useState(false);
+    const [editTaskShowDate, setEditTaskShowDate] = useState(false);
+    const [editTaskShowIconPicker, setEditTaskShowIconPicker] = useState(false);
+    const [editTaskRepeat, setEditTaskRepeat] = useState({ type: 'none', label: 'None', days: [] });
+    const [editTaskShowRepeat, setEditTaskShowRepeat] = useState(false);
 
     // Focus mode / Pomodoro state
     const [focusMode, setFocusMode] = useState(false);
@@ -2589,22 +3609,32 @@ const LifeArchitect = () => {
     const openTaskEdit = (task) => {
       setExecuteEditingTask(task);
       setEditTaskName(task.title);
-      setEditTaskIcon(task.icon);
+      setEditTaskIcon(task.icon || '📌');
       setEditTaskEnergy(task.energy || 'medium');
-      setEditTaskStartHour(task.startTime.getHours());
-      setEditTaskStartMinute(task.startTime.getMinutes());
-      setEditTaskEndHour(task.endTime.getHours());
-      setEditTaskEndMinute(task.endTime.getMinutes());
+      setEditTaskStartHour(task.startTime ? task.startTime.getHours() : 9);
+      setEditTaskStartMinute(task.startTime ? task.startTime.getMinutes() : 0);
+      setEditTaskEndHour(task.endTime ? task.endTime.getHours() : 10);
+      setEditTaskEndMinute(task.endTime ? task.endTime.getMinutes() : 0);
+      setEditTaskAlerts(task.alerts || []);
+      setEditTaskRepeat(task.repeat || { type: 'none', label: 'None', days: [] });
+      setEditTaskValue(task.value || 5);
+      setEditTaskNotes(task.notes || '');
+      setEditTaskDate(task.startTime ? new Date(task.startTime) : new Date(selectedExecuteDate));
+      setEditTaskShowTime(false);
+      setEditTaskShowAlerts(false);
+      setEditTaskShowDate(false);
+      setEditTaskShowRepeat(false);
+      setEditTaskShowIconPicker(false);
     };
 
     // Save task edits
     const saveTaskEdit = () => {
       if (!executeEditingTask || !editTaskName.trim()) return;
 
-      const newStartTime = new Date(selectedExecuteDate);
+      const newStartTime = new Date(editTaskDate);
       newStartTime.setHours(editTaskStartHour, editTaskStartMinute, 0, 0);
 
-      const newEndTime = new Date(selectedExecuteDate);
+      const newEndTime = new Date(editTaskDate);
       newEndTime.setHours(editTaskEndHour, editTaskEndMinute, 0, 0);
 
       if (newEndTime <= newStartTime) {
@@ -2612,22 +3642,33 @@ const LifeArchitect = () => {
       }
 
       const dateKey = getDateKey(selectedExecuteDate);
-      setTasksByDate(prev => ({
-        ...prev,
-        [dateKey]: (prev[dateKey] || []).map(t => {
-          if (t.id === executeEditingTask.id) {
-            return {
-              ...t,
-              title: editTaskName.trim(),
-              icon: editTaskIcon,
-              energy: editTaskEnergy,
-              startTime: newStartTime,
-              endTime: newEndTime
-            };
-          }
-          return t;
-        }).sort((a, b) => a.startTime - b.startTime)
-      }));
+
+      const updatedTask = {
+        ...executeEditingTask,
+        isVirtual: false, // Ensure it's hardened
+        title: editTaskName.trim(),
+        icon: editTaskIcon,
+        energy: editTaskEnergy,
+        startTime: newStartTime,
+        endTime: newEndTime,
+        alerts: editTaskAlerts,
+        repeat: editTaskRepeat,
+        value: editTaskValue,
+        notes: editTaskNotes
+      };
+
+      setTasksByDate(prev => {
+        let dayTasks = prev[dateKey] || [];
+        if (executeEditingTask.isVirtual) {
+          dayTasks = [...dayTasks, updatedTask];
+        } else {
+          dayTasks = dayTasks.map(t => t.id === executeEditingTask.id ? updatedTask : t);
+        }
+        return {
+          ...prev,
+          [dateKey]: dayTasks.sort((a, b) => a.startTime - b.startTime)
+        };
+      });
 
       setExecuteEditingTask(null);
     };
@@ -2952,7 +3993,7 @@ const LifeArchitect = () => {
         date.setDate(startOfWeek.getDate() + i);
         date.setHours(0, 0, 0, 0);
         const dateKey = getDateKey(date);
-        const hasTasks = tasksByDate[dateKey] && tasksByDate[dateKey].length > 0;
+        const hasTasks = getResolvedTasksForDate(date).length > 0;
 
         // Compare dates properly by resetting time
         const todayDate = new Date();
@@ -3056,7 +4097,7 @@ const LifeArchitect = () => {
           date: date,
           isToday: date.getTime() === todayDate.getTime(),
           isSelected: date.getTime() === selectedDate.getTime(),
-          hasTasks: tasksByDate[dateKey] && tasksByDate[dateKey].length > 0,
+          hasTasks: getResolvedTasksForDate(date).length > 0,
           projectTimelines: projectTimelines
         });
       }
@@ -4140,120 +5181,182 @@ const LifeArchitect = () => {
 
               {/* Body */}
               <div className="px-5 py-4 max-h-[60vh] overflow-y-auto">
-                {/* Icon Picker */}
+                {/* Title & Icon Header */}
                 <div className="mb-4">
-                  <label className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-2 block">Icon</label>
-                  <div className="flex flex-wrap gap-1.5">
-                    {iconOptions.map(icon => (
-                      <button
-                        key={icon}
-                        onClick={() => setEditTaskIcon(icon)}
-                        className={`w-9 h-9 rounded-xl flex items-center justify-center text-lg transition-all duration-150
-                          ${editTaskIcon === icon
-                            ? 'bg-amber-500 scale-110 shadow-lg shadow-amber-500/30'
-                            : 'bg-white/10 hover:bg-white/20 hover:scale-105'}`}
-                      >
-                        {icon}
-                      </button>
-                    ))}
+                  <label className="text-slate-400 text-sm mb-2 block">Task</label>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setEditTaskShowIconPicker(!editTaskShowIconPicker)}
+                      className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-2xl hover:bg-white/10 transition-colors"
+                    >
+                      {editTaskIcon}
+                    </button>
+                    <input
+                      type="text"
+                      value={editTaskName}
+                      onChange={(e) => setEditTaskName(e.target.value)}
+                      placeholder="What do you need to do?"
+                      className="flex-1 px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-500 outline-none focus:border-amber-500/50"
+                    />
                   </div>
+
+                  {/* Icon Picker (Conditional) */}
+                  {editTaskShowIconPicker && (
+                    <div className="mt-4 p-4 rounded-xl bg-white/5 border border-white/5 animate-fadeIn">
+                      <div className="flex flex-wrap gap-2">
+                        {globalIconOptions.map(icon => (
+                          <button
+                            key={icon}
+                            onClick={() => {
+                              setEditTaskIcon(icon);
+                              setEditTaskShowIconPicker(false);
+                            }}
+                            className={`w-10 h-10 rounded-lg flex items-center justify-center text-xl transition-colors
+                              ${editTaskIcon === icon ? 'bg-amber-500/20 text-amber-500' : 'hover:bg-white/10'}`}
+                          >
+                            {icon}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
-                {/* Task Name */}
+                {/* Details List (iOS Style) - Moved Up */}
+                <TaskDetailsList
+                  date={editTaskDate}
+                  startTime={`${editTaskStartHour}:${editTaskStartMinute.toString().padStart(2, '0')}`}
+                  endTime={`${editTaskEndHour}:${editTaskEndMinute.toString().padStart(2, '0')}`}
+                  alerts={editTaskAlerts}
+                  onDateClick={() => {
+                    setEditTaskShowDate(!editTaskShowDate);
+                    setEditTaskShowTime(false);
+                    setEditTaskShowAlerts(false);
+                    setEditTaskShowRepeat(false);
+                  }}
+                  onTimeClick={() => {
+                    setEditTaskShowTime(!editTaskShowTime);
+                    setEditTaskShowAlerts(false);
+                    setEditTaskShowDate(false);
+                    setEditTaskShowRepeat(false);
+                  }}
+                  onAlertsClick={() => {
+                    setEditTaskShowAlerts(!editTaskShowAlerts);
+                    setEditTaskShowTime(false);
+                    setEditTaskShowDate(false);
+                    setEditTaskShowRepeat(false);
+                  }}
+                  onRepeatClick={() => {
+                    setEditTaskShowRepeat(!editTaskShowRepeat);
+                    setEditTaskShowAlerts(false);
+                    setEditTaskShowTime(false);
+                    setEditTaskShowDate(false);
+                  }}
+                  themeColor="amber"
+                  showDatePicker={editTaskShowDate}
+                  onDateChange={(date) => {
+                    setEditTaskDate(date);
+                    setEditTaskShowDate(false);
+                  }}
+                  showTimePicker={editTaskShowTime}
+                  onStartTimeChange={({ hour, minute }) => {
+                    setEditTaskStartHour(hour);
+                    setEditTaskStartMinute(minute);
+                  }}
+                  onEndTimeChange={({ hour, minute }) => {
+                    setEditTaskEndHour(hour);
+                    setEditTaskEndMinute(minute);
+                  }}
+                  repeat={editTaskRepeat}
+                  showRepeatPicker={editTaskShowRepeat}
+                  onRepeatChange={(repeat) => setEditTaskRepeat(repeat)}
+                />
+
+
+                {/* Alerts Picker (Collapsible) */}
+                {editTaskShowAlerts && (
+                  <div className="mb-6 p-4 rounded-2xl bg-white/5 border border-white/5 animate-fadeIn">
+                    <label className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-3 block">Manage Alerts</label>
+                    <div className="space-y-2">
+                      {editTaskAlerts.map((alert, index) => (
+                        <div key={index} className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5">
+                          <span className="text-sm text-slate-200">{alert.label}</span>
+                          <button
+                            onClick={() => setEditTaskAlerts(editTaskAlerts.filter((_, i) => i !== index))}
+                            className="text-rose-400 hover:text-rose-300 p-1"
+                          >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </div>
+                      ))}
+                      <div className="pt-2 grid grid-cols-3 gap-2">
+                        {globalAlertOptions.map(opt => (
+                          <button
+                            key={opt.label}
+                            onClick={() => {
+                              if (!editTaskAlerts.some(a => a.value === opt.value)) {
+                                setEditTaskAlerts([...editTaskAlerts, opt]);
+                              }
+                            }}
+                            className="p-2 rounded-lg bg-indigo-500/10 text-indigo-300 text-[10px] font-medium border border-indigo-500/20 hover:bg-indigo-500/20 transition-all text-left"
+                          >
+                            + {opt.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Value (Impact) */}
                 <div className="mb-4">
-                  <label className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-2 block">Task Name</label>
+                  <label className="text-slate-400 text-sm mb-2 block">Impact Value: {editTaskValue}/10</label>
                   <input
-                    type="text"
-                    value={editTaskName}
-                    onChange={(e) => setEditTaskName(e.target.value)}
-                    placeholder="What do you need to do?"
-                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20 outline-none transition-all text-white placeholder:text-slate-500"
+                    type="range"
+                    min="1"
+                    max="10"
+                    value={editTaskValue}
+                    onChange={(e) => setEditTaskValue(parseInt(e.target.value))}
+                    className="w-full accent-amber-500"
                   />
                 </div>
 
-                {/* Time Selection */}
-                <div className="mb-4">
-                  <label className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-2 block">Time</label>
-                  <div className="flex items-center gap-3">
-                    <div className="flex-1">
-                      <p className="text-[10px] text-slate-500 mb-1">From</p>
-                      <div className="flex gap-1">
-                        <select
-                          value={editTaskStartHour}
-                          onChange={(e) => setEditTaskStartHour(parseInt(e.target.value))}
-                          className="flex-1 px-2 py-2.5 bg-white/10 border border-white/10 rounded-xl text-white text-center focus:ring-2 focus:ring-amber-500/30 outline-none cursor-pointer"
-                        >
-                          {Array.from({ length: 18 }, (_, i) => i + 6).map(h => (
-                            <option key={h} value={h} className="bg-slate-800">{h}</option>
-                          ))}
-                        </select>
-                        <span className="text-white/50 self-center">.</span>
-                        <select
-                          value={editTaskStartMinute}
-                          onChange={(e) => setEditTaskStartMinute(parseInt(e.target.value))}
-                          className="flex-1 px-2 py-2.5 bg-white/10 border border-white/10 rounded-xl text-white text-center focus:ring-2 focus:ring-amber-500/30 outline-none cursor-pointer"
-                        >
-                          {[0, 15, 30, 45].map(m => (
-                            <option key={m} value={m} className="bg-slate-800">{m.toString().padStart(2, '0')}</option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-
-                    <svg className="w-6 h-6 text-amber-400/60 flex-shrink-0 mt-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                    </svg>
-
-                    <div className="flex-1">
-                      <p className="text-[10px] text-slate-500 mb-1">To</p>
-                      <div className="flex gap-1">
-                        <select
-                          value={editTaskEndHour}
-                          onChange={(e) => setEditTaskEndHour(parseInt(e.target.value))}
-                          className="flex-1 px-2 py-2.5 bg-white/10 border border-white/10 rounded-xl text-white text-center focus:ring-2 focus:ring-amber-500/30 outline-none cursor-pointer"
-                        >
-                          {Array.from({ length: 18 }, (_, i) => i + 6).map(h => (
-                            <option key={h} value={h} className="bg-slate-800">{h}</option>
-                          ))}
-                        </select>
-                        <span className="text-white/50 self-center">.</span>
-                        <select
-                          value={editTaskEndMinute}
-                          onChange={(e) => setEditTaskEndMinute(parseInt(e.target.value))}
-                          className="flex-1 px-2 py-2.5 bg-white/10 border border-white/10 rounded-xl text-white text-center focus:ring-2 focus:ring-amber-500/30 outline-none cursor-pointer"
-                        >
-                          {[0, 15, 30, 45].map(m => (
-                            <option key={m} value={m} className="bg-slate-800">{m.toString().padStart(2, '0')}</option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Energy Level */}
-                <div className="mb-4">
-                  <label className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-2 block">Energy Level</label>
-                  <div className="flex gap-2">
-                    {['low', 'medium', 'high'].map(e => (
+                {/* Energy */}
+                <div className="mb-6">
+                  <label className="text-slate-400 text-sm mb-2 block">Energy Required</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {['low', 'medium', 'high'].map(level => (
                       <button
-                        key={e}
-                        onClick={() => setEditTaskEnergy(e)}
-                        className={`flex-1 py-2.5 rounded-xl font-medium text-sm transition-all duration-200
-                          ${editTaskEnergy === e
-                            ? e === 'low'
-                              ? 'bg-emerald-500/80 text-white shadow-lg shadow-emerald-500/30'
-                              : e === 'medium'
-                                ? 'bg-amber-500/80 text-white shadow-lg shadow-amber-500/30'
-                                : 'bg-rose-500/80 text-white shadow-lg shadow-rose-500/30'
-                            : 'bg-white/10 text-slate-400 hover:bg-white/20'}`}
+                        key={level}
+                        onClick={() => setEditTaskEnergy(level)}
+                        className={`py-2.5 px-3 rounded-xl text-sm font-medium capitalize transition-all ${editTaskEnergy === level
+                          ? level === 'high' ? 'bg-rose-500/30 text-rose-300 ring-2 ring-rose-500/50' :
+                            level === 'medium' ? 'bg-amber-500/30 text-amber-300 ring-2 ring-amber-500/50' :
+                              'bg-emerald-500/30 text-emerald-300 ring-2 ring-emerald-500/50'
+                          : 'bg-white/5 text-slate-400'
+                          }`}
                       >
-                        {e === 'low' ? '🌱 Low' : e === 'medium' ? '⚡ Med' : '🔥 High'}
+                        {level}
                       </button>
                     ))}
                   </div>
                 </div>
 
+                {/* Notes */}
+                <div className="mb-4">
+                  <label className="text-slate-400 text-sm mb-2 block">Notes</label>
+                  <textarea
+                    value={editTaskNotes}
+                    onChange={(e) => setEditTaskNotes(e.target.value)}
+                    placeholder="Additional details..."
+                    rows={2}
+                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-500 outline-none focus:border-amber-500/50 resize-none"
+                  />
+                </div>
+
+                {/* Task Name */}
                 {/* Focus Mode Button */}
                 {!executeEditingTask?.completed && (
                   <button
@@ -5163,6 +6266,30 @@ const LifeArchitect = () => {
               })}
             </div>
 
+
+            {/* Create Memory Capsule Button - Always visible */}
+            <div className="mt-6">
+              <button
+                onClick={createMemoryCapsule}
+                className="w-full py-4 rounded-2xl font-semibold text-white transition-all duration-300 flex items-center justify-center gap-3 hover:scale-[1.02] active:scale-[0.98]"
+                style={{
+                  background: canCreateCapsule
+                    ? 'linear-gradient(135deg, rgba(139,92,246,0.8) 0%, rgba(99,102,241,0.8) 100%)'
+                    : 'linear-gradient(135deg, rgba(100,100,120,0.5) 0%, rgba(80,80,100,0.5) 100%)',
+                  boxShadow: canCreateCapsule ? '0 10px 40px rgba(139,92,246,0.3)' : 'none',
+                  border: '1px solid rgba(255,255,255,0.2)'
+                }}
+              >
+                <span className="text-xl">✨</span>
+                <span>Create Memory Capsule</span>
+              </button>
+              <p className="text-center text-slate-500 text-xs mt-3">
+                {canCreateCapsule
+                  ? "Capture this day's reflection as a beautiful memory"
+                  : "Answer at least one question to create your capsule"}
+              </p>
+            </div>
+
             {/* Photo of the Day */}
             <div className="glass-card rounded-2xl p-4 mt-6">
               <div className="flex items-center justify-between mb-3">
@@ -5224,29 +6351,6 @@ const LifeArchitect = () => {
                 onChange={handlePhotoUpload}
                 className="hidden"
               />
-            </div>
-
-            {/* Create Memory Capsule Button - Always visible */}
-            <div className="mt-6">
-              <button
-                onClick={createMemoryCapsule}
-                className="w-full py-4 rounded-2xl font-semibold text-white transition-all duration-300 flex items-center justify-center gap-3 hover:scale-[1.02] active:scale-[0.98]"
-                style={{
-                  background: canCreateCapsule
-                    ? 'linear-gradient(135deg, rgba(139,92,246,0.8) 0%, rgba(99,102,241,0.8) 100%)'
-                    : 'linear-gradient(135deg, rgba(100,100,120,0.5) 0%, rgba(80,80,100,0.5) 100%)',
-                  boxShadow: canCreateCapsule ? '0 10px 40px rgba(139,92,246,0.3)' : 'none',
-                  border: '1px solid rgba(255,255,255,0.2)'
-                }}
-              >
-                <span className="text-xl">✨</span>
-                <span>Create Memory Capsule</span>
-              </button>
-              <p className="text-center text-slate-500 text-xs mt-3">
-                {canCreateCapsule
-                  ? "Capture this day's reflection as a beautiful memory"
-                  : "Answer at least one question to create your capsule"}
-              </p>
             </div>
 
             {/* Auto-save indicator */}
@@ -5621,7 +6725,7 @@ const LifeArchitect = () => {
     // Task statistics helpers
     const getTaskStatsForDate = (date) => {
       const dateKey = getDateKey(date);
-      const dayTasks = tasksByDate[dateKey] || [];
+      const dayTasks = getResolvedTasksForDate(date);
       const completed = dayTasks.filter(t => t.completed).length;
       const total = dayTasks.length;
       return { completed, total, percent: total > 0 ? Math.round((completed / total) * 100) : 0 };
@@ -6150,12 +7254,24 @@ const LifeArchitect = () => {
 
     const [localTaskData, setLocalTaskData] = useState({
       title: '',
+      icon: '📝',
       value: 5,
       energy: 'medium',
       timeEstimate: 30,
       dueDate: '',
-      notes: ''
+      notes: '',
+      alerts: [],
+      repeat: { type: 'none', label: 'None', days: [] },
+      date: new Date(),
+      startTime: '',
+      endTime: ''
     });
+
+    const [localEditShowTime, setLocalEditShowTime] = useState(false);
+    const [localEditShowAlerts, setLocalEditShowAlerts] = useState(false);
+    const [localEditShowDate, setLocalEditShowDate] = useState(false);
+    const [localEditShowRepeat, setLocalEditShowRepeat] = useState(false);
+    const [localEditShowIconPicker, setLocalEditShowIconPicker] = useState(false);
 
     // Quick reminder state
     const [newReminderText, setNewReminderText] = useState('');
@@ -6192,11 +7308,16 @@ const LifeArchitect = () => {
     // Save reminder edits
     const saveReminderEdit = () => {
       if (!editReminderName.trim() || !projectsEditingReminder) return;
-      setReminders(prev => prev.map(r =>
-        r.id === projectsEditingReminder.id
-          ? { ...r, name: editReminderName.trim(), icon: editReminderIcon }
-          : r
-      ));
+
+      const updatedData = { ...projectsEditingReminder, name: editReminderName.trim(), icon: editReminderIcon, isVirtual: false };
+
+      setReminders(prev => {
+        if (projectsEditingReminder.isVirtual) {
+          return [{ ...updatedData, id: Date.now() }, ...prev];
+        } else {
+          return prev.map(r => r.id === projectsEditingReminder.id ? updatedData : r);
+        }
+      });
       setProjectsEditingReminder(null);
     };
 
@@ -6212,6 +7333,7 @@ const LifeArchitect = () => {
       setProjectsReminderToMove(reminder);
       setProjectsShowMoveModal(true);
     };
+
 
     // Move reminder to project as task
     const moveReminderToProject = (projectId) => {
@@ -6257,13 +7379,23 @@ const LifeArchitect = () => {
     // Populate localTaskData when editing a task
     useEffect(() => {
       if (editingProjectTask) {
+        const getStartTime = (t) => t.startTime ? new Date(t.startTime) : new Date(new Date().setHours(9, 0, 0, 0));
+        const getEndTime = (t) => t.endTime ? new Date(t.endTime) : new Date(new Date().setHours(10, 0, 0, 0));
+        const formatTime = (d) => `${d.getHours()}:${d.getMinutes().toString().padStart(2, '0')}`;
+
         setLocalTaskData({
           title: editingProjectTask.title || '',
+          icon: editingProjectTask.icon || '📝',
           value: editingProjectTask.value || 5,
           energy: editingProjectTask.energy || 'medium',
           timeEstimate: editingProjectTask.timeEstimate || 30,
           dueDate: editingProjectTask.dueDate || '',
-          notes: editingProjectTask.notes || ''
+          notes: editingProjectTask.notes || '',
+          alerts: editingProjectTask.alerts || [],
+          repeat: editingProjectTask.repeat || { type: 'none', label: 'None', days: [] },
+          date: editingProjectTask.date ? new Date(editingProjectTask.date) : new Date(),
+          startTime: formatTime(getStartTime(editingProjectTask)),
+          endTime: formatTime(getEndTime(editingProjectTask))
         });
       }
     }, [editingProjectTask]);
@@ -6360,17 +7492,30 @@ const LifeArchitect = () => {
     const openNewTask = () => {
       setLocalTaskData({
         title: '',
+        icon: '📝',
         value: 5,
         energy: 'medium',
         timeEstimate: 30,
         dueDate: '',
-        notes: ''
+        notes: '',
+        alerts: [],
+        date: new Date(),
+        startTime: '',
+        endTime: ''
       });
+      setLocalEditShowTime(false);
+      setLocalEditShowAlerts(false);
+      setLocalEditShowDate(false);
+      setLocalEditShowIconPicker(false);
       setEditingProjectTask(null);
       setShowProjectTaskModal(true);
     };
 
     const openEditTask = (task) => {
+      setLocalEditShowTime(false);
+      setLocalEditShowAlerts(false);
+      setLocalEditShowDate(false);
+      setLocalEditShowIconPicker(false);
       setEditingProjectTask(task);
       setShowProjectTaskModal(true);
     };
@@ -6382,16 +7527,35 @@ const LifeArchitect = () => {
       const project = projects.find(p => p.id === selectedProject.id);
       if (!project) return;
 
+      const [sh, sm] = localTaskData.startTime.split(':').map(Number);
+      const sDate = new Date(localTaskData.date);
+      sDate.setHours(sh, sm, 0, 0);
+
+      const [eh, em] = localTaskData.endTime.split(':').map(Number);
+      const eDate = new Date(localTaskData.date);
+      eDate.setHours(eh, em, 0, 0);
+
+      const taskUpdates = {
+        ...localTaskData,
+        date: localTaskData.date instanceof Date ? localTaskData.date.toISOString() : localTaskData.date,
+        startTime: sDate.toISOString(),
+        endTime: eDate.toISOString()
+      };
+
       if (editingProjectTask) {
-        updateProjectTask(project.id, editingProjectTask.id, localTaskData);
+        updateProjectTask(project.id, editingProjectTask.id, taskUpdates);
       } else {
-        addProjectTask(project.id, localTaskData);
+        addProjectTask(project.id, taskUpdates);
       }
       setEditingProjectTask(null);
       setShowProjectTaskModal(false);
     };
 
     const closeTaskModal = () => {
+      setLocalEditShowTime(false);
+      setLocalEditShowAlerts(false);
+      setLocalEditShowDate(false);
+      setLocalEditShowIconPicker(false);
       setEditingProjectTask(null);
       setShowProjectTaskModal(false);
     };
@@ -6461,9 +7625,9 @@ const LifeArchitect = () => {
                 </div>
 
                 {/* Reminders List */}
-                {reminders.length > 0 ? (
+                {getResolvedRemindersForDate(selectedExecuteDate).length > 0 ? (
                   <div className="space-y-2">
-                    {reminders.map(reminder => (
+                    {getResolvedRemindersForDate(selectedExecuteDate).map(reminder => (
                       <div
                         key={reminder.id}
                         onClick={() => openEditReminder(reminder)}
@@ -7140,17 +8304,134 @@ const LifeArchitect = () => {
               </div>
 
               <div className="p-5 space-y-4">
-                {/* Title */}
-                <div>
-                  <label className="text-slate-400 text-sm mb-2 block">Title *</label>
-                  <input
-                    type="text"
-                    value={localTaskData.title}
-                    onChange={(e) => setLocalTaskData(prev => ({ ...prev, title: e.target.value }))}
-                    placeholder="Task name"
-                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-500 outline-none focus:border-cyan-500/50"
-                  />
+                {/* Title & Icon Header */}
+                <div className="mb-4">
+                  <label className="text-slate-400 text-sm mb-2 block">Task</label>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setLocalEditShowIconPicker(!localEditShowIconPicker)}
+                      className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-2xl hover:bg-white/10 transition-colors"
+                    >
+                      {localTaskData.icon}
+                    </button>
+                    <input
+                      type="text"
+                      value={localTaskData.title}
+                      onChange={(e) => setLocalTaskData(prev => ({ ...prev, title: e.target.value }))}
+                      placeholder="Task name"
+                      className="flex-1 px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-500 outline-none focus:border-cyan-500/50"
+                    />
+                  </div>
+
+                  {/* Icon Picker (Conditional) */}
+                  {localEditShowIconPicker && (
+                    <div className="mt-4 p-4 rounded-xl bg-white/5 border border-white/5 animate-fadeIn">
+                      <div className="flex flex-wrap gap-2">
+                        {globalIconOptions.map(icon => (
+                          <button
+                            key={icon}
+                            onClick={() => {
+                              setLocalTaskData(prev => ({ ...prev, icon }));
+                              setLocalEditShowIconPicker(false);
+                            }}
+                            className={`w-10 h-10 rounded-lg flex items-center justify-center text-xl transition-colors
+                              ${localTaskData.icon === icon ? 'bg-cyan-500/20 text-cyan-400' : 'hover:bg-white/10'}`}
+                          >
+                            {icon}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
+
+                {/* Details List (iOS Style) - Moved Up */}
+                <TaskDetailsList
+                  date={localTaskData.date}
+                  startTime={localTaskData.startTime}
+                  endTime={localTaskData.endTime}
+                  alerts={localTaskData.alerts}
+                  onDateClick={() => {
+                    setLocalEditShowDate(!localEditShowDate);
+                    setLocalEditShowTime(false);
+                    setLocalEditShowAlerts(false);
+                    setLocalEditShowRepeat(false);
+                  }}
+                  onTimeClick={() => {
+                    setLocalEditShowTime(!localEditShowTime);
+                    setLocalEditShowAlerts(false);
+                    setLocalEditShowDate(false);
+                    setLocalEditShowRepeat(false);
+                  }}
+                  onAlertsClick={() => {
+                    setLocalEditShowAlerts(!localEditShowAlerts);
+                    setLocalEditShowTime(false);
+                    setLocalEditShowDate(false);
+                    setLocalEditShowRepeat(false);
+                  }}
+                  onRepeatClick={() => {
+                    setLocalEditShowRepeat(!localEditShowRepeat);
+                    setLocalEditShowAlerts(false);
+                    setLocalEditShowTime(false);
+                    setLocalEditShowDate(false);
+                  }}
+                  themeColor="cyan"
+                  showDatePicker={localEditShowDate}
+                  onDateChange={(date) => {
+                    setLocalTaskData(prev => ({ ...prev, date }));
+                    setLocalEditShowDate(false);
+                  }}
+                  showTimePicker={localEditShowTime}
+                  onStartTimeChange={({ hour, minute }) => {
+                    const m = minute.toString().padStart(2, '0');
+                    setLocalTaskData(p => ({ ...p, startTime: `${hour}:${m}` }));
+                  }}
+                  onEndTimeChange={({ hour, minute }) => {
+                    const m = minute.toString().padStart(2, '0');
+                    setLocalTaskData(p => ({ ...p, endTime: `${hour}:${m}` }));
+                  }}
+                  repeat={localTaskData.repeat}
+                  showRepeatPicker={localEditShowRepeat}
+                  onRepeatChange={(repeat) => setLocalTaskData(prev => ({ ...prev, repeat }))}
+                />
+
+
+                {/* Alerts Picker (Collapsible) */}
+                {localEditShowAlerts && (
+                  <div className="mb-6 p-4 rounded-2xl bg-white/5 border border-white/5 animate-fadeIn">
+                    <label className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-3 block">Manage Alerts</label>
+                    <div className="space-y-2">
+                      {localTaskData.alerts.map((alert, index) => (
+                        <div key={index} className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5">
+                          <span className="text-sm text-slate-200">{alert.label}</span>
+                          <button
+                            onClick={() => setLocalTaskData(p => ({ ...p, alerts: p.alerts.filter((_, i) => i !== index) }))}
+                            className="text-rose-400 hover:text-rose-300 p-1"
+                          >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </div>
+                      ))}
+                      <div className="pt-2 grid grid-cols-3 gap-2">
+                        {globalAlertOptions.map(opt => (
+                          <button
+                            key={opt.label}
+                            onClick={() => {
+                              if (!localTaskData.alerts.some(a => a.value === opt.value)) {
+                                setLocalTaskData(p => ({ ...p, alerts: [...p.alerts, opt] }));
+                              }
+                            }}
+                            className="p-2 rounded-lg bg-indigo-500/10 text-indigo-300 text-[10px] font-medium border border-indigo-500/20 hover:bg-indigo-500/20 transition-all text-left"
+                          >
+                            + {opt.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Value (Impact) */}
                 <div>
@@ -7163,10 +8444,6 @@ const LifeArchitect = () => {
                     onChange={(e) => setLocalTaskData(prev => ({ ...prev, value: parseInt(e.target.value) }))}
                     className="w-full accent-cyan-500"
                   />
-                  <div className="flex justify-between text-xs text-slate-500 mt-1">
-                    <span>Low impact</span>
-                    <span>High impact</span>
-                  </div>
                 </div>
 
                 {/* Energy */}
@@ -7188,50 +8465,6 @@ const LifeArchitect = () => {
                       </button>
                     ))}
                   </div>
-                </div>
-
-                {/* Time Estimate */}
-                <div>
-                  <label className="text-slate-400 text-sm mb-2 block">Time Estimate</label>
-                  <div className="grid grid-cols-5 gap-2">
-                    {timeOptions.slice(0, 5).map(opt => (
-                      <button
-                        key={opt.value}
-                        onClick={() => setLocalTaskData(prev => ({ ...prev, timeEstimate: opt.value }))}
-                        className={`py-2 px-2 rounded-lg text-xs font-medium transition-all ${localTaskData.timeEstimate === opt.value
-                          ? 'bg-cyan-500/20 text-cyan-400 ring-2 ring-cyan-500/50'
-                          : 'bg-white/5 text-slate-400 hover:bg-white/10'
-                          }`}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="grid grid-cols-5 gap-2 mt-2">
-                    {timeOptions.slice(5).map(opt => (
-                      <button
-                        key={opt.value}
-                        onClick={() => setLocalTaskData(prev => ({ ...prev, timeEstimate: opt.value }))}
-                        className={`py-2 px-2 rounded-lg text-xs font-medium transition-all ${localTaskData.timeEstimate === opt.value
-                          ? 'bg-cyan-500/20 text-cyan-400 ring-2 ring-cyan-500/50'
-                          : 'bg-white/5 text-slate-400 hover:bg-white/10'
-                          }`}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Due Date */}
-                <div>
-                  <label className="text-slate-400 text-sm mb-2 block">Due Date (optional)</label>
-                  <input
-                    type="date"
-                    value={localTaskData.dueDate}
-                    onChange={(e) => setLocalTaskData(prev => ({ ...prev, dueDate: e.target.value }))}
-                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white outline-none focus:border-cyan-500/50"
-                  />
                 </div>
 
                 {/* Notes */}
@@ -7628,101 +8861,155 @@ const LifeArchitect = () => {
 
             {/* Body */}
             <div className="px-5 py-4 max-h-[60vh] overflow-y-auto">
-              {/* Icon Picker */}
-              <div className="mb-4">
-                <label className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-2 block">Icon</label>
-                <div className="flex flex-wrap gap-1.5">
-                  {globalIconOptions.map(icon => (
-                    <button
-                      key={icon}
-                      onClick={() => setGlobalTaskIcon(icon)}
-                      className={`w-9 h-9 rounded-xl flex items-center justify-center text-lg transition-all duration-150
-                        ${globalTaskIcon === icon
-                          ? 'bg-amber-500 scale-110 shadow-lg shadow-amber-500/30'
-                          : 'bg-white/10 hover:bg-white/20 hover:scale-105'}`}
-                    >
-                      {icon}
-                    </button>
-                  ))}
-                </div>
-              </div>
 
-              {/* Task Name */}
+              {/* Title & Icon Header */}
               <div className="mb-4">
-                <label className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-2 block">
-                  {globalTaskMode === 'reminder' ? 'Reminder' : 'Task Name'}
+                <label className="text-slate-400 text-sm mb-2 block">
+                  {globalTaskMode === 'reminder' ? 'Reminder' : globalTaskMode === 'priority' ? 'Priority' : 'Task'}
                 </label>
-                <input
-                  type="text"
-                  value={globalTaskName}
-                  onChange={(e) => setGlobalTaskName(e.target.value)}
-                  placeholder="What do you need to do?"
-                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20 outline-none transition-all text-white placeholder:text-slate-500"
-                  autoFocus
-                />
-              </div>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setGlobalTaskShowIconPicker(!globalTaskShowIconPicker)}
+                    className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-2xl hover:bg-white/10 transition-colors"
+                  >
+                    {globalTaskIcon}
+                  </button>
+                  <input
+                    type="text"
+                    value={globalTaskName}
+                    onChange={(e) => setGlobalTaskName(e.target.value)}
+                    placeholder={globalTaskMode === 'reminder' ? "What do you need to remember?" : "What do you need to do?"}
+                    className="flex-1 px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-500 outline-none focus:border-amber-500/50"
+                    autoFocus
+                  />
+                </div>
 
-              {/* Time Selection - Only for scheduled tasks */}
-              {globalTaskMode === 'task' && (
-                <div className="mb-4">
-                  <label className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-2 block">Time</label>
-                  <div className="flex items-center gap-3">
-                    <div className="flex-1">
-                      <p className="text-[10px] text-slate-500 mb-1">From</p>
-                      <div className="flex gap-1">
-                        <select
-                          value={globalTaskStartHour}
-                          onChange={(e) => setGlobalTaskStartHour(parseInt(e.target.value))}
-                          className="flex-1 px-2 py-2.5 bg-white/10 border border-white/10 rounded-xl text-white text-center focus:ring-2 focus:ring-amber-500/30 outline-none cursor-pointer"
+                {/* Icon Picker (Conditional) */}
+                {globalTaskShowIconPicker && (
+                  <div className="mt-4 p-4 rounded-xl bg-white/5 border border-white/5 animate-fadeIn">
+                    <div className="flex flex-wrap gap-2">
+                      {globalIconOptions.map(icon => (
+                        <button
+                          key={icon}
+                          onClick={() => {
+                            setGlobalTaskIcon(icon);
+                            setGlobalTaskShowIconPicker(false);
+                          }}
+                          className={`w-10 h-10 rounded-lg flex items-center justify-center text-xl transition-colors
+                            ${globalTaskIcon === icon ? 'bg-amber-500/20 text-amber-500' : 'hover:bg-white/10'}`}
                         >
-                          {Array.from({ length: 18 }, (_, i) => i + 6).map(h => (
-                            <option key={h} value={h} className="bg-slate-800">{h}</option>
-                          ))}
-                        </select>
-                        <span className="text-white/50 self-center">.</span>
-                        <select
-                          value={globalTaskStartMinute}
-                          onChange={(e) => setGlobalTaskStartMinute(parseInt(e.target.value))}
-                          className="flex-1 px-2 py-2.5 bg-white/10 border border-white/10 rounded-xl text-white text-center focus:ring-2 focus:ring-amber-500/30 outline-none cursor-pointer"
-                        >
-                          {[0, 15, 30, 45].map(m => (
-                            <option key={m} value={m} className="bg-slate-800">{m.toString().padStart(2, '0')}</option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-
-                    <svg className="w-6 h-6 text-amber-400/60 flex-shrink-0 mt-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                    </svg>
-
-                    <div className="flex-1">
-                      <p className="text-[10px] text-slate-500 mb-1">To</p>
-                      <div className="flex gap-1">
-                        <select
-                          value={globalTaskEndHour}
-                          onChange={(e) => setGlobalTaskEndHour(parseInt(e.target.value))}
-                          className="flex-1 px-2 py-2.5 bg-white/10 border border-white/10 rounded-xl text-white text-center focus:ring-2 focus:ring-amber-500/30 outline-none cursor-pointer"
-                        >
-                          {Array.from({ length: 18 }, (_, i) => i + 6).map(h => (
-                            <option key={h} value={h} className="bg-slate-800">{h}</option>
-                          ))}
-                        </select>
-                        <span className="text-white/50 self-center">.</span>
-                        <select
-                          value={globalTaskEndMinute}
-                          onChange={(e) => setGlobalTaskEndMinute(parseInt(e.target.value))}
-                          className="flex-1 px-2 py-2.5 bg-white/10 border border-white/10 rounded-xl text-white text-center focus:ring-2 focus:ring-amber-500/30 outline-none cursor-pointer"
-                        >
-                          {[0, 15, 30, 45].map(m => (
-                            <option key={m} value={m} className="bg-slate-800">{m.toString().padStart(2, '0')}</option>
-                          ))}
-                        </select>
-                      </div>
+                          {icon}
+                        </button>
+                      ))}
                     </div>
                   </div>
-                </div>
+                )}
+              </div>
+
+              {/* iOS Style Details List - For Tasks & Reminders */}
+              {(globalTaskMode === 'task' || globalTaskMode === 'reminder') && (
+                <>
+                  <TaskDetailsList
+                    date={globalTaskDate}
+                    startTime={`${globalTaskStartHour}:${globalTaskStartMinute.toString().padStart(2, '0')}`}
+                    endTime={`${globalTaskEndHour}:${globalTaskEndMinute.toString().padStart(2, '0')}`}
+                    alerts={globalTaskAlerts}
+                    onDateClick={() => {
+                      setGlobalTaskShowDate(!globalTaskShowDate);
+                      setGlobalTaskShowTime(false);
+                      setGlobalTaskShowAlerts(false);
+                      setGlobalTaskShowRepeat(false);
+                    }}
+                    onTimeClick={() => {
+                      setGlobalTaskShowTime(!globalTaskShowTime);
+                      setGlobalTaskShowAlerts(false);
+                      setGlobalTaskShowDate(false);
+                      setGlobalTaskShowRepeat(false);
+                    }}
+                    onAlertsClick={() => {
+                      setGlobalTaskShowAlerts(!globalTaskShowAlerts);
+                      setGlobalTaskShowTime(false);
+                      setGlobalTaskShowDate(false);
+                      setGlobalTaskShowRepeat(false);
+                    }}
+                    onRepeatClick={() => {
+                      setGlobalTaskShowRepeat(!globalTaskShowRepeat);
+                      setGlobalTaskShowAlerts(false);
+                      setGlobalTaskShowTime(false);
+                      setGlobalTaskShowDate(false);
+                    }}
+                    themeColor="amber"
+                    showDatePicker={globalTaskShowDate}
+                    onDateChange={(date) => {
+                      setGlobalTaskDate(date);
+                      setGlobalTaskShowDate(false);
+                    }}
+                    showTimePicker={globalTaskShowTime}
+                    onStartTimeChange={({ hour, minute }) => {
+                      setGlobalTaskStartHour(hour);
+                      setGlobalTaskStartMinute(minute);
+                    }}
+                    onEndTimeChange={({ hour, minute }) => {
+                      setGlobalTaskEndHour(hour);
+                      setGlobalTaskEndMinute(minute);
+                    }}
+                    repeat={globalTaskRepeat}
+                    showRepeatPicker={globalTaskShowRepeat}
+                    onRepeatChange={(repeat) => setGlobalTaskRepeat(repeat)}
+                  />
+
+
+                  {/* Alerts Picker */}
+                  {globalTaskShowAlerts && (
+                    <div className="mb-6 p-4 rounded-2xl bg-white/5 border border-white/5 animate-fadeIn">
+                      <label className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-3 block">Manage Alerts</label>
+                      <div className="space-y-2">
+                        {globalTaskAlerts.map((alert, index) => (
+                          <div key={index} className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5">
+                            <span className="text-sm text-slate-200">{alert.label}</span>
+                            <button
+                              onClick={() => setGlobalTaskAlerts(prev => prev.filter((_, i) => i !== index))}
+                              className="text-rose-400 hover:text-rose-300 p-1"
+                            >
+                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
+                          </div>
+                        ))}
+                        <div className="pt-2 grid grid-cols-3 gap-2">
+                          {globalAlertOptions.map(opt => (
+                            <button
+                              key={opt.label}
+                              onClick={() => {
+                                if (!globalTaskAlerts.some(a => a.value === opt.value)) {
+                                  setGlobalTaskAlerts(prev => [...prev, opt]);
+                                }
+                              }}
+                              className="p-2 rounded-lg bg-indigo-500/10 text-indigo-300 text-[10px] font-medium border border-indigo-500/20 hover:bg-indigo-500/20 transition-all text-left"
+                            >
+                              + {opt.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
+
+              {/* Value (New) */}
+              <div className="mb-4">
+                <label className="text-slate-400 text-sm mb-2 block">Impact Value: {globalTaskValue}/10</label>
+                <input
+                  type="range"
+                  min="1"
+                  max="10"
+                  value={globalTaskValue}
+                  onChange={(e) => setGlobalTaskValue(parseInt(e.target.value))}
+                  className="w-full accent-amber-500"
+                />
+              </div>
 
               {/* Energy Level */}
               <div className="mb-4">
@@ -7747,26 +9034,19 @@ const LifeArchitect = () => {
                 </div>
               </div>
 
-              {/* Reminder - Only for scheduled tasks */}
-              {globalTaskMode === 'task' && (
-                <div className="mb-4">
-                  <label className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-2 block">Reminder</label>
-                  <div className="flex flex-wrap gap-2">
-                    {globalReminderOptions.map(opt => (
-                      <button
-                        key={opt.value || 'none'}
-                        onClick={() => setGlobalTaskReminder(opt.value)}
-                        className={`px-3 py-2 rounded-xl text-xs font-medium transition-all duration-200
-                          ${globalTaskReminder === opt.value
-                            ? 'bg-purple-500/80 text-white shadow-lg shadow-purple-500/30'
-                            : 'bg-white/10 text-slate-400 hover:bg-white/20'}`}
-                      >
-                        {opt.value ? `🔔 ${opt.label}` : '🔕 None'}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
+              {/* Notes (New) */}
+              <div className="mb-4">
+                <label className="text-slate-400 text-sm mb-2 block">Notes</label>
+                <textarea
+                  value={globalTaskNotes}
+                  onChange={(e) => setGlobalTaskNotes(e.target.value)}
+                  placeholder="Additional details..."
+                  rows={2}
+                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-500 outline-none focus:border-amber-500/50 resize-none"
+                />
+              </div>
+
+              {/* Non-negotiable Toggle - Only for scheduled tasks */}
 
               {/* Non-negotiable Toggle - Only for scheduled tasks */}
               {globalTaskMode === 'task' && (
