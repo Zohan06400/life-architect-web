@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { translations } from './translations';
 
 // ============================================
 // LIFE ARCHITECT - AI Productivity Coach
@@ -8,20 +9,20 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 // Options for influence question
 const influenceOptions = {
   helped: [
-    { id: 'priorities', label: 'Clear priorities', icon: '🎯' },
-    { id: 'focus', label: 'Strong focus', icon: '🧠' },
-    { id: 'energy_high', label: 'High energy', icon: '🔋' },
-    { id: 'time', label: 'Enough time', icon: '⏱️' },
-    { id: 'next_steps', label: 'Clear next steps', icon: '🧩' },
-    { id: 'discipline', label: 'Discipline', icon: '💪' },
+    { id: 'priorities', label: 'reflect.influencers.priorities', icon: '🎯' },
+    { id: 'focus', label: 'reflect.influencers.focus', icon: '🧠' },
+    { id: 'energy_high', label: 'reflect.influencers.energy_high', icon: '🔋' },
+    { id: 'time', label: 'reflect.influencers.time', icon: '⏱️' },
+    { id: 'next_steps', label: 'reflect.influencers.next_steps', icon: '🧩' },
+    { id: 'discipline', label: 'reflect.influencers.discipline', icon: '💪' },
   ],
   blocked: [
-    { id: 'distractions', label: 'Distractions', icon: '📱' },
-    { id: 'energy_low', label: 'Low energy', icon: '😴' },
-    { id: 'clarity', label: 'Lack of clarity', icon: '🤯' },
-    { id: 'time_low', label: 'Not enough time', icon: '⏳' },
-    { id: 'interruptions', label: 'Interruptions', icon: '🧍' },
-    { id: 'stress', label: 'Stress', icon: '😵‍💫' },
+    { id: 'distractions', label: 'reflect.influencers.distractions', icon: '📱' },
+    { id: 'energy_low', label: 'reflect.influencers.energy_low', icon: '😴' },
+    { id: 'clarity', label: 'reflect.influencers.clarity', icon: '🤯' },
+    { id: 'time_low', label: 'reflect.influencers.time_low', icon: '⏳' },
+    { id: 'interruptions', label: 'reflect.influencers.interruptions', icon: '🧍' },
+    { id: 'stress', label: 'reflect.influencers.stress', icon: '😵‍💫' },
   ]
 };
 
@@ -29,20 +30,20 @@ const influenceOptions = {
 const reflectionQuestions = [
   {
     key: 'activities',
-    question: "What mattered most today?",
-    placeholder: "We already know which tasks you completed today.\nDescribe what actually moved forward today — the task, decision, or result that had real impact.\nSome days are for maintenance or recovery. “Nothing meaningful” is a valid answer.",
+    question: "reflect.mattered",
+    placeholder: "reflect.matteredPlaceholder",
     icon: "📝"
   },
   {
     key: 'influencers',
-    question: "What influenced your progress today?",
+    question: "reflect.influenced",
     type: 'balanced-select',
     icon: "📊"
   },
   {
     key: 'differently',
-    question: "🤔 What would you do differently tomorrow?",
-    placeholder: "One small change you’d make tomorrow to improve your day.",
+    question: "reflect.differently",
+    placeholder: "reflect.differentlyPlaceholder",
     icon: "🔄"
   },
 ];
@@ -263,7 +264,7 @@ const weekDays = [
   { label: 'S', full: 'Sunday', value: 0 },
 ];
 
-const RepeatPicker = ({ repeat, onSelect, themeColor = 'amber' }) => {
+const RepeatPicker = ({ repeat, onSelect, themeColor = 'amber', t }) => {
   const getThemeClasses = (isSelected) => {
     if (!isSelected) return 'bg-white/5 text-slate-400 hover:bg-white/10';
     switch (themeColor) {
@@ -274,9 +275,9 @@ const RepeatPicker = ({ repeat, onSelect, themeColor = 'amber' }) => {
   };
 
   const setType = (type) => {
-    let label = 'None';
+    let label = t('common.none');
     let days = [];
-    if (type === 'daily') label = 'Daily';
+    if (type === 'daily') label = 'Daily'; // Can translate in display
     if (type === 'weekly') label = 'Weekly';
     if (type === 'custom') label = 'Custom Days';
     onSelect({ ...repeat, type, label, days });
@@ -297,7 +298,7 @@ const RepeatPicker = ({ repeat, onSelect, themeColor = 'amber' }) => {
       return aIdx - bIdx;
     });
 
-    let label = 'None';
+    let label = t('common.none');
     if (newDays.length === 0) label = 'Specific Days';
     else if (newDays.length === 7) label = 'Daily';
     else {
@@ -311,10 +312,10 @@ const RepeatPicker = ({ repeat, onSelect, themeColor = 'amber' }) => {
     <div className="p-4 bg-white/5 border border-white/10 rounded-2xl animate-fadeIn mb-6">
       <div className="grid grid-cols-4 gap-2 mb-4">
         {[
-          { id: 'none', label: 'None' },
-          { id: 'daily', label: 'Daily' },
-          { id: 'weekly', label: 'Weekly' },
-          { id: 'custom', label: 'Custom' }
+          { id: 'none', label: t('common.none') },
+          { id: 'daily', label: t('common.repeat') + ' (D)' }, // Simplified for now or add keys
+          { id: 'weekly', label: t('common.repeat') + ' (W)' },
+          { id: 'custom', label: t('common.edit') }
         ].map(opt => (
           <button
             key={opt.id}
@@ -353,7 +354,8 @@ const TimePicker = ({
   endMinute,
   onStartChange,
   onEndChange,
-  themeColor = 'amber'
+  themeColor = 'amber',
+  t
 }) => {
   const handleDurationSelect = (minutes) => {
     let totalStartMinutes = startHour * 60 + startMinute;
@@ -451,9 +453,16 @@ const TimePicker = ({
             onClick={() => handleDurationSelect(opt.value)}
             className={`py-2 px-1 rounded-xl text-[10px] font-medium transition-all ${getButtonTheme(currentDuration === opt.value)}`}
           >
-            {opt.label}
+            {/* Manually formatting since durationOptions is external. Or use logic here */}
+            {opt.value < 60 ? `${opt.value} ${t('units.m')}` :
+              opt.value % 60 === 0 ? `${opt.value / 60} ${t('units.h')}` :
+                `${Math.floor(opt.value / 60)} ${t('units.h')} ${opt.value % 60 > 0 ? '0.5' : ''}` // 1.5h handling might be tricky if not exact
+            }
+            {/* Better way: recreate labels based on value */}
+            {opt.value < 60 ? `${opt.value}${t('units.m')}` : (opt.value % 60 === 0 ? `${opt.value / 60}${t('units.h')}` : `${opt.value / 60}${t('units.h')}`)}
           </button>
         ))}
+        {/* Re-writing this part to be safer with the existing map */}
       </div>
     </div>
   );
@@ -505,7 +514,7 @@ const DetailsRow = ({ icon, label, value, subValue, onClick, isLast, themeColor 
   );
 };
 
-const DatePicker = ({ selectedDate, onSelect, themeColor = 'amber' }) => {
+const DatePicker = ({ selectedDate, onSelect, themeColor = 'amber', locale = 'en-US' }) => {
   const [viewDate, setViewDate] = useState(selectedDate || new Date());
 
   const getDaysInMonth = (year, month) => new Date(year, month + 1, 0).getDate();
@@ -525,10 +534,6 @@ const DatePicker = ({ selectedDate, onSelect, themeColor = 'amber' }) => {
     const newDate = new Date(year, month, day);
     onSelect(newDate);
   };
-
-  const monthNames = ["January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December"
-  ];
 
   const getThemeClasses = (isSelected, isToday) => {
     const baseSelected = 'text-white shadow-lg';
@@ -558,6 +563,8 @@ const DatePicker = ({ selectedDate, onSelect, themeColor = 'amber' }) => {
     }
   };
 
+  const monthName = new Date(year, month).toLocaleDateString(locale, { month: 'long' });
+
   return (
     <div className="p-4 bg-white/5 border border-white/10 rounded-2xl animate-fadeIn mb-6">
       <div className="flex items-center justify-between mb-4">
@@ -566,7 +573,7 @@ const DatePicker = ({ selectedDate, onSelect, themeColor = 'amber' }) => {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
         </button>
-        <span className="font-semibold text-white">{monthNames[month]} {year}</span>
+        <span className="font-semibold text-white capitalize">{monthName} {year}</span>
         <button onClick={nextMonth} className="p-1 text-slate-400 hover:text-white transition-colors">
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -623,13 +630,14 @@ const TaskDetailsList = ({
   onStartTimeChange,
   onEndTimeChange,
   showRepeatPicker = false,
-  onRepeatChange
+  onRepeatChange,
+  t,
+  locale = 'en-US'
 }) => {
   const formatDate = (d) => {
-    // Basic date formatting, matching the image style roughly
-    const day = d.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+    const day = d.toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
     const isToday = new Date().toDateString() === d.toDateString();
-    return { text: day, label: isToday ? 'Today' : '' };
+    return { text: day, label: isToday ? t('plan.today') : '' };
   };
 
   const getDurationString = (start, end) => {
@@ -646,7 +654,7 @@ const TaskDetailsList = ({
       const h = Math.floor(diff / 60);
       const m = diff % 60;
 
-      return `${h > 0 ? h + 'h ' : ''}${m > 0 ? m + 'min' : ''}`;
+      return `${h > 0 ? h + t('units.h') + ' ' : ''}${m > 0 ? m + t('units.m') : ''}`;
     } catch (e) { return ''; }
   };
 
@@ -657,7 +665,7 @@ const TaskDetailsList = ({
     <div className="bg-[#1C1C1E] rounded-[14px] overflow-hidden mb-6">
       <DetailsRow
         icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>}
-        label={formattedDate.label || 'Date'}
+        label={formattedDate.label || t('common.date')}
         value={formattedDate.text}
         onClick={onDateClick}
         themeColor={themeColor}
@@ -670,13 +678,14 @@ const TaskDetailsList = ({
             selectedDate={date}
             onSelect={onDateChange}
             themeColor={themeColor}
+            locale={locale}
           />
         </div>
       )}
 
       <DetailsRow
         icon={<svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm4.2 14.2L11 13V7h1.5v5.2l4.5 2.7-.8 1.3z" /></svg>}
-        label="Time"
+        label={t('common.time')}
         value={`${startTime} - ${endTime}`}
         subValue={duration}
         onClick={onTimeClick}
@@ -701,8 +710,8 @@ const TaskDetailsList = ({
 
       <DetailsRow
         icon="🔔"
-        label="Alerts"
-        value={alerts.length > 0 ? `${alerts.length} alerts set` : 'No alerts'}
+        label={t('common.alerts')}
+        value={alerts.length > 0 ? `${alerts.length} ${t('common.active')}` : t('common.none')}
         onClick={onAlertsClick}
         isLast={false}
         themeColor={themeColor}
@@ -710,8 +719,8 @@ const TaskDetailsList = ({
 
       <DetailsRow
         icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>}
-        label="Repeat"
-        value={repeat?.label || 'None'}
+        label={t('common.repeat')}
+        value={repeat?.label || t('common.none')}
         onClick={onRepeatClick}
         isLast={true}
         themeColor={themeColor}
@@ -724,6 +733,7 @@ const TaskDetailsList = ({
             repeat={repeat || { type: 'none', label: 'None', days: [] }}
             onSelect={onRepeatChange}
             themeColor={themeColor}
+            t={t}
           />
         </div>
       )}
@@ -828,6 +838,33 @@ const LifeArchitect = () => {
   const [executeEditingTask, setExecuteEditingTask] = useState(null);
   const [executeEditingRoutine, setExecuteEditingRoutine] = useState(null);
 
+  // Settings State
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [username, setUsername] = useState(() => loadFromStorage('username', 'Architect'));
+  const [language, setLanguage] = useState(() => loadFromStorage('language', 'en'));
+
+  // Persist username & language
+  useEffect(() => {
+    saveToStorage('username', username);
+  }, [username]);
+
+  useEffect(() => {
+    saveToStorage('language', language);
+  }, [language]);
+
+  // Translation helper
+  const t = (path, params = {}) => {
+    const keys = path.split('.');
+    let value = translations[language];
+    for (const key of keys) {
+      value = value ? value[key] : null;
+    }
+    if (!value) return path; // Fallback to key if not found
+
+    // Replace params like {name}
+    return value.replace(/{(\w+)}/g, (_, key) => params[key] !== undefined ? params[key] : `{${key}}`);
+  };
+
   // Edit Task State (lifted to App level to prevent reset on re-render)
   const [editTaskName, setEditTaskName] = useState('');
   const [editTaskIcon, setEditTaskIcon] = useState('📌');
@@ -843,6 +880,10 @@ const LifeArchitect = () => {
   const [editTaskDate, setEditTaskDate] = useState(new Date()); // For date editing
   const [editTaskShowDate, setEditTaskShowDate] = useState(false);
   const [editTaskShowRepeat, setEditTaskShowRepeat] = useState(false);
+  // Locale helper
+  const localeMap = { en: 'en-US', fr: 'fr-FR', zh: 'zh-CN', ru: 'ru-RU' };
+  const currentLocale = localeMap[language] || 'en-US';
+
   const [editTaskShowIconPicker, setEditTaskShowIconPicker] = useState(false);
 
   // Consistency fields
@@ -860,6 +901,8 @@ const LifeArchitect = () => {
   const [reviewShowPhotoModal, setReviewShowPhotoModal] = useState(false);
   // Projects Screen - Notes
   const [projectsIsEditingNotes, setProjectsIsEditingNotes] = useState(false);
+  const [projectsShowNewFolderInput, setProjectsShowNewFolderInput] = useState(false);
+  const [projectsNewFolderName, setProjectsNewFolderName] = useState('');
 
 
   // Calculate project progress
@@ -875,7 +918,8 @@ const LifeArchitect = () => {
     const newProject = {
       id: Date.now(),
       ...projectData,
-      tasks: []
+      tasks: [],
+      folders: []
     };
     setProjects(prev => [...prev, newProject]);
   };
@@ -889,6 +933,84 @@ const LifeArchitect = () => {
   const deleteProject = (projectId) => {
     setProjects(prev => prev.filter(p => p.id !== projectId));
     if (selectedProject?.id === projectId) setSelectedProject(null);
+  };
+
+
+  // Add folder to project
+  const createFolder = (projectId, folderName) => {
+    const newFolder = {
+      id: Date.now(),
+      name: folderName,
+      isCollapsed: false
+    };
+
+    setProjects(prev => prev.map(p =>
+      p.id === projectId
+        ? { ...p, folders: [...(p.folders || []), newFolder] }
+        : p
+    ));
+
+    setSelectedProject(prev => {
+      if (prev?.id === projectId) {
+        return { ...prev, folders: [...(prev.folders || []), newFolder] };
+      }
+      return prev;
+    });
+  };
+
+  // Delete folder from project
+  const deleteFolder = (projectId, folderId) => {
+    // Determine what to do with tasks in this folder?
+    // For now, let's just move them to "Uncategorized" (null folderId)
+    // or we can allow the user to decide. 
+    // Simplified interaction: Tasks keep their folderId but it won't match any folder, 
+    // so they effectively become uncategorized if we filter by existing folders.
+    // Better: explicitly set folderId to null for tasks in this folder.
+
+    setProjects(prev => prev.map(p => {
+      if (p.id !== projectId) return p;
+      return {
+        ...p,
+        folders: (p.folders || []).filter(f => f.id !== folderId),
+        tasks: (p.tasks || []).map(t => t.folderId === folderId ? { ...t, folderId: null } : t)
+      };
+    }));
+
+    setSelectedProject(prev => {
+      if (prev?.id === projectId) {
+        return {
+          ...prev,
+          folders: (prev.folders || []).filter(f => f.id !== folderId),
+          tasks: (prev.tasks || []).map(t => t.folderId === folderId ? { ...t, folderId: null } : t)
+        };
+      }
+      return prev;
+    });
+  };
+
+  // Toggle folder collapse state
+  const toggleFolderCollapse = (projectId, folderId) => {
+    setProjects(prev => prev.map(p => {
+      if (p.id !== projectId) return p;
+      return {
+        ...p,
+        folders: (p.folders || []).map(f =>
+          f.id === folderId ? { ...f, isCollapsed: !f.isCollapsed } : f
+        )
+      };
+    }));
+
+    setSelectedProject(prev => {
+      if (prev?.id === projectId) {
+        return {
+          ...prev,
+          folders: (prev.folders || []).map(f =>
+            f.id === folderId ? { ...f, isCollapsed: !f.isCollapsed } : f
+          )
+        };
+      }
+      return prev;
+    });
   };
 
   // Add task to project
@@ -2010,13 +2132,19 @@ const LifeArchitect = () => {
     }
   };
 
-  const EnergyBadge = ({ energy, active = true, onClick }) => {
+  const EnergyBadge = ({ energy, active = true, onClick, t }) => {
     const colors = {
       low: active ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-500',
       medium: active ? 'bg-amber-500 text-white' : 'bg-slate-200 text-slate-500',
       high: active ? 'bg-rose-500 text-white' : 'bg-slate-200 text-slate-500'
     };
-    const labels = { low: 'Low', medium: 'Med', high: 'High' };
+
+    // Fallback if t is missing for some reason
+    const labels = {
+      low: t ? t('common.energy.low') : 'Low',
+      medium: t ? t('common.energy.medium') : 'Med',
+      high: t ? t('common.energy.high') : 'High'
+    };
 
     return (
       <button
@@ -2028,11 +2156,11 @@ const LifeArchitect = () => {
     );
   };
 
-  const TimeDropdown = ({ value, onChange }) => {
+  const TimeDropdown = ({ value, onChange, t }) => {
     const options = [
       '15m', '30m', '45m', '1h', '1h 15m', '1h 30m', '1h 45m', '2h',
       '2h 30m', '3h', '3h 30m', '4h', '4h 30m', '5h', '5h 30m', '6h', '6h 30m', '7h', '7h 30m', '8h'
-    ];
+    ].map(o => o.replace('m', t ? t('units.m') : 'm').replace('h', t ? t('units.h') : 'h'));
 
     return (
       <select
@@ -2040,7 +2168,7 @@ const LifeArchitect = () => {
         onChange={(e) => onChange(e.target.value)}
         className="px-3 py-1.5 bg-white/10 rounded-lg text-sm text-slate-300 border border-white/10 focus:ring-2 focus:ring-purple-500/30 outline-none cursor-pointer"
       >
-        <option value="" className="bg-slate-800">Time</option>
+        <option value="" className="bg-slate-800">{t ? t('common.time') : 'Time'}</option>
         {options.map(opt => <option key={opt} value={opt} className="bg-slate-800">{opt}</option>)}
       </select>
     );
@@ -2489,12 +2617,12 @@ const LifeArchitect = () => {
         {/* Header - Centered Apple Style */}
         <div className="mb-6 text-center">
           <p className="text-purple-400/80 text-xs font-medium uppercase tracking-widest mb-2">
-            {selectedPlanDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}
+            {selectedPlanDate.toLocaleDateString(currentLocale, { month: 'long', day: 'numeric' })}
           </p>
           <h1 className="text-3xl font-semibold text-white tracking-tight">
             {selectedPlanDate.toDateString() === today.toDateString()
-              ? 'Plan Your Day'
-              : selectedPlanDate.toLocaleDateString('en-US', { weekday: 'long' })}
+              ? t('plan.greeting', { name: username })
+              : selectedPlanDate.toLocaleDateString(currentLocale, { weekday: 'long' })}
           </h1>
         </div>
 
@@ -2525,7 +2653,7 @@ const LifeArchitect = () => {
                 onClick={goToToday}
                 className="px-2 py-1 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 text-xs font-medium transition-all mr-1"
               >
-                Today
+                {t('plan.today')}
               </button>
             )}
             <button
@@ -2543,35 +2671,42 @@ const LifeArchitect = () => {
         {showMonthPicker && (
           <div className="glass-card rounded-2xl p-4 mb-4 animate-fadeIn">
             {/* Month Navigation */}
-            <div className="flex items-center justify-between mb-3">
-              <button
-                onClick={() => changeMonth(-1)}
-                className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-all"
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <div className="flex items-center gap-4">
+              <button onClick={() => changeMonth(-1)} className="p-2 hover:bg-white/10 rounded-full transition-colors text-slate-400 hover:text-white">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                 </svg>
               </button>
-              <span className="text-white font-medium">
-                {weekDays.length > 0 && weekDays[3].date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-              </span>
-              <button
-                onClick={() => changeMonth(1)}
-                className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-all"
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <h2 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-indigo-400 capitalize">
+                {selectedPlanDate.toLocaleDateString(currentLocale, { month: 'long', year: 'numeric' })}
+              </h2>
+              <button onClick={() => changeMonth(1)} className="p-2 hover:bg-white/10 rounded-full transition-colors text-slate-400 hover:text-white">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
               </button>
             </div>
 
-            {/* Day Headers */}
-            <div className="grid grid-cols-7 gap-0 mb-1 border-b border-white/10 pb-2">
-              {['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'].map(day => (
-                <div key={day} className="text-center text-xs text-slate-500 font-medium py-1">
-                  {day}
-                </div>
-              ))}
+            <button
+              onClick={() => goToToday()}
+              className="px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs font-medium text-slate-300 hover:bg-white/10 transition-colors"
+            >
+              {t('plan.today')}
+            </button>
+
+            <div className="grid grid-cols-7 mb-2">
+              {(() => {
+                const baseDate = new Date(2024, 0, 1); // A Monday
+                return Array.from({ length: 7 }).map((_, i) => {
+                  const d = new Date(baseDate);
+                  d.setDate(baseDate.getDate() + i);
+                  return (
+                    <div key={i} className="text-center text-xs font-medium text-slate-500 uppercase tracking-wider py-2">
+                      {d.toLocaleDateString(currentLocale, { weekday: 'short' })}
+                    </div>
+                  );
+                });
+              })()}
             </div>
 
             {/* Calendar Grid with Notion-style Timeline */}
@@ -2695,149 +2830,154 @@ const LifeArchitect = () => {
               );
             })()}
           </div>
-        )}
+        )
+        }
 
         {/* Week Calendar with Notion-style Project Timelines */}
-        {(() => {
-          // Get projects with dates for timeline
-          const projectsWithDates = projects.filter(p => p.startDate && p.endDate && (p.status === 'active' || p.status === 'not-started'));
-          const weekStart = weekDays[0]?.date;
-          const weekEnd = weekDays[6]?.date;
-          const weekStartStr = weekStart?.toISOString().split('T')[0] || '';
-          const weekEndStr = weekEnd?.toISOString().split('T')[0] || '';
+        {
+          (() => {
+            // Get projects with dates for timeline
+            const projectsWithDates = projects.filter(p => p.startDate && p.endDate && (p.status === 'active' || p.status === 'not-started'));
+            const weekStart = weekDays[0]?.date;
+            const weekEnd = weekDays[6]?.date;
+            const weekStartStr = weekStart?.toISOString().split('T')[0] || '';
+            const weekEndStr = weekEnd?.toISOString().split('T')[0] || '';
 
-          // Filter projects that overlap with current week
-          const visibleProjects = projectsWithDates.filter(p => {
-            return p.endDate >= weekStartStr && p.startDate <= weekEndStr;
-          });
+            // Filter projects that overlap with current week
+            const visibleProjects = projectsWithDates.filter(p => {
+              return p.endDate >= weekStartStr && p.startDate <= weekEndStr;
+            });
 
-          return (
-            <div className={`mb-6 glass-card rounded-2xl overflow-hidden transition-all duration-200 ${isDragging && draggedItem?.type === 'p' ? 'ring-2 ring-purple-400/50 bg-purple-500/5' : ''
-              }`}>
-              {/* Day Headers Row */}
-              <div className="flex border-b border-white/10">
-                {weekDays.map((day, idx) => {
-                  const isDragOverThisDay = isDragging && planDragOverDay?.getTime() === day.date.getTime();
-                  const isCurrentDay = day.date.getTime() === selectedPlanDate.getTime();
-                  const canDrop = isDragging && draggedItem?.type === 'p' && !isCurrentDay;
-
-                  return (
-                    <button
-                      key={idx}
-                      onClick={() => !isDragging && selectDay(day.date)}
-                      onMouseEnter={() => canDrop && setPlanDragOverDay(day.date)}
-                      onMouseLeave={() => isDragging && setPlanDragOverDay(null)}
-                      className={`flex-1 flex flex-col items-center py-3 px-1 transition-all duration-200 border-r border-white/5 last:border-r-0
-                        ${isDragOverThisDay
-                          ? 'bg-purple-500/40'
-                          : day.isSelected
-                            ? 'bg-gradient-to-b from-purple-500/30 to-indigo-600/20'
-                            : day.isToday
-                              ? 'bg-white/5'
-                              : canDrop
-                                ? 'hover:bg-purple-500/20'
-                                : 'hover:bg-white/5'}`}
-                    >
-                      <span className={`text-[10px] font-medium uppercase tracking-wide ${isDragOverThisDay
-                        ? 'text-purple-200'
-                        : day.isSelected
-                          ? 'text-purple-300'
-                          : day.isToday
-                            ? 'text-purple-400'
-                            : 'text-slate-500'
-                        }`}>
-                        {day.dayName}
-                      </span>
-                      <span className={`text-lg font-semibold ${isDragOverThisDay
-                        ? 'text-white'
-                        : day.isSelected
-                          ? 'text-white'
-                          : day.isToday
-                            ? 'text-purple-300'
-                            : 'text-slate-300'
-                        }`}>
-                        {day.dayNum}
-                      </span>
-                      {/* Task indicator dot */}
-                      {day.hasTasks && (
-                        <div className={`w-1.5 h-1.5 rounded-full mt-1 ${day.isSelected ? 'bg-white' : 'bg-purple-400'}`}></div>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Project Timeline Bars */}
-              {visibleProjects.length > 0 && (
-                <div className="p-2 space-y-1">
-                  {visibleProjects.map(project => {
-                    const projectColor = project.color || '#8b5cf6';
-                    const startDate = new Date(project.startDate);
-                    const endDate = new Date(project.endDate);
-                    startDate.setHours(0, 0, 0, 0);
-                    endDate.setHours(0, 0, 0, 0);
-
-                    // Calculate which days of the week this project spans
-                    let startIdx = -1;
-                    let endIdx = -1;
-
-                    weekDays.forEach((day, idx) => {
-                      const dayTime = day.date.getTime();
-                      if (dayTime >= startDate.getTime() && dayTime <= endDate.getTime()) {
-                        if (startIdx === -1) startIdx = idx;
-                        endIdx = idx;
-                      }
-                    });
-
-                    // If project starts before this week
-                    if (startDate < weekStart && endDate >= weekStart) startIdx = 0;
-                    // If project ends after this week
-                    if (endDate > weekEnd && startDate <= weekEnd) endIdx = 6;
-
-                    if (startIdx === -1 || endIdx === -1) return null;
-
-                    const leftPercent = (startIdx / 7) * 100;
-                    const widthPercent = ((endIdx - startIdx + 1) / 7) * 100;
-                    const isStartVisible = project.startDate >= weekStartStr;
-                    const isEndVisible = project.endDate <= weekEndStr;
+            return (
+              <div className={`mb-6 glass-card rounded-2xl overflow-hidden transition-all duration-200 ${isDragging && draggedItem?.type === 'p' ? 'ring-2 ring-purple-400/50 bg-purple-500/5' : ''
+                }`}>
+                {/* Day Headers Row */}
+                <div className="flex border-b border-white/10">
+                  {weekDays.map((day, idx) => {
+                    const isDragOverThisDay = isDragging && planDragOverDay?.getTime() === day.date.getTime();
+                    const isCurrentDay = day.date.getTime() === selectedPlanDate.getTime();
+                    const canDrop = isDragging && draggedItem?.type === 'p' && !isCurrentDay;
 
                     return (
-                      <div key={project.id} className="relative h-6">
-                        <div
-                          className="absolute top-0 h-full flex items-center px-2 cursor-pointer hover:brightness-110 transition-all overflow-hidden"
-                          style={{
-                            left: `${leftPercent}%`,
-                            width: `${widthPercent}%`,
-                            backgroundColor: projectColor,
-                            opacity: 0.85,
-                            borderRadius: isStartVisible && isEndVisible ? '6px' : isStartVisible ? '6px 0 0 6px' : isEndVisible ? '0 6px 6px 0' : '0'
-                          }}
-                          onClick={() => {
-                            setActiveTab('projects');
-                            setTimeout(() => setSelectedProject(project), 100);
-                          }}
-                        >
-                          <span className="text-[11px] text-white font-medium truncate">
-                            {project.title}
-                          </span>
-                        </div>
-                      </div>
+                      <button
+                        key={idx}
+                        onClick={() => !isDragging && selectDay(day.date)}
+                        onMouseEnter={() => canDrop && setPlanDragOverDay(day.date)}
+                        onMouseLeave={() => isDragging && setPlanDragOverDay(null)}
+                        className={`flex-1 flex flex-col items-center py-3 px-1 transition-all duration-200 border-r border-white/5 last:border-r-0
+                        ${isDragOverThisDay
+                            ? 'bg-purple-500/40'
+                            : day.isSelected
+                              ? 'bg-gradient-to-b from-purple-500/30 to-indigo-600/20'
+                              : day.isToday
+                                ? 'bg-white/5'
+                                : canDrop
+                                  ? 'hover:bg-purple-500/20'
+                                  : 'hover:bg-white/5'}`}
+                      >
+                        <span className={`text-[10px] font-medium uppercase tracking-wide ${isDragOverThisDay
+                          ? 'text-purple-200'
+                          : day.isSelected
+                            ? 'text-purple-300'
+                            : day.isToday
+                              ? 'text-purple-400'
+                              : 'text-slate-500'
+                          }`}>
+                          {day.dayName}
+                        </span>
+                        <span className={`text-lg font-semibold ${isDragOverThisDay
+                          ? 'text-white'
+                          : day.isSelected
+                            ? 'text-white'
+                            : day.isToday
+                              ? 'text-purple-300'
+                              : 'text-slate-300'
+                          }`}>
+                          {day.dayNum}
+                        </span>
+                        {/* Task indicator dot */}
+                        {day.hasTasks && (
+                          <div className={`w-1.5 h-1.5 rounded-full mt-1 ${day.isSelected ? 'bg-white' : 'bg-purple-400'}`}></div>
+                        )}
+                      </button>
                     );
                   })}
                 </div>
-              )}
-            </div>
-          );
-        })()}
+
+                {/* Project Timeline Bars */}
+                {visibleProjects.length > 0 && (
+                  <div className="p-2 space-y-1">
+                    {visibleProjects.map(project => {
+                      const projectColor = project.color || '#8b5cf6';
+                      const startDate = new Date(project.startDate);
+                      const endDate = new Date(project.endDate);
+                      startDate.setHours(0, 0, 0, 0);
+                      endDate.setHours(0, 0, 0, 0);
+
+                      // Calculate which days of the week this project spans
+                      let startIdx = -1;
+                      let endIdx = -1;
+
+                      weekDays.forEach((day, idx) => {
+                        const dayTime = day.date.getTime();
+                        if (dayTime >= startDate.getTime() && dayTime <= endDate.getTime()) {
+                          if (startIdx === -1) startIdx = idx;
+                          endIdx = idx;
+                        }
+                      });
+
+                      // If project starts before this week
+                      if (startDate < weekStart && endDate >= weekStart) startIdx = 0;
+                      // If project ends after this week
+                      if (endDate > weekEnd && startDate <= weekEnd) endIdx = 6;
+
+                      if (startIdx === -1 || endIdx === -1) return null;
+
+                      const leftPercent = (startIdx / 7) * 100;
+                      const widthPercent = ((endIdx - startIdx + 1) / 7) * 100;
+                      const isStartVisible = project.startDate >= weekStartStr;
+                      const isEndVisible = project.endDate <= weekEndStr;
+
+                      return (
+                        <div key={project.id} className="relative h-6">
+                          <div
+                            className="absolute top-0 h-full flex items-center px-2 cursor-pointer hover:brightness-110 transition-all overflow-hidden"
+                            style={{
+                              left: `${leftPercent}%`,
+                              width: `${widthPercent}%`,
+                              backgroundColor: projectColor,
+                              opacity: 0.85,
+                              borderRadius: isStartVisible && isEndVisible ? '6px' : isStartVisible ? '6px 0 0 6px' : isEndVisible ? '0 6px 6px 0' : '0'
+                            }}
+                            onClick={() => {
+                              setActiveTab('projects');
+                              setTimeout(() => setSelectedProject(project), 100);
+                            }}
+                          >
+                            <span className="text-[11px] text-white font-medium truncate">
+                              {project.title}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })()
+        }
 
         {/* Drag hint when dragging tasks */}
-        {isDragging && draggedItem?.type === 'p' && (
-          <div className="mb-4 text-center">
-            <span className="text-purple-400/80 text-xs font-medium px-3 py-1.5 rounded-full bg-purple-500/10 border border-purple-500/20">
-              ↑ Drop on a day to move task
-            </span>
-          </div>
-        )}
+        {
+          isDragging && draggedItem?.type === 'p' && (
+            <div className="mb-4 text-center">
+              <span className="text-purple-400/80 text-xs font-medium px-3 py-1.5 rounded-full bg-purple-500/10 border border-purple-500/20">
+                ↑ Drop on a day to move task
+              </span>
+            </div>
+          )
+        }
 
         {/* Projects & Reminders Quick Access Grid */}
         <div className="grid grid-cols-2 gap-3 mb-6">
@@ -2857,7 +2997,7 @@ const LifeArchitect = () => {
               <span className="text-xl">📁</span>
             </div>
             <div className="flex-1 min-w-0">
-              <span className="text-white font-medium block truncate">Projects</span>
+              <span className="text-white font-medium block truncate">{t('plan.projects')}</span>
               <p className="text-cyan-400/70 text-[11px]">{projects.filter(p => p.status === 'active').length} active</p>
             </div>
             <svg className={`w-4 h-4 text-cyan-400 transition-transform duration-300 ${projectsExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -2881,7 +3021,7 @@ const LifeArchitect = () => {
               <span className="text-xl">💡</span>
             </div>
             <div className="flex-1 min-w-0">
-              <span className="text-white font-medium block truncate">Reminders</span>
+              <span className="text-white font-medium block truncate">{t('plan.reminders')}</span>
               <p className="text-purple-400/70 text-[11px]">{reminders.length} items</p>
             </div>
             <svg className={`w-4 h-4 text-purple-400 transition-transform duration-300 ${remindersExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -2928,15 +3068,13 @@ const LifeArchitect = () => {
                       />
                     </div>
                   </div>
-                  <span className="text-slate-500 text-xs">{pendingTasks.length} tasks</span>
+                  <span className="text-slate-500 text-xs">{pendingTasks.length} {t('common.tasks').toLowerCase()}</span>
                 </button>
 
                 <div className={`overflow-hidden transition-all duration-300 ${isExpanded ? 'max-h-[600px]' : 'max-h-0'}`}>
                   <div className="px-4 pb-4 space-y-2">
                     {pendingTasks
                       .filter(task => {
-                        // Hide tasks that are already in the top 3 priorities
-                        // Check both id and projectTaskId since tasks store the original project task ID
                         return !priorities.some(p => p.task && (p.task.id === task.id || p.task.projectTaskId === task.id));
                       })
                       .map(task => (
@@ -2944,7 +3082,7 @@ const LifeArchitect = () => {
                           key={task.id}
                           onClick={() => openPlanTaskEdit(task, project)}
                           className="flex items-center justify-between p-3 rounded-xl
-                          hover:bg-white/10 transition-all duration-200 cursor-pointer select-none hover:scale-[1.01]"
+                    hover:bg-white/10 transition-all duration-200 cursor-pointer select-none hover:scale-[1.01]"
                           style={{ background: 'rgba(255,255,255,0.03)' }}
                         >
                           <div className="flex items-center gap-3">
@@ -2962,19 +3100,14 @@ const LifeArchitect = () => {
                                   }`}>
                                   {task.energy}
                                 </span>
-                                <span className="text-slate-500 text-xs">Impact: {task.value}</span>
+                                <span className="text-slate-500 text-xs">{t('common.impact')}: {task.value}</span>
                               </div>
                             </div>
                           </div>
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-
-                              // Prevent duplicates: check if this task is already in priorities
-                              // Check using projectTaskId since we create new IDs for tasks
-                              if (priorities.some(p => p.task && p.task.projectTaskId === task.id)) {
-                                return; // Already in priorities, do nothing
-                              }
+                              if (priorities.some(p => p.task && p.task.projectTaskId === task.id)) return;
 
                               const taskToAdd = {
                                 id: Date.now(),
@@ -3008,7 +3141,7 @@ const LifeArchitect = () => {
                       ))}
                     {pendingTasks.length === 0 && (
                       <div className="text-center py-3 text-slate-500 text-sm">
-                        All tasks completed! 🎉
+                        {t('plan.allTasksCompleted')}
                       </div>
                     )}
                   </div>
@@ -3020,13 +3153,13 @@ const LifeArchitect = () => {
           <button
             onClick={() => setActiveTab('projects')}
             className="w-full p-3.5 rounded-2xl border border-dashed border-white/20 text-slate-500 
-              hover:border-cyan-500/50 hover:text-cyan-400 hover:bg-cyan-500/10 
-              transition-all duration-200 flex items-center justify-center gap-2"
+        hover:border-cyan-500/50 hover:text-cyan-400 hover:bg-cyan-500/10 
+        transition-all duration-200 flex items-center justify-center gap-2"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
             </svg>
-            <span className="font-medium">Manage Projects</span>
+            <span className="font-medium">{t('plan.manageProjects')}</span>
           </button>
         </div>
 
@@ -3034,10 +3167,7 @@ const LifeArchitect = () => {
         <div className={`space-y-2 overflow-hidden transition-all duration-300 mb-8 ${remindersExpanded ? 'max-h-[1200px] opacity-100' : 'max-h-0 opacity-0'}`}>
           {getResolvedRemindersForDate(selectedExecuteDate)
             .filter(reminder => {
-              // Hide completed reminders from active list
               if (reminder.completed) return false;
-              // Hide reminders that are already in the top 3 priorities
-              // Check both id and originalReminderId since tasks store the original reminder ID
               return !priorities.some(p => p.task && (p.task.id === reminder.id || p.task.originalReminderId === reminder.id));
             })
             .map(reminder => (
@@ -3045,7 +3175,7 @@ const LifeArchitect = () => {
                 key={reminder.id}
                 onClick={() => openReminderEdit(reminder)}
                 className="flex items-center justify-between p-3.5 rounded-2xl
-                hover:bg-white/10 transition-all duration-200 cursor-pointer select-none hover:scale-[1.01]"
+          hover:bg-white/10 transition-all duration-200 cursor-pointer select-none hover:scale-[1.01]"
                 style={{
                   background: 'linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%)',
                   backdropFilter: 'blur(10px)',
@@ -3053,7 +3183,6 @@ const LifeArchitect = () => {
                 }}
               >
                 <div className="flex items-center gap-3">
-                  {/* Completion checkbox */}
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -3065,12 +3194,11 @@ const LifeArchitect = () => {
                     }}
                     className="w-6 h-6 rounded-full border-2 border-purple-400 flex items-center justify-center hover:bg-purple-500/20 transition-all flex-shrink-0"
                   >
-                    {/* Empty circle for uncompleted */}
                   </button>
 
                   <span className="text-xl">{reminder.icon}</span>
                   <span className="text-slate-200 font-medium flex-1 truncate">{reminder.name}</span>
-                  <EnergyBadge energy={reminder.energy} />
+                  <EnergyBadge energy={reminder.energy} t={t} />
                 </div>
                 <button
                   onClick={(e) => {
@@ -3099,7 +3227,7 @@ const LifeArchitect = () => {
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
-            <span className="font-medium">New Reminder</span>
+            <span className="font-medium">{t('plan.newReminder')}</span>
           </button>
 
           {/* Completed Reminders */}
@@ -3109,7 +3237,7 @@ const LifeArchitect = () => {
 
             return (
               <div className="mt-4">
-                <h3 className="text-slate-400 text-sm font-medium mb-3 uppercase tracking-wider">Completed</h3>
+                <h3 className="text-slate-400 text-sm font-medium mb-3 uppercase tracking-wider">{t('plan.completed')}</h3>
                 <div className="space-y-2">
                   {completedReminders.map(reminder => (
                     <div
@@ -3126,7 +3254,6 @@ const LifeArchitect = () => {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            // Uncomplete the reminder
                             const updatedReminders = reminders.map(r =>
                               r.id === reminder.id ? { ...r, completed: false } : r
                             );
@@ -3156,7 +3283,7 @@ const LifeArchitect = () => {
         {/* Priorities */}
         <div className="mb-8">
           <h2 className="text-center text-sm font-medium text-slate-400 uppercase tracking-widest mb-4">
-            {priorities.length <= 3 ? 'Top 3 Priorities' : `Today's ${priorities.length} Tasks`}
+            {priorities.length <= 3 ? t('plan.topPriorities') : t('plan.todaysTasks', { count: priorities.length })}
           </h2>
           <div className="space-y-3">
             {priorities.map((priority, idx) => (
@@ -3167,19 +3294,17 @@ const LifeArchitect = () => {
                 onMouseLeave={handleSlotMouseLeave}
                 onClick={() => !isDragging && openGlobalTaskModal('priority', idx, priority.task)}
                 className={`p-4 glass-card rounded-2xl transition-all duration-200 ease-out select-none
-                  ${priority.task ? 'ring-1 ring-purple-500/30 cursor-grab active:cursor-grabbing' : 'cursor-pointer hover:bg-white/10 hover:scale-[1.01]'}
-                  ${isDragging && dragOverSlot?.type === 'p' && dragOverSlot?.index === idx
+            ${priority.task ? 'ring-1 ring-purple-500/30 cursor-grab active:cursor-grabbing' : 'cursor-pointer hover:bg-white/10 hover:scale-[1.01]'}
+            ${isDragging && dragOverSlot?.type === 'p' && dragOverSlot?.index === idx
                     ? 'ring-2 ring-purple-400 scale-[1.02] bg-purple-500/20 shadow-lg shadow-purple-500/20'
                     : ''}
-                  ${isDragging && draggedItem?.type === 'p' && draggedItem?.index === idx ? 'opacity-40 scale-[0.98]' : ''}`}
+            ${isDragging && draggedItem?.type === 'p' && draggedItem?.index === idx ? 'opacity-40 scale-[0.98]' : ''}`}
               >
                 {priority.task ? (
                   <div className="flex items-center gap-3">
-                    {/* Completion checkbox */}
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        // Mark the priority task as completed
                         const newPriorities = [...priorities];
                         newPriorities[idx] = {
                           ...priority,
@@ -3187,7 +3312,6 @@ const LifeArchitect = () => {
                         };
                         setPriorities(newPriorities);
 
-                        // Also sync with original reminder/project if applicable
                         if (priority.task.originalReminderId) {
                           const updatedReminders = reminders.map(r =>
                             r.id === priority.task.originalReminderId ? { ...r, completed: true } : r
@@ -3202,16 +3326,11 @@ const LifeArchitect = () => {
                       }}
                       className="w-6 h-6 rounded-full border-2 border-purple-400 flex items-center justify-center hover:bg-purple-500/20 transition-all flex-shrink-0"
                     >
-                      {/* Empty circle for uncompleted */}
                     </button>
 
-                    {/* Task icon */}
                     <span className="text-xl">{priority.task.icon}</span>
-
-                    {/* Task name */}
                     <span className="text-slate-200 font-medium flex-1 truncate">{priority.task.name}</span>
 
-                    {/* Energy badge - clickable to cycle */}
                     <div onMouseDown={(e) => e.stopPropagation()}>
                       <EnergyBadge
                         energy={priority.energy}
@@ -3223,10 +3342,10 @@ const LifeArchitect = () => {
                           newP[idx].energy = energies[nextIdx];
                           setPriorities(newP);
                         }}
+                        t={t}
                       />
                     </div>
 
-                    {/* Time and remove */}
                     <div className="flex items-center gap-2" onMouseDown={(e) => e.stopPropagation()}>
                       <TimeDropdown
                         value={priority.time}
@@ -3235,6 +3354,7 @@ const LifeArchitect = () => {
                           newP[idx].time = val;
                           setPriorities(newP);
                         }}
+                        t={t}
                       />
                       <button
                         onClick={() => {
@@ -3256,7 +3376,7 @@ const LifeArchitect = () => {
                     <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500/20 to-indigo-600/20 border border-purple-500/30 flex items-center justify-center">
                       <span className="text-purple-400 text-sm font-bold">{idx + 1}</span>
                     </div>
-                    <span className="text-slate-500">Tap to add a task...</span>
+                    <span className="text-slate-500">{t('plan.tapToAddTask')}</span>
                     <div className="flex-1"></div>
                     <div className="w-9 h-9 rounded-xl bg-white/10 text-slate-400 flex items-center justify-center">
                       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -3276,7 +3396,7 @@ const LifeArchitect = () => {
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
-              <span className="text-sm font-medium">Add Task #{priorities.length + 1}</span>
+              <span className="text-sm font-medium">{t('common.add')} {t('common.task')} #{priorities.length + 1}</span>
             </button>
           </div>
         </div>
@@ -3284,293 +3404,299 @@ const LifeArchitect = () => {
         {/* Summary Card - Glass */}
         <div className="glass-card rounded-3xl p-6 text-white">
           <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-purple-500/20 to-indigo-500/20 pointer-events-none"></div>
-          <h3 className="text-lg font-semibold mb-4 text-slate-200">Day Summary</h3>
+          <h3 className="text-lg font-semibold mb-4 text-slate-200">{t('plan.daySummary')}</h3>
           <div className="grid grid-cols-2 gap-6">
             <div>
-              <p className="text-slate-400 text-sm mb-1">Time Budget</p>
+              <p className="text-slate-400 text-sm mb-1">{t('plan.timeBudget')}</p>
               <p className="text-3xl font-bold text-gradient">{formatTotalTime(totalMinutes)}</p>
             </div>
             <div>
-              <p className="text-slate-400 text-sm mb-1">Energy Load</p>
+              <p className="text-slate-400 text-sm mb-1">{t('plan.energyLoad')}</p>
               <p className="text-3xl font-bold text-gradient">{energyLoad}</p>
             </div>
           </div>
         </div>
 
         {/* Drag Preview - Smooth floating */}
-        {isDragging && draggedItem && (
-          <div
-            className="fixed pointer-events-none z-50 transition-transform duration-75 ease-out"
-            style={{
-              left: dragPosition.x,
-              top: dragPosition.y,
-              transform: 'translate(-50%, -50%) rotate(3deg) scale(1.05)'
-            }}
-          >
+        {
+          isDragging && draggedItem && (
             <div
-              className="flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-2xl animate-popIn"
+              className="fixed pointer-events-none z-50 transition-transform duration-75 ease-out"
               style={{
-                background: 'linear-gradient(135deg, rgba(139,92,246,0.3) 0%, rgba(99,102,241,0.3) 100%)',
-                backdropFilter: 'blur(20px)',
-                border: '2px solid rgba(139,92,246,0.6)',
-                boxShadow: '0 20px 40px rgba(139,92,246,0.3), 0 0 30px rgba(139,92,246,0.2)'
+                left: dragPosition.x,
+                top: dragPosition.y,
+                transform: 'translate(-50%, -50%) rotate(3deg) scale(1.05)'
               }}
             >
-              <span className="text-2xl drop-shadow-lg">
-                {draggedItem.type === 'reminder'
-                  ? draggedItem.reminder?.icon
-                  : priorities[draggedItem.index]?.task?.icon}
-              </span>
-              <span className="text-white font-semibold text-sm max-w-40 truncate drop-shadow">
-                {draggedItem.type === 'reminder'
-                  ? draggedItem.reminder?.name
-                  : priorities[draggedItem.index]?.task?.name}
-              </span>
+              <div
+                className="flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-2xl animate-popIn"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(139,92,246,0.3) 0%, rgba(99,102,241,0.3) 100%)',
+                  backdropFilter: 'blur(20px)',
+                  border: '2px solid rgba(139,92,246,0.6)',
+                  boxShadow: '0 20px 40px rgba(139,92,246,0.3), 0 0 30px rgba(139,92,246,0.2)'
+                }}
+              >
+                <span className="text-2xl drop-shadow-lg">
+                  {draggedItem.type === 'reminder'
+                    ? draggedItem.reminder?.icon
+                    : priorities[draggedItem.index]?.task?.icon}
+                </span>
+                <span className="text-white font-semibold text-sm max-w-40 truncate drop-shadow">
+                  {draggedItem.type === 'reminder'
+                    ? draggedItem.reminder?.name
+                    : priorities[draggedItem.index]?.task?.name}
+                </span>
+              </div>
             </div>
-          </div>
-        )}
+          )
+        }
 
         {/* Edit Reminder Modal */}
-        {planEditingReminder && (
-          <div className="fixed inset-0 z-50 flex items-end justify-center animate-fadeIn">
-            <div
-              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-              onClick={() => setPlanEditingReminder(null)}
-            />
+        {
+          planEditingReminder && (
+            <div className="fixed inset-0 z-50 flex items-end justify-center animate-fadeIn">
+              <div
+                className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                onClick={() => setPlanEditingReminder(null)}
+              />
 
-            <div
-              className="relative w-full max-w-md mx-4 mb-4 rounded-3xl overflow-hidden animate-slideUp"
-              style={{
-                background: 'linear-gradient(180deg, rgba(30,30,40,0.95) 0%, rgba(20,20,30,0.98) 100%)',
-                backdropFilter: 'blur(40px)',
-                border: '1px solid rgba(255,255,255,0.1)',
-                boxShadow: '0 25px 50px rgba(0,0,0,0.5)'
-              }}
-            >
-              {/* Header */}
-              <div className="px-5 pt-5 pb-4 border-b border-white/10">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-semibold text-white">Edit Reminder</h2>
-                  <button
-                    onClick={() => setPlanEditingReminder(null)}
-                    className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-slate-400 hover:bg-white/20 transition-colors"
-                  >
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-
-              {/* Body */}
-              <div className="px-5 py-4 max-h-[60vh] overflow-y-auto">
-                {/* Title & Icon Header */}
-                <div className="mb-4">
-                  <label className="text-slate-400 text-sm mb-2 block">Reminder</label>
-                  <div className="flex gap-3">
+              <div
+                className="relative w-full max-w-md mx-4 mb-4 rounded-3xl overflow-hidden animate-slideUp"
+                style={{
+                  background: 'linear-gradient(180deg, rgba(30,30,40,0.95) 0%, rgba(20,20,30,0.98) 100%)',
+                  backdropFilter: 'blur(40px)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  boxShadow: '0 25px 50px rgba(0,0,0,0.5)'
+                }}
+              >
+                {/* Header */}
+                <div className="px-5 pt-5 pb-4 border-b border-white/10">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-lg font-semibold text-white">{t('modals.editReminder')}</h2>
                     <button
-                      onClick={() => setEditReminderShowIconPicker(!editReminderShowIconPicker)}
-                      className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-2xl hover:bg-white/10 transition-colors"
+                      onClick={() => setPlanEditingReminder(null)}
+                      className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-slate-400 hover:bg-white/20 transition-colors"
                     >
-                      {editReminderIcon}
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
                     </button>
-                    <input
-                      type="text"
-                      value={editReminderName}
-                      onChange={(e) => setEditReminderName(e.target.value)}
-                      placeholder="What do you need to remember?"
-                      className="flex-1 px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-500 outline-none focus:border-purple-500/50"
-                    />
+                  </div>
+                </div>
+
+                {/* Body */}
+                <div className="px-5 py-4 max-h-[60vh] overflow-y-auto">
+                  {/* Title & Icon Header */}
+                  <div className="mb-4">
+                    <label className="text-slate-400 text-sm mb-2 block">{t('common.reminder')}</label>
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => setEditReminderShowIconPicker(!editReminderShowIconPicker)}
+                        className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-2xl hover:bg-white/10 transition-colors"
+                      >
+                        {editReminderIcon}
+                      </button>
+                      <input
+                        type="text"
+                        value={editReminderName}
+                        onChange={(e) => setEditReminderName(e.target.value)}
+                        placeholder={t('placeholders.reminder')}
+                        className="flex-1 px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-500 outline-none focus:border-purple-500/50"
+                      />
+                    </div>
+
+                    {/* Icon Picker (Conditional) */}
+                    {editReminderShowIconPicker && (
+                      <div className="mt-4 p-4 rounded-xl bg-white/5 border border-white/5 animate-fadeIn">
+                        <div className="flex flex-wrap gap-2">
+                          {globalIconOptions.map(icon => (
+                            <button
+                              key={icon}
+                              onClick={() => {
+                                setEditReminderIcon(icon);
+                                setEditReminderShowIconPicker(false);
+                              }}
+                              className={`w-10 h-10 rounded-lg flex items-center justify-center text-xl transition-colors
+                              ${editReminderIcon === icon ? 'bg-purple-500/20 text-purple-400' : 'hover:bg-white/10'}`}
+                            >
+                              {icon}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
-                  {/* Icon Picker (Conditional) */}
-                  {editReminderShowIconPicker && (
-                    <div className="mt-4 p-4 rounded-xl bg-white/5 border border-white/5 animate-fadeIn">
-                      <div className="flex flex-wrap gap-2">
-                        {globalIconOptions.map(icon => (
-                          <button
-                            key={icon}
-                            onClick={() => {
-                              setEditReminderIcon(icon);
-                              setEditReminderShowIconPicker(false);
-                            }}
-                            className={`w-10 h-10 rounded-lg flex items-center justify-center text-xl transition-colors
-                              ${editReminderIcon === icon ? 'bg-purple-500/20 text-purple-400' : 'hover:bg-white/10'}`}
-                          >
-                            {icon}
-                          </button>
+                  {/* Details List (iOS Style) - Moved Up */}
+                  <TaskDetailsList
+                    date={editReminderDate}
+                    startTime={`${editReminderStartHour}:${editReminderStartMinute.toString().padStart(2, '0')}`}
+                    endTime={`${editReminderEndHour}:${editReminderEndMinute.toString().padStart(2, '0')}`}
+                    alerts={editReminderAlerts}
+                    onDateClick={() => {
+                      setEditReminderShowDate(!editReminderShowDate);
+                      setEditReminderShowTime(false);
+                      setEditReminderShowAlerts(false);
+                      setEditReminderShowRepeat(false);
+                    }}
+                    onTimeClick={() => {
+                      setEditReminderShowTime(!editReminderShowTime);
+                      setEditReminderShowAlerts(false);
+                      setEditReminderShowDate(false);
+                      setEditReminderShowRepeat(false);
+                    }}
+                    onAlertsClick={() => {
+                      setEditReminderShowAlerts(!editReminderShowAlerts);
+                      setEditReminderShowTime(false);
+                      setEditReminderShowDate(false);
+                      setEditReminderShowRepeat(false);
+                    }}
+                    onRepeatClick={() => {
+                      setEditReminderShowRepeat(!editReminderShowRepeat);
+                      setEditReminderShowAlerts(false);
+                      setEditReminderShowTime(false);
+                      setEditReminderShowDate(false);
+                    }}
+                    themeColor="purple"
+                    showDatePicker={editReminderShowDate}
+                    onDateChange={(date) => {
+                      setEditReminderDate(date);
+                      setEditReminderShowDate(false);
+                    }}
+                    showTimePicker={editReminderShowTime}
+                    onStartTimeChange={({ hour, minute }) => {
+                      setEditReminderStartHour(hour);
+                      setEditReminderStartMinute(minute);
+                    }}
+                    onEndTimeChange={({ hour, minute }) => {
+                      setEditReminderEndHour(hour);
+                      setEditReminderEndMinute(minute);
+                    }}
+                    repeat={editReminderRepeat}
+                    showRepeatPicker={editReminderShowRepeat}
+                    onRepeatChange={(repeat) => setEditReminderRepeat(repeat)}
+                    t={t}
+                    locale={currentLocale}
+                  />
+
+
+                  {/* Alerts Picker (Collapsible) */}
+                  {editReminderShowAlerts && (
+                    <div className="mb-6 p-4 rounded-2xl bg-white/5 border border-white/5 animate-fadeIn">
+                      <label className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-3 block">Manage Alerts</label>
+                      <div className="space-y-2">
+                        {editReminderAlerts.map((alert, index) => (
+                          <div key={index} className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5">
+                            <span className="text-sm text-slate-200">{alert.label}</span>
+                            <button
+                              onClick={() => setEditReminderAlerts(editReminderAlerts.filter((_, i) => i !== index))}
+                              className="text-rose-400 hover:text-rose-300 p-1"
+                            >
+                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
+                          </div>
                         ))}
+                        <div className="pt-2 grid grid-cols-3 gap-2">
+                          {globalAlertOptions.map(opt => (
+                            <button
+                              key={opt.label}
+                              onClick={() => {
+                                if (!editReminderAlerts.some(a => a.value === opt.value)) {
+                                  setEditReminderAlerts([...editReminderAlerts, opt]);
+                                }
+                              }}
+                              className="p-2 rounded-lg bg-indigo-500/10 text-indigo-300 text-[10px] font-medium border border-indigo-500/20 hover:bg-indigo-500/20 transition-all text-left"
+                            >
+                              + {opt.label}
+                            </button>
+                          ))}
+                        </div>
                       </div>
                     </div>
                   )}
-                </div>
 
-                {/* Details List (iOS Style) - Moved Up */}
-                <TaskDetailsList
-                  date={editReminderDate}
-                  startTime={`${editReminderStartHour}:${editReminderStartMinute.toString().padStart(2, '0')}`}
-                  endTime={`${editReminderEndHour}:${editReminderEndMinute.toString().padStart(2, '0')}`}
-                  alerts={editReminderAlerts}
-                  onDateClick={() => {
-                    setEditReminderShowDate(!editReminderShowDate);
-                    setEditReminderShowTime(false);
-                    setEditReminderShowAlerts(false);
-                    setEditReminderShowRepeat(false);
-                  }}
-                  onTimeClick={() => {
-                    setEditReminderShowTime(!editReminderShowTime);
-                    setEditReminderShowAlerts(false);
-                    setEditReminderShowDate(false);
-                    setEditReminderShowRepeat(false);
-                  }}
-                  onAlertsClick={() => {
-                    setEditReminderShowAlerts(!editReminderShowAlerts);
-                    setEditReminderShowTime(false);
-                    setEditReminderShowDate(false);
-                    setEditReminderShowRepeat(false);
-                  }}
-                  onRepeatClick={() => {
-                    setEditReminderShowRepeat(!editReminderShowRepeat);
-                    setEditReminderShowAlerts(false);
-                    setEditReminderShowTime(false);
-                    setEditReminderShowDate(false);
-                  }}
-                  themeColor="purple"
-                  showDatePicker={editReminderShowDate}
-                  onDateChange={(date) => {
-                    setEditReminderDate(date);
-                    setEditReminderShowDate(false);
-                  }}
-                  showTimePicker={editReminderShowTime}
-                  onStartTimeChange={({ hour, minute }) => {
-                    setEditReminderStartHour(hour);
-                    setEditReminderStartMinute(minute);
-                  }}
-                  onEndTimeChange={({ hour, minute }) => {
-                    setEditReminderEndHour(hour);
-                    setEditReminderEndMinute(minute);
-                  }}
-                  repeat={editReminderRepeat}
-                  showRepeatPicker={editReminderShowRepeat}
-                  onRepeatChange={(repeat) => setEditReminderRepeat(repeat)}
-                />
+                  {/* Value (Impact) */}
+                  <div className="mb-4">
+                    <label className="text-slate-400 text-sm mb-2 block">Impact Value: {editReminderValue || 5}/10</label>
+                    <input
+                      type="range"
+                      min="1"
+                      max="10"
+                      value={editReminderValue || 5}
+                      onChange={(e) => setEditReminderValue(parseInt(e.target.value))}
+                      className="w-full accent-purple-500"
+                    />
+                  </div>
 
-
-                {/* Alerts Picker (Collapsible) */}
-                {editReminderShowAlerts && (
-                  <div className="mb-6 p-4 rounded-2xl bg-white/5 border border-white/5 animate-fadeIn">
-                    <label className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-3 block">Manage Alerts</label>
-                    <div className="space-y-2">
-                      {editReminderAlerts.map((alert, index) => (
-                        <div key={index} className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5">
-                          <span className="text-sm text-slate-200">{alert.label}</span>
-                          <button
-                            onClick={() => setEditReminderAlerts(editReminderAlerts.filter((_, i) => i !== index))}
-                            className="text-rose-400 hover:text-rose-300 p-1"
-                          >
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                          </button>
-                        </div>
+                  {/* Energy */}
+                  <div className="mb-6">
+                    <label className="text-slate-400 text-sm mb-2 block">Energy Required</label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {['low', 'medium', 'high'].map(level => (
+                        <button
+                          key={level}
+                          onClick={() => setEditReminderEnergy(level)}
+                          className={`py-2.5 px-3 rounded-xl text-sm font-medium capitalize transition-all ${editReminderEnergy === level
+                            ? level === 'high' ? 'bg-rose-500/30 text-rose-300 ring-2 ring-rose-500/50' :
+                              level === 'medium' ? 'bg-amber-500/30 text-amber-300 ring-2 ring-amber-500/50' :
+                                'bg-emerald-500/30 text-emerald-300 ring-2 ring-emerald-500/50'
+                            : 'bg-white/5 text-slate-400'
+                            }`}
+                        >
+                          {level}
+                        </button>
                       ))}
-                      <div className="pt-2 grid grid-cols-3 gap-2">
-                        {globalAlertOptions.map(opt => (
-                          <button
-                            key={opt.label}
-                            onClick={() => {
-                              if (!editReminderAlerts.some(a => a.value === opt.value)) {
-                                setEditReminderAlerts([...editReminderAlerts, opt]);
-                              }
-                            }}
-                            className="p-2 rounded-lg bg-indigo-500/10 text-indigo-300 text-[10px] font-medium border border-indigo-500/20 hover:bg-indigo-500/20 transition-all text-left"
-                          >
-                            + {opt.label}
-                          </button>
-                        ))}
-                      </div>
                     </div>
                   </div>
-                )}
 
-                {/* Value (Impact) */}
-                <div className="mb-4">
-                  <label className="text-slate-400 text-sm mb-2 block">Impact Value: {editReminderValue || 5}/10</label>
-                  <input
-                    type="range"
-                    min="1"
-                    max="10"
-                    value={editReminderValue || 5}
-                    onChange={(e) => setEditReminderValue(parseInt(e.target.value))}
-                    className="w-full accent-purple-500"
-                  />
+                  {/* Notes */}
+                  <div className="mb-4">
+                    <label className="text-slate-400 text-sm mb-2 block">{t('common.notes')}</label>
+                    <textarea
+                      value={editReminderNotes}
+                      onChange={(e) => setEditReminderNotes(e.target.value)}
+                      placeholder="Additional details..."
+                      rows={2}
+                      className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-500 outline-none focus:border-purple-500/50 resize-none"
+                    />
+                  </div>
+
                 </div>
-
-                {/* Energy */}
-                <div className="mb-6">
-                  <label className="text-slate-400 text-sm mb-2 block">Energy Required</label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {['low', 'medium', 'high'].map(level => (
-                      <button
-                        key={level}
-                        onClick={() => setEditReminderEnergy(level)}
-                        className={`py-2.5 px-3 rounded-xl text-sm font-medium capitalize transition-all ${editReminderEnergy === level
-                          ? level === 'high' ? 'bg-rose-500/30 text-rose-300 ring-2 ring-rose-500/50' :
-                            level === 'medium' ? 'bg-amber-500/30 text-amber-300 ring-2 ring-amber-500/50' :
-                              'bg-emerald-500/30 text-emerald-300 ring-2 ring-emerald-500/50'
-                          : 'bg-white/5 text-slate-400'
-                          }`}
-                      >
-                        {level}
-                      </button>
-                    ))}
+                <div className="px-5 py-4 border-t border-white/10">
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => deleteReminder(planEditingReminder.id)}
+                      className="px-4 py-3 rounded-xl font-medium text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 transition-all"
+                    >
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={() => setPlanEditingReminder(null)}
+                      className="flex-1 py-3 rounded-xl font-medium text-slate-400 bg-white/10 hover:bg-white/20 transition-all"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={saveReminderEdit}
+                      disabled={!editReminderName.trim()}
+                      className={`flex-1 py-3 rounded-xl font-semibold transition-all duration-200
+                      ${editReminderName.trim()
+                          ? 'bg-gradient-to-r from-purple-500 to-indigo-500 text-white shadow-lg shadow-purple-500/30'
+                          : 'bg-white/5 text-slate-600 cursor-not-allowed'}`}
+                    >
+                      Save Changes
+                    </button>
                   </div>
                 </div>
-
-                {/* Notes */}
-                <div className="mb-4">
-                  <label className="text-slate-400 text-sm mb-2 block">Notes</label>
-                  <textarea
-                    value={editReminderNotes}
-                    onChange={(e) => setEditReminderNotes(e.target.value)}
-                    placeholder="Additional details..."
-                    rows={2}
-                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-500 outline-none focus:border-purple-500/50 resize-none"
-                  />
-                </div>
-
-              </div>
-              <div className="px-5 py-4 border-t border-white/10">
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => deleteReminder(planEditingReminder.id)}
-                    className="px-4 py-3 rounded-xl font-medium text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 transition-all"
-                  >
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                  </button>
-                  <button
-                    onClick={() => setPlanEditingReminder(null)}
-                    className="flex-1 py-3 rounded-xl font-medium text-slate-400 bg-white/10 hover:bg-white/20 transition-all"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={saveReminderEdit}
-                    disabled={!editReminderName.trim()}
-                    className={`flex-1 py-3 rounded-xl font-semibold transition-all duration-200
-                      ${editReminderName.trim()
-                        ? 'bg-gradient-to-r from-purple-500 to-indigo-500 text-white shadow-lg shadow-purple-500/30'
-                        : 'bg-white/5 text-slate-600 cursor-not-allowed'}`}
-                  >
-                    Save Changes
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div >
-        )}
+              </div >
+            </div >
+          )
+        }
 
         {/* Project Task Edit Modal */}
         {
@@ -3589,7 +3715,7 @@ const LifeArchitect = () => {
                 <div className="px-5 pt-5 pb-4 border-b border-white/10">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h2 className="text-lg font-semibold text-white">Edit Task</h2>
+                      <h2 className="text-lg font-semibold text-white">{t('modals.editTask')}</h2>
                       <p className="text-cyan-400 text-xs mt-0.5">{planEditingTaskProject?.title}</p>
                     </div>
                     <button
@@ -3606,7 +3732,7 @@ const LifeArchitect = () => {
                 <div className="p-5 space-y-4">
                   {/* Title & Icon Header */}
                   <div className="mb-4">
-                    <label className="text-slate-400 text-sm mb-2 block">Task</label>
+                    <label className="text-slate-400 text-sm mb-2 block">{t('common.task')}</label>
                     <div className="flex gap-3">
                       <button
                         onClick={() => setPlanEditShowIconPicker(!planEditShowIconPicker)}
@@ -3618,7 +3744,7 @@ const LifeArchitect = () => {
                         type="text"
                         value={planTaskData.title}
                         onChange={(e) => setPlanTaskData(prev => ({ ...prev, title: e.target.value }))}
-                        placeholder="Task name"
+                        placeholder={t('placeholders.taskName')}
                         className="flex-1 px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-500 outline-none focus:border-cyan-500/50"
                       />
                     </div>
@@ -3693,6 +3819,8 @@ const LifeArchitect = () => {
                     repeat={planTaskData.repeat}
                     showRepeatPicker={planEditShowRepeat}
                     onRepeatChange={(repeat) => setPlanTaskData(prev => ({ ...prev, repeat }))}
+                    t={t}
+                    locale={currentLocale}
                   />
 
 
@@ -3769,7 +3897,7 @@ const LifeArchitect = () => {
 
                   {/* Notes */}
                   <div>
-                    <label className="text-slate-400 text-sm mb-2 block">Notes</label>
+                    <label className="text-slate-400 text-sm mb-2 block">{t('common.notes')}</label>
                     <textarea
                       value={planTaskData.notes}
                       onChange={(e) => setPlanTaskData(prev => ({ ...prev, notes: e.target.value }))}
@@ -4057,12 +4185,25 @@ const LifeArchitect = () => {
     };
 
     // Start focus mode
+    // Start focus mode
     const startFocusMode = (task) => {
       // Calculate task duration in seconds, default to 25 minutes if no time set
       let durationSeconds = 25 * 60;
-      if (task.startTime && task.endTime) {
+
+      // Handle HH:MM strings
+      if (typeof task.startTime === 'string' && typeof task.endTime === 'string' &&
+        task.startTime.includes(':') && task.endTime.includes(':')) {
+        const [startH, startM] = task.startTime.split(':').map(Number);
+        const [endH, endM] = task.endTime.split(':').map(Number);
+        const totalMinutes = (endH * 60 + endM) - (startH * 60 + startM);
+        if (totalMinutes > 0) {
+          durationSeconds = totalMinutes * 60;
+        }
+      }
+      // Handle Date objects
+      else if (task.startTime instanceof Date && task.endTime instanceof Date) {
         const durationMs = task.endTime - task.startTime;
-        durationSeconds = Math.max(60, Math.floor(durationMs / 1000)); // Minimum 1 minute
+        durationSeconds = Math.max(60, Math.floor(durationMs / 1000));
       }
 
       setFocusTask(task);
@@ -4076,8 +4217,19 @@ const LifeArchitect = () => {
     };
 
     // Get initial focus duration for reset
+    // Get initial focus duration for reset
     const getTaskFocusDuration = (task) => {
-      if (task?.startTime && task?.endTime) {
+      if (typeof task?.startTime === 'string' && typeof task?.endTime === 'string' &&
+        task.startTime.includes(':') && task.endTime.includes(':')) {
+        const [startH, startM] = task.startTime.split(':').map(Number);
+        const [endH, endM] = task.endTime.split(':').map(Number);
+        const totalMinutes = (endH * 60 + endM) - (startH * 60 + startM);
+        if (totalMinutes > 0) {
+          return totalMinutes * 60;
+        }
+      }
+
+      if (task?.startTime instanceof Date && task?.endTime instanceof Date) {
         const durationMs = task.endTime - task.startTime;
         return Math.max(60, Math.floor(durationMs / 1000));
       }
@@ -4112,12 +4264,12 @@ const LifeArchitect = () => {
     ];
 
     const reminderOptions = [
-      { value: null, label: 'No reminder' },
-      { value: 5, label: '5 min before' },
-      { value: 10, label: '10 min before' },
-      { value: 15, label: '15 min before' },
-      { value: 30, label: '30 min before' },
-      { value: 60, label: '1 hour before' }
+      { value: null, label: t('common.none') },
+      { value: 5, label: `5 ${t('units.m')} ${t('common.before')}` },
+      { value: 10, label: `10 ${t('units.m')} ${t('common.before')}` },
+      { value: 15, label: `15 ${t('units.m')} ${t('common.before')}` },
+      { value: 30, label: `30 ${t('units.m')} ${t('common.before')}` },
+      { value: 60, label: `1 ${t('units.h')} ${t('common.before')}` }
     ];
 
     // Create new task from modal
@@ -4391,7 +4543,7 @@ const LifeArchitect = () => {
         }));
 
         days.push({
-          dayName: date.toLocaleDateString('en-US', { weekday: 'short' }),
+          dayName: date.toLocaleDateString(currentLocale, { weekday: 'short' }),
           dayNum: date.getDate(),
           isToday: date.getTime() === todayDate.getTime(),
           isSelected: date.getTime() === selectedDate.getTime(),
@@ -4413,9 +4565,9 @@ const LifeArchitect = () => {
       const lastDay = weekDays[6].date;
 
       if (firstDay.getMonth() === lastDay.getMonth()) {
-        return firstDay.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+        return firstDay.toLocaleDateString(currentLocale, { month: 'long', year: 'numeric' });
       } else {
-        return `${firstDay.toLocaleDateString('en-US', { month: 'short' })} - ${lastDay.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}`;
+        return `${firstDay.toLocaleDateString(currentLocale, { month: 'short' })} - ${lastDay.toLocaleDateString(currentLocale, { month: 'short', year: 'numeric' })}`;
       }
     };
 
@@ -4714,12 +4866,12 @@ const LifeArchitect = () => {
         {/* Header - Centered Apple Style */}
         <div className="mb-6 text-center">
           <p className="text-amber-400/80 text-xs font-medium uppercase tracking-widest mb-2">
-            {selectedExecuteDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}
+            {selectedExecuteDate.toLocaleDateString(currentLocale, { month: 'long', day: 'numeric' })}
           </p>
           <h1 className="text-3xl font-semibold text-white tracking-tight">
             {selectedExecuteDate.toDateString() === today.toDateString()
-              ? 'Today'
-              : selectedExecuteDate.toLocaleDateString('en-US', { weekday: 'long' })}
+              ? t('plan.today')
+              : selectedExecuteDate.toLocaleDateString(currentLocale, { weekday: 'long' })}
           </h1>
         </div>
 
@@ -4778,7 +4930,7 @@ const LifeArchitect = () => {
                 </svg>
               </button>
               <span className="text-white font-medium">
-                {weekDays.length > 0 && weekDays[3].date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                {weekDays.length > 0 && weekDays[3].date.toLocaleDateString(currentLocale, { month: 'long', year: 'numeric' })}
               </span>
               <button
                 onClick={() => changeMonth(1)}
@@ -4792,11 +4944,18 @@ const LifeArchitect = () => {
 
             {/* Day Headers */}
             <div className="grid grid-cols-7 gap-1 mb-2">
-              {['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'].map(day => (
-                <div key={day} className="text-center text-xs text-slate-500 font-medium py-1">
-                  {day}
-                </div>
-              ))}
+              {(() => {
+                const baseDate = new Date(2024, 0, 1); // A Monday
+                return Array.from({ length: 7 }).map((_, i) => {
+                  const d = new Date(baseDate);
+                  d.setDate(baseDate.getDate() + i);
+                  return (
+                    <div key={i} className="text-center text-xs text-slate-500 font-medium py-1">
+                      {d.toLocaleDateString(currentLocale, { weekday: 'short' })}
+                    </div>
+                  );
+                });
+              })()}
             </div>
 
             {/* Calendar Grid */}
@@ -4887,7 +5046,7 @@ const LifeArchitect = () => {
         {draggingTask && (
           <div className="mb-3 text-center">
             <span className="text-amber-400/80 text-xs font-medium px-3 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/20">
-              ↑ Drop on a day to move task
+              {t('plan.dropToMoveTask')}
             </span>
           </div>
         )}
@@ -4916,7 +5075,7 @@ const LifeArchitect = () => {
                     <span className="text-slate-500 text-xs">{routine.time}</span>
                   </div>
                   <span className={`text-xs ${allDone ? 'text-emerald-400' : 'text-slate-400'}`}>
-                    {completedCount}/{totalCount} done
+                    {completedCount}/{totalCount} {t('plan.completed').toLowerCase()}
                   </span>
                 </div>
                 {/* Progress Ring */}
@@ -5002,7 +5161,7 @@ const LifeArchitect = () => {
                           }}
                           className="px-3 py-2 bg-purple-500/20 text-purple-400 rounded-xl text-sm font-medium hover:bg-purple-500/30 transition-all"
                         >
-                          Add
+                          {t('common.add')}
                         </button>
                       </div>
                     )}
@@ -5014,14 +5173,14 @@ const LifeArchitect = () => {
                           onClick={() => completeAllHabits(selectedExecuteDate, 'morning')}
                           className="flex-1 py-2 rounded-xl text-sm font-medium text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 transition-all"
                         >
-                          Complete All
+                          {t('execute.completeAll')}
                         </button>
                       )}
                       <button
                         onClick={() => setExecuteEditingRoutine(isEditing ? null : 'morning')}
                         className="px-4 py-2 rounded-xl text-sm font-medium text-slate-400 bg-white/5 hover:bg-white/10 transition-all"
                       >
-                        {isEditing ? 'Done' : 'Edit'}
+                        {isEditing ? t('settings.done') : t('common.edit')}
                       </button>
                     </div>
                   </div>
@@ -5106,8 +5265,8 @@ const LifeArchitect = () => {
               <div className="absolute inset-0 flex items-center justify-center" style={{ height: `${timeSlots.length * 32}px` }}>
                 <div className="text-center text-slate-400 py-8">
                   <div className="text-4xl mb-2">📋</div>
-                  <p className="text-sm font-medium">No tasks scheduled</p>
-                  <p className="text-xs text-slate-500">Add tasks in Plan</p>
+                  <p className="text-sm font-medium">{t('execute.noTasks')}</p>
+                  <p className="text-xs text-slate-500">{t('execute.addTasksInPlan')}</p>
                 </div>
               </div>
             ) : (
@@ -5196,7 +5355,7 @@ const LifeArchitect = () => {
               <div className="h-12 bg-gradient-to-b from-indigo-500/10 to-indigo-600/5 rounded-b-xl flex items-center justify-center border-t border-indigo-400/20">
                 <div className="flex items-center gap-2">
                   <span className="text-sm">🌙</span>
-                  <span className="text-indigo-300/80 text-xs font-medium">Sleep</span>
+                  <span className="text-indigo-300/80 text-xs font-medium">{t('execute.sleep')}</span>
                 </div>
               </div>
             </div>
@@ -5301,7 +5460,7 @@ const LifeArchitect = () => {
                           type="text"
                           value={newHabitText}
                           onChange={(e) => setNewHabitText(e.target.value)}
-                          placeholder="Add new habit..."
+                          placeholder={t('execute.addHabitPlaceholder')}
                           className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-white text-sm placeholder:text-slate-500 outline-none focus:border-indigo-500/50"
                         />
                         <button
@@ -5313,7 +5472,7 @@ const LifeArchitect = () => {
                           }}
                           className="px-3 py-2 bg-indigo-500/20 text-indigo-400 rounded-xl text-sm font-medium hover:bg-indigo-500/30 transition-all"
                         >
-                          Add
+                          {t('common.add')}
                         </button>
                       </div>
                     )}
@@ -5325,14 +5484,14 @@ const LifeArchitect = () => {
                           onClick={() => completeAllHabits(selectedExecuteDate, 'evening')}
                           className="flex-1 py-2 rounded-xl text-sm font-medium text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 transition-all"
                         >
-                          Complete All
+                          {t('execute.completeAll')}
                         </button>
                       )}
                       <button
                         onClick={() => setExecuteEditingRoutine(isEditing ? null : 'evening')}
                         className="px-4 py-2 rounded-xl text-sm font-medium text-slate-400 bg-white/5 hover:bg-white/10 transition-all"
                       >
-                        {isEditing ? 'Done' : 'Edit'}
+                        {isEditing ? t('settings.done') : t('common.edit')}
                       </button>
                     </div>
                   </div>
@@ -5348,19 +5507,19 @@ const LifeArchitect = () => {
             <div className="text-center flex-1">
               <div className="text-xl mb-1">⏳</div>
               <p className="text-amber-400 font-bold text-lg">{formatDuration(intentionalMinutes)}</p>
-              <p className="text-slate-500 text-[10px]">Anchored</p>
+              <p className="text-slate-500 text-[10px]">{t('execute.anchored')}</p>
             </div>
             <div className="w-px h-12 bg-white/10"></div>
             <div className="text-center flex-1">
               <div className="text-xl mb-1">💨</div>
               <p className="text-slate-400 font-bold text-lg">{formatDuration(unanchoredMinutes)}</p>
-              <p className="text-slate-500 text-[10px]">Flowing</p>
+              <p className="text-slate-500 text-[10px]">{t('execute.flowing')}</p>
             </div>
             <div className="w-px h-12 bg-white/10"></div>
             <div className="text-center flex-1">
               <div className="text-xl mb-1">🌙</div>
               <p className="text-indigo-400 font-bold text-lg">8h</p>
-              <p className="text-slate-500 text-[10px]">Recovery</p>
+              <p className="text-slate-500 text-[10px]">{t('execute.recovery')}</p>
             </div>
           </div>
 
@@ -5368,12 +5527,12 @@ const LifeArchitect = () => {
           <div className="mt-3 pt-3 border-t border-white/10 text-center">
             <p className="text-slate-500 text-xs italic">
               {dayProgress < 30
-                ? "☀️ Fresh morning sand — anchor it wisely"
+                ? t('execute.morningMessage')
                 : dayProgress < 60
-                  ? "🌤️ Sand flows steadily — stay present"
+                  ? t('execute.middayMessage')
                   : dayProgress < 85
-                    ? "🌅 Afternoon grains — protect what remains"
-                    : "🌙 Evening approaches — honor your day"}
+                    ? t('execute.afternoonMessage')
+                    : t('execute.eveningMessage')}
             </p>
           </div>
         </div>
@@ -5415,14 +5574,14 @@ const LifeArchitect = () => {
               <div className="flex items-center justify-center gap-8 mb-4">
                 <div className="text-center">
                   <p className="text-3xl font-bold text-white font-mono">{formatElapsed(elapsedTime)}</p>
-                  <p className="text-xs text-slate-400 mt-1">Elapsed</p>
+                  <p className="text-xs text-slate-400 mt-1">{t('execute.elapsed')}</p>
                 </div>
                 <div className="w-px h-10 bg-white/20"></div>
                 <div className="text-center">
                   <p className="text-3xl font-bold text-white font-mono">
                     {formatElapsed(Math.max(0, parseTime(activeTask.duration) * 60 - elapsedTime))}
                   </p>
-                  <p className="text-xs text-slate-400 mt-1">Remaining</p>
+                  <p className="text-xs text-slate-400 mt-1">{t('execute.remaining')}</p>
                 </div>
               </div>
 
@@ -5439,14 +5598,14 @@ const LifeArchitect = () => {
                       <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                         <path d="M8 5v14l11-7z" />
                       </svg>
-                      Resume
+                      {t('execute.resumeTimer')}
                     </>
                   ) : (
                     <>
                       <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                         <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
                       </svg>
-                      Pause
+                      {t('execute.pauseTimer')}
                     </>
                   )}
                 </button>
@@ -5457,7 +5616,7 @@ const LifeArchitect = () => {
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                   </svg>
-                  Complete
+                  {t('execute.completeTask')}
                 </button>
               </div>
             </div>
@@ -5480,7 +5639,7 @@ const LifeArchitect = () => {
               <div className="flex items-center gap-4">
                 {/* Start time */}
                 <div className="text-center">
-                  <p className="text-white/60 text-[10px] uppercase tracking-wider mb-1">From</p>
+                  <p className="text-white/60 text-[10px] uppercase tracking-wider mb-1">{t('common.from')}</p>
                   <p className="text-4xl font-light text-white tracking-tight" style={{ fontVariantNumeric: 'tabular-nums' }}>
                     {getDragPreviewTimeRange().start}
                   </p>
@@ -5495,7 +5654,7 @@ const LifeArchitect = () => {
 
                 {/* End time */}
                 <div className="text-center">
-                  <p className="text-white/60 text-[10px] uppercase tracking-wider mb-1">To</p>
+                  <p className="text-white/60 text-[10px] uppercase tracking-wider mb-1">{t('common.to')}</p>
                   <p className="text-4xl font-light text-white tracking-tight" style={{ fontVariantNumeric: 'tabular-nums' }}>
                     {getDragPreviewTimeRange().end}
                   </p>
@@ -5506,7 +5665,7 @@ const LifeArchitect = () => {
               {dragOverDay && (
                 <div className="mt-4 pt-3 border-t border-amber-400/30 text-center animate-fadeIn">
                   <p className="text-amber-400 text-sm font-medium">
-                    📅 Move to {dragOverDay.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                    📅 {t('common.moveTo')} {dragOverDay.toLocaleDateString(currentLocale, { weekday: 'short', month: 'short', day: 'numeric' })}
                   </p>
                 </div>
               )}
@@ -5540,7 +5699,7 @@ const LifeArchitect = () => {
               {/* Header */}
               <div className="px-5 pt-5 pb-4 border-b border-white/10">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-semibold text-white">Edit Task</h2>
+                  <h2 className="text-lg font-semibold text-white">{t('modals.editTask')}</h2>
                   <button
                     onClick={() => setExecuteEditingTask(null)}
                     className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-slate-400 hover:bg-white/20 transition-colors"
@@ -5556,7 +5715,7 @@ const LifeArchitect = () => {
               <div className="px-5 py-4 max-h-[60vh] overflow-y-auto">
                 {/* Title & Icon Header */}
                 <div className="mb-4">
-                  <label className="text-slate-400 text-sm mb-2 block">Task</label>
+                  <label className="text-slate-400 text-sm mb-2 block">{t('common.task')}</label>
                   <div className="flex gap-3">
                     <button
                       onClick={() => setEditTaskShowIconPicker(!editTaskShowIconPicker)}
@@ -5568,7 +5727,7 @@ const LifeArchitect = () => {
                       type="text"
                       value={editTaskName}
                       onChange={(e) => setEditTaskName(e.target.value)}
-                      placeholder="What do you need to do?"
+                      placeholder={t('placeholders.reminder')}
                       className="flex-1 px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-500 outline-none focus:border-amber-500/50"
                     />
                   </div>
@@ -5643,6 +5802,8 @@ const LifeArchitect = () => {
                   repeat={editTaskRepeat}
                   showRepeatPicker={editTaskShowRepeat}
                   onRepeatChange={(repeat) => setEditTaskRepeat(repeat)}
+                  t={t}
+                  locale={currentLocale}
                 />
 
 
@@ -5685,7 +5846,7 @@ const LifeArchitect = () => {
 
                 {/* Value (Impact) */}
                 <div className="mb-4">
-                  <label className="text-slate-400 text-sm mb-2 block">Impact Value: {editTaskValue}/10</label>
+                  <label className="text-slate-400 text-sm mb-2 block">{t('common.impactValue')}: {editTaskValue}/10</label>
                   <input
                     type="range"
                     min="1"
@@ -5698,7 +5859,7 @@ const LifeArchitect = () => {
 
                 {/* Energy */}
                 <div className="mb-6">
-                  <label className="text-slate-400 text-sm mb-2 block">Energy Required</label>
+                  <label className="text-slate-400 text-sm mb-2 block">{t('common.energyRequired')}</label>
                   <div className="grid grid-cols-3 gap-2">
                     {['low', 'medium', 'high'].map(level => (
                       <button
@@ -5719,7 +5880,7 @@ const LifeArchitect = () => {
 
                 {/* Notes */}
                 <div className="mb-4">
-                  <label className="text-slate-400 text-sm mb-2 block">Notes</label>
+                  <label className="text-slate-400 text-sm mb-2 block">{t('common.notes')}</label>
                   <textarea
                     value={editTaskNotes}
                     onChange={(e) => setEditTaskNotes(e.target.value)}
@@ -5738,7 +5899,7 @@ const LifeArchitect = () => {
                       bg-gradient-to-r from-purple-500/30 to-indigo-500/30 text-purple-300 border border-purple-500/30 hover:from-purple-500/50 hover:to-indigo-500/50"
                   >
                     <span className="text-lg">🎯</span>
-                    <span>Start Focus Mode (Pomodoro)</span>
+                    <span>{t('execute.startFocusMode')}</span>
                   </button>
                 )}
               </div>
@@ -5808,7 +5969,7 @@ const LifeArchitect = () => {
               <span className="text-5xl mb-4 block">{focusTask.icon}</span>
               <h2 className="text-xl font-semibold text-white mb-2">{focusTask.title}</h2>
               <p className={`text-sm font-medium ${isBreak ? 'text-emerald-400' : 'text-purple-400'}`}>
-                {isBreak ? '☕ Break Time' : `🎯 Focus Session ${pomodoroSession}`}
+                {isBreak ? t('execute.breakTime') : `${t('execute.focusSession')} ${pomodoroSession}`}
               </p>
             </div>
 
@@ -5875,7 +6036,7 @@ const LifeArchitect = () => {
                   {formatPomodoroTime(pomodoroTime)}
                 </span>
                 <span className="text-white/40 text-sm mt-2">
-                  {isBreak ? 'until focus' : 'remaining'}
+                  {isBreak ? t('execute.untilFocus') : t('execute.remaining')}
                 </span>
               </div>
             </div>
@@ -6149,7 +6310,7 @@ const LifeArchitect = () => {
         }));
 
         days.push({
-          dayName: date.toLocaleDateString('en-US', { weekday: 'short' }),
+          dayName: date.toLocaleDateString(currentLocale, { weekday: 'short' }),
           dayNum: date.getDate(),
           isToday: date.getTime() === todayDate.getTime(),
           isSelected: date.getTime() === selectedDate.getTime(),
@@ -6230,9 +6391,9 @@ const LifeArchitect = () => {
       const lastDay = weekDays[6].date;
 
       if (firstDay.getMonth() === lastDay.getMonth()) {
-        return firstDay.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+        return firstDay.toLocaleDateString(currentLocale, { month: 'long', year: 'numeric' });
       } else {
-        return `${firstDay.toLocaleDateString('en-US', { month: 'short' })} - ${lastDay.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}`;
+        return `${firstDay.toLocaleDateString(currentLocale, { month: 'short' })} - ${lastDay.toLocaleDateString(currentLocale, { month: 'short', year: 'numeric' })}`;
       }
     };
 
@@ -6298,10 +6459,10 @@ const LifeArchitect = () => {
         {/* Header - Centered Apple Style */}
         <div className="mb-6 text-center">
           <p className="text-indigo-400/80 text-xs font-medium uppercase tracking-widest mb-2">
-            {selectedReflectDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}
+            {selectedReflectDate.toLocaleDateString(currentLocale, { month: 'long', day: 'numeric' })}
           </p>
           <h1 className="text-3xl font-semibold text-white tracking-tight">
-            {isViewingToday ? 'Reflect' : selectedReflectDate.toLocaleDateString('en-US', { weekday: 'long' })}
+            {isViewingToday ? t('reflect.title') : selectedReflectDate.toLocaleDateString(currentLocale, { weekday: 'long' })}
           </h1>
         </div>
 
@@ -6332,7 +6493,7 @@ const LifeArchitect = () => {
                 onClick={goToToday}
                 className="px-2 py-1 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 text-xs font-medium transition-all mr-1"
               >
-                Today
+                {t('plan.today')}
               </button>
             )}
             <button
@@ -6360,7 +6521,7 @@ const LifeArchitect = () => {
                 </svg>
               </button>
               <span className="text-white font-medium">
-                {weekDays.length > 0 && weekDays[3].date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                {weekDays.length > 0 && weekDays[3].date.toLocaleDateString(currentLocale, { month: 'long', year: 'numeric' })}
               </span>
               <button
                 onClick={() => changeMonth(1)}
@@ -6374,11 +6535,18 @@ const LifeArchitect = () => {
 
             {/* Day Headers */}
             <div className="grid grid-cols-7 gap-1 mb-2">
-              {['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'].map(day => (
-                <div key={day} className="text-center text-xs text-slate-500 font-medium py-1">
-                  {day}
-                </div>
-              ))}
+              {(() => {
+                const baseDate = new Date(2024, 0, 1); // A Monday
+                return Array.from({ length: 7 }).map((_, i) => {
+                  const d = new Date(baseDate);
+                  d.setDate(baseDate.getDate() + i);
+                  return (
+                    <div key={i} className="text-center text-xs text-slate-500 font-medium py-1">
+                      {d.toLocaleDateString(currentLocale, { weekday: 'short' })}
+                    </div>
+                  );
+                });
+              })()}
             </div>
 
             {/* Calendar Grid */}
@@ -6453,7 +6621,7 @@ const LifeArchitect = () => {
             {/* Rating Section */}
             <div className="glass-card rounded-2xl p-4 mb-4">
               <div className="flex items-center justify-between mb-3">
-                <span className="text-slate-300 font-medium">Day Rating</span>
+                <span className="text-slate-300 font-medium">{t('reflect.rating')}</span>
                 {currentReflection.rating && (
                   <span className="text-2xl">
                     {currentReflection.rating >= 8 ? '🌟' : currentReflection.rating >= 6 ? '👍' : currentReflection.rating >= 4 ? '😐' : '💪'}
@@ -6515,7 +6683,7 @@ const LifeArchitect = () => {
                   {/* Date label */}
                   <div className="mt-4 text-center">
                     <p className="text-white/60 text-sm">
-                      {selectedReflectDate.toLocaleDateString('en-US', {
+                      {selectedReflectDate.toLocaleDateString(currentLocale, {
                         weekday: 'long',
                         month: 'long',
                         day: 'numeric',
@@ -6533,7 +6701,7 @@ const LifeArchitect = () => {
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                       </svg>
-                      Change Photo
+                      {t('reflect.changePhoto')}
                     </button>
                     <button
                       onClick={removePhoto}
@@ -6542,7 +6710,7 @@ const LifeArchitect = () => {
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                       </svg>
-                      Remove
+                      {t('common.remove')}
                     </button>
                   </div>
                 </div>
@@ -6570,14 +6738,14 @@ const LifeArchitect = () => {
                     <div key={`${getDateKey(selectedReflectDate)}-${q.key}`} className="bg-white/5 rounded-2xl p-5 border border-white/5">
                       <div className="flex items-center gap-3 mb-4 text-slate-400">
                         <span className="text-xl">{q.icon}</span>
-                        <h3 className="font-medium text-sm uppercase tracking-wide">{q.question}</h3>
+                        <h3 className="font-medium text-sm uppercase tracking-wide">{t(q.question)}</h3>
                       </div>
 
                       <div className="grid grid-cols-2 gap-4">
                         {/* Helped Column */}
                         <div>
                           <div className="text-emerald-400 text-xs font-bold uppercase tracking-wider mb-3 flex items-center gap-1">
-                            <span>💪 What Helped</span>
+                            <span>{t('reflect.helped')}</span>
                           </div>
                           <div className="space-y-2">
                             {influenceOptions.helped.map(opt => (
@@ -6590,7 +6758,7 @@ const LifeArchitect = () => {
                                   }`}
                               >
                                 <span>{opt.icon}</span>
-                                <span>{opt.label}</span>
+                                <span>{t(opt.label)}</span>
                               </button>
                             ))}
                           </div>
@@ -6599,7 +6767,7 @@ const LifeArchitect = () => {
                         {/* Blocked Column */}
                         <div>
                           <div className="text-rose-400 text-xs font-bold uppercase tracking-wider mb-3 flex items-center gap-1">
-                            <span>🚧 What Blocked</span>
+                            <span>{t('reflect.blocked')}</span>
                           </div>
                           <div className="space-y-2">
                             {influenceOptions.blocked.map(opt => (
@@ -6612,7 +6780,7 @@ const LifeArchitect = () => {
                                   }`}
                               >
                                 <span>{opt.icon}</span>
-                                <span>{opt.label}</span>
+                                <span>{t(opt.label)}</span>
                               </button>
                             ))}
                           </div>
@@ -6625,9 +6793,9 @@ const LifeArchitect = () => {
                 return (
                   <ReflectionInput
                     key={`${getDateKey(selectedReflectDate)}-${q.key}`}
-                    question={q.question}
+                    question={t(q.question)}
                     description={q.description}
-                    placeholder={q.placeholder}
+                    placeholder={t(q.placeholder)}
                     icon={q.icon}
                     defaultValue={currentReflection[q.key] || ''}
                     onBlurSave={(value) => handleFieldChange(q.key, value)}
@@ -6642,13 +6810,13 @@ const LifeArchitect = () => {
             {/* Photo of the Day */}
             <div className="glass-card rounded-2xl p-4 mt-6">
               <div className="flex items-center justify-between mb-3">
-                <span className="text-slate-300 font-medium">📸 Photo of the Day</span>
+                <span className="text-slate-300 font-medium">{t('reflect.photo')}</span>
                 {currentReflection.photo && (
                   <button
                     onClick={() => setReviewShowPhotoModal(true)}
                     className="text-xs text-purple-400 hover:text-purple-300 transition-colors"
                   >
-                    View
+                    {t('common.view')}
                   </button>
                 )}
               </div>
@@ -6672,7 +6840,7 @@ const LifeArchitect = () => {
                   </div>
                   {/* Hover overlay */}
                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded-xl flex items-center justify-center">
-                    <span className="text-white font-medium text-sm">Click to view</span>
+                    <span className="text-white font-medium text-sm">{t('reflect.clickToView')}</span>
                   </div>
                 </div>
               ) : (
@@ -6687,7 +6855,7 @@ const LifeArchitect = () => {
                     </svg>
                   </div>
                   <span className="text-slate-500 group-hover:text-purple-400 text-sm font-medium transition-colors">
-                    Add a memory from today
+                    {t('reflect.addMemory')}
                   </span>
                 </button>
               )}
@@ -6716,19 +6884,19 @@ const LifeArchitect = () => {
                 }}
               >
                 <span className="text-xl">✨</span>
-                <span>Create Memory Capsule</span>
+                <span>{t('reflect.createCapsule')}</span>
               </button>
               <p className="text-center text-slate-500 text-xs mt-3">
                 {canCreateCapsule
-                  ? "Capture this day's reflection as a beautiful memory"
-                  : "Answer at least one question to create your capsule"}
+                  ? t('reflect.captureReflection')
+                  : t('reflect.answerToCreate')}
               </p>
             </div>
 
             {/* Auto-save indicator */}
             <div className="mt-4 flex items-center justify-center gap-2 text-slate-500 text-xs">
               <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-              <span>Auto-saving</span>
+              <span>{t('reflect.autoSaving')}</span>
             </div>
           </>
         )}
@@ -6744,7 +6912,7 @@ const LifeArchitect = () => {
               {/* Header */}
               <div className="flex items-center justify-center gap-2 mb-4">
                 <div className="h-px flex-1 bg-gradient-to-r from-transparent via-indigo-500/30 to-transparent"></div>
-                <span className="text-indigo-400/80 text-xs font-medium uppercase tracking-widest px-3">Memory Capsule</span>
+                <span className="text-indigo-400/80 text-xs font-medium uppercase tracking-widest px-3">{t('reflect.capsuleTitle')}</span>
                 <div className="h-px flex-1 bg-gradient-to-r from-transparent via-indigo-500/30 to-transparent"></div>
               </div>
 
@@ -6788,7 +6956,7 @@ const LifeArchitect = () => {
                         border: '1px solid rgba(255,255,255,0.08)'
                       }}
                     >
-                      <p className="text-[10px] font-medium text-indigo-400/70 uppercase tracking-widest mb-2">Today in Brief</p>
+                      <p className="text-[10px] font-medium text-indigo-400/70 uppercase tracking-widest mb-2">{t('reflect.todayInBrief')}</p>
                       <p className="text-slate-200 text-sm leading-relaxed">
                         {currentReflection.activities?.split('.')[0] || currentReflection.activities}
                         {currentReflection.rating >= 7 ? ' — a good day overall.' : currentReflection.rating >= 4 ? ' — a balanced day.' : ' — a challenging day.'}
@@ -6802,14 +6970,14 @@ const LifeArchitect = () => {
                     <div className="mb-4 space-y-3">
                       <div className="flex items-center gap-2 mb-2 text-indigo-300/80">
                         <span className="text-lg">📊</span>
-                        <h3 className="text-xs font-bold uppercase tracking-widest">Influencers</h3>
+                        <h3 className="text-xs font-bold uppercase tracking-widest">{t('reflect.influencersTitle')}</h3>
                       </div>
                       <div className="grid grid-cols-2 gap-3">
                         {/* Helped */}
                         {currentReflection.influencers?.helped?.length > 0 && (
                           <div className="bg-emerald-500/10 rounded-xl p-3 border border-emerald-500/20">
                             <p className="text-emerald-400 text-[10px] font-bold uppercase tracking-wider mb-2 flex items-center gap-1">
-                              <span>💪 Helped</span>
+                              <span>{t('reflect.helped')}</span>
                             </p>
                             <div className="flex flex-wrap gap-1.5">
                               {currentReflection.influencers.helped.map(id => {
@@ -6817,7 +6985,7 @@ const LifeArchitect = () => {
                                 return opt ? (
                                   <span key={id} className="text-emerald-100 text-xs bg-emerald-500/20 px-1.5 py-0.5 rounded-md border border-emerald-500/20 inline-flex items-center gap-1">
                                     <span>{opt.icon}</span>
-                                    <span>{opt.label}</span>
+                                    <span>{t(opt.label)}</span>
                                   </span>
                                 ) : null;
                               })}
@@ -6829,7 +6997,7 @@ const LifeArchitect = () => {
                         {currentReflection.influencers?.blocked?.length > 0 && (
                           <div className="bg-rose-500/10 rounded-xl p-3 border border-rose-500/20">
                             <p className="text-rose-400 text-[10px] font-bold uppercase tracking-wider mb-2 flex items-center gap-1">
-                              <span>🚧 Blocked</span>
+                              <span>{t('reflect.blocked')}</span>
                             </p>
                             <div className="flex flex-wrap gap-1.5">
                               {currentReflection.influencers.blocked.map(id => {
@@ -6837,7 +7005,7 @@ const LifeArchitect = () => {
                                 return opt ? (
                                   <span key={id} className="text-rose-100 text-xs bg-rose-500/20 px-1.5 py-0.5 rounded-md border border-rose-500/20 inline-flex items-center gap-1">
                                     <span>{opt.icon}</span>
-                                    <span>{opt.label}</span>
+                                    <span>{t(opt.label)}</span>
                                   </span>
                                 ) : null;
                               })}
@@ -6857,7 +7025,7 @@ const LifeArchitect = () => {
                         border: '1px solid rgba(139,92,246,0.2)'
                       }}
                     >
-                      <p className="text-[10px] font-medium text-purple-400/80 uppercase tracking-widest mb-2">Tomorrow's Adjustment</p>
+                      <p className="text-[10px] font-medium text-purple-400/80 uppercase tracking-widest mb-2">{t('reflect.tomorrowsAdjustment')}</p>
                       <p className="text-slate-200 text-sm leading-relaxed italic">"{currentReflection.differently}"</p>
                     </div>
                   )}
@@ -6866,7 +7034,7 @@ const LifeArchitect = () => {
                   <div className="flex items-center justify-between pt-2">
                     <div className="flex items-center gap-2">
                       <span className="text-slate-500 text-xs">
-                        {selectedReflectDate.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+                        {selectedReflectDate.toLocaleDateString(currentLocale, { weekday: 'long', month: 'short', day: 'numeric' })}
                       </span>
                     </div>
                     <div className="flex items-center gap-1.5">
@@ -6910,7 +7078,7 @@ const LifeArchitect = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
                   </svg>
                 </div>
-                <span>Share Capsule</span>
+                <span>{t('reflect.shareCapsule')}</span>
               </button>
             </div>
 
@@ -7156,19 +7324,19 @@ const LifeArchitect = () => {
     return (
       <div className="pb-28 animate-fadeIn">
         <div className="mb-6 text-center">
-          <p className="text-emerald-400/80 text-xs font-medium uppercase tracking-widest mb-2">Analytics</p>
-          <h1 className="text-3xl font-semibold text-white tracking-tight">Patterns</h1>
+          <p className="text-emerald-400/80 text-xs font-medium uppercase tracking-widest mb-2">{t('patterns.analytics')}</p>
+          <h1 className="text-3xl font-semibold text-white tracking-tight">{t('patterns.title')}</h1>
         </div>
 
         <div className="flex gap-2 mb-6">
           <button onClick={() => setPatternsActiveSection('habits')} className={`flex-1 py-3 rounded-xl font-medium text-sm transition-all flex items-center justify-center gap-2 ${patternsActiveSection === 'habits' ? 'bg-gradient-to-r from-purple-500 to-indigo-500 text-white' : 'glass-card text-slate-400'}`}>
-            <span className="text-lg">✅</span> Habits
+            <span className="text-lg">✅</span> {t('patterns.habits')}
           </button>
           <button onClick={() => setPatternsActiveSection('tasks')} className={`flex-1 py-3 rounded-xl font-medium text-sm transition-all flex items-center justify-center gap-2 ${patternsActiveSection === 'tasks' ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white' : 'glass-card text-slate-400'}`}>
-            <span className="text-lg">📋</span> Tasks
+            <span className="text-lg">📋</span> {t('patterns.tasks')}
           </button>
           <button onClick={() => setPatternsActiveSection('reflect')} className={`flex-1 py-3 rounded-xl font-medium text-sm transition-all flex items-center justify-center gap-2 ${patternsActiveSection === 'reflect' ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white' : 'glass-card text-slate-400'}`}>
-            <span className="text-lg">🧠</span> Reflect
+            <span className="text-lg">🧠</span> {t('patterns.reflect')}
           </button>
         </div>
 
@@ -7179,30 +7347,30 @@ const LifeArchitect = () => {
               <div className="glass-card rounded-2xl p-4 text-center">
                 <div className="text-2xl mb-1">🔥</div>
                 <p className="text-3xl font-bold text-white">{currentStreak}</p>
-                <p className="text-slate-400 text-xs">Day Streak</p>
+                <p className="text-slate-400 text-xs">{t('patterns.dayStreak')}</p>
               </div>
               <div className="glass-card rounded-2xl p-4 text-center">
                 <div className="text-2xl mb-1">⭐</div>
                 <p className="text-3xl font-bold text-white">{perfectDaysWeek}</p>
-                <p className="text-slate-400 text-xs">Perfect Days</p>
+                <p className="text-slate-400 text-xs">{t('patterns.perfectDays')}</p>
               </div>
               <div className="glass-card rounded-2xl p-4 text-center">
                 <div className="text-2xl mb-1">📊</div>
                 <p className="text-3xl font-bold text-white">{weekAvgOverall}%</p>
-                <p className="text-slate-400 text-xs">Week Avg</p>
+                <p className="text-slate-400 text-xs">{t('patterns.weekAvg')}</p>
               </div>
             </div>
             {/* View Toggle */}
             <div className="flex bg-white/5 p-1 rounded-xl mb-6">
-              <button onClick={() => setPatternsViewMode('week')} className={`flex-1 py-3 rounded-xl font-medium text-sm transition-all ${patternsViewMode === 'week' ? 'bg-gradient-to-r from-emerald-500 to-green-500 text-white' : 'text-slate-400'}`}>Week View</button>
-              <button onClick={() => setPatternsViewMode('month')} className={`flex-1 py-3 rounded-xl font-medium text-sm transition-all ${patternsViewMode === 'month' ? 'bg-gradient-to-r from-emerald-500 to-green-500 text-white' : 'text-slate-400'}`}>Month View</button>
+              <button onClick={() => setPatternsViewMode('week')} className={`flex-1 py-3 rounded-xl font-medium text-sm transition-all ${patternsViewMode === 'week' ? 'bg-gradient-to-r from-emerald-500 to-green-500 text-white' : 'text-slate-400'}`}>{t('patterns.weekView')}</button>
+              <button onClick={() => setPatternsViewMode('month')} className={`flex-1 py-3 rounded-xl font-medium text-sm transition-all ${patternsViewMode === 'month' ? 'bg-gradient-to-r from-emerald-500 to-green-500 text-white' : 'text-slate-400'}`}>{t('patterns.monthView')}</button>
             </div>
 
             {patternsViewMode === 'week' ? (
               <>
                 <div className="glass-card rounded-2xl p-4 mb-4">
                   <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2"><span className="text-xl">🌅</span><h3 className="text-white font-medium">Morning Routine</h3></div>
+                    <div className="flex items-center gap-2"><span className="text-xl">🌅</span><h3 className="text-white font-medium">{t('plan.morningRoutine')}</h3></div>
                     <span className="text-emerald-400 text-sm font-medium">{weekAvgMorning}% avg</span>
                   </div>
                   <div className="flex items-end justify-between gap-2 h-32">
@@ -7220,7 +7388,7 @@ const LifeArchitect = () => {
 
                 <div className="glass-card rounded-2xl p-4 mb-4">
                   <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2"><span className="text-xl">🌙</span><h3 className="text-white font-medium">Evening Routine</h3></div>
+                    <div className="flex items-center gap-2"><span className="text-xl">🌙</span><h3 className="text-white font-medium">{t('patterns.eveningRoutine')}</h3></div>
                     <span className="text-indigo-400 text-sm font-medium">{weekAvgEvening}% avg</span>
                   </div>
                   <div className="flex items-end justify-between gap-2 h-32">
@@ -7237,9 +7405,9 @@ const LifeArchitect = () => {
                 </div>
 
                 <div className="glass-card rounded-2xl p-4">
-                  <h3 className="text-white font-medium mb-4">This Week's Habits</h3>
+                  <h3 className="text-white font-medium mb-4">{t('patterns.habits')}</h3>
                   <div className="mb-4">
-                    <p className="text-slate-400 text-xs uppercase tracking-wider mb-2">🌅 Morning</p>
+                    <p className="text-slate-400 text-xs uppercase tracking-wider mb-2">🌅 {t('patterns.morning')}</p>
                     <div className="space-y-2">
                       {routineTemplates.morning.habits.map(habit => {
                         const completedDays = weekStats.filter(day => { const r = getRoutinesForDate(day.date); return r.morning.habits.find(h => h.id === habit.id)?.completed; }).length;
@@ -7255,7 +7423,7 @@ const LifeArchitect = () => {
                     </div>
                   </div>
                   <div>
-                    <p className="text-slate-400 text-xs uppercase tracking-wider mb-2">🌙 Evening</p>
+                    <p className="text-slate-400 text-xs uppercase tracking-wider mb-2">🌙 {t('patterns.evening')}</p>
                     <div className="space-y-2">
                       {routineTemplates.evening.habits.map(habit => {
                         const completedDays = weekStats.filter(day => { const r = getRoutinesForDate(day.date); return r.evening.habits.find(h => h.id === habit.id)?.completed; }).length;
@@ -7276,13 +7444,26 @@ const LifeArchitect = () => {
               <>
                 <div className="flex items-center justify-between mb-4">
                   <button onClick={prevMonth} className="w-10 h-10 rounded-xl glass-card flex items-center justify-center text-slate-400 hover:text-white transition-all"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg></button>
-                  <h3 className="text-white font-medium">{selectedMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</h3>
+                  <h3 className="text-white font-medium">{selectedMonth.toLocaleDateString(currentLocale, { month: 'long', year: 'numeric' })}</h3>
                   <button onClick={nextMonth} className="w-10 h-10 rounded-xl glass-card flex items-center justify-center text-slate-400 hover:text-white transition-all"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg></button>
                 </div>
 
                 <div className="glass-card rounded-2xl p-4 mb-4">
-                  <div className="flex items-center gap-2 mb-3"><span className="text-lg">🌅</span><h3 className="text-white font-medium">Morning Routine</h3></div>
-                  <div className="grid grid-cols-7 gap-1 mb-2">{['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => <div key={i} className="text-center text-[10px] text-slate-500">{d}</div>)}</div>
+                  <div className="flex items-center gap-2 mb-3"><span className="text-lg">🌅</span><h3 className="text-white font-medium">{t('plan.morningRoutine')}</h3></div>
+                  <div className="grid grid-cols-7 gap-1 mb-2">
+                    {(() => {
+                      const baseDate = new Date(2024, 0, 1);
+                      return Array.from({ length: 7 }).map((_, i) => {
+                        const d = new Date(baseDate);
+                        d.setDate(baseDate.getDate() + i);
+                        return (
+                          <div key={i} className="text-center text-[10px] text-slate-500">
+                            {d.toLocaleDateString(currentLocale, { weekday: 'narrow' })}
+                          </div>
+                        );
+                      });
+                    })()}
+                  </div>
                   <div className="grid grid-cols-7 gap-1">
                     {Array.from({ length: (new Date(selectedMonth.getFullYear(), selectedMonth.getMonth(), 1).getDay() + 6) % 7 }).map((_, i) => <div key={`e${i}`} className="aspect-square" />)}
                     {monthStats.map((day, i) => <div key={i} className={`aspect-square rounded-md ${getHeatmapColor(day.morning.percent)} flex items-center justify-center transition-all hover:scale-110`}><span className="text-[10px] text-white/70">{day.dayNum}</span></div>)}
@@ -7291,8 +7472,21 @@ const LifeArchitect = () => {
                 </div>
 
                 <div className="glass-card rounded-2xl p-4">
-                  <div className="flex items-center gap-2 mb-3"><span className="text-lg">🌙</span><h3 className="text-white font-medium">Evening Routine</h3></div>
-                  <div className="grid grid-cols-7 gap-1 mb-2">{['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => <div key={i} className="text-center text-[10px] text-slate-500">{d}</div>)}</div>
+                  <div className="flex items-center gap-2 mb-3"><span className="text-lg">🌙</span><h3 className="text-white font-medium">{t('patterns.eveningRoutine')}</h3></div>
+                  <div className="grid grid-cols-7 gap-1 mb-2">
+                    {(() => {
+                      const baseDate = new Date(2024, 0, 1);
+                      return Array.from({ length: 7 }).map((_, i) => {
+                        const d = new Date(baseDate);
+                        d.setDate(baseDate.getDate() + i);
+                        return (
+                          <div key={i} className="text-center text-[10px] text-slate-500">
+                            {d.toLocaleDateString(currentLocale, { weekday: 'narrow' })}
+                          </div>
+                        );
+                      });
+                    })()}
+                  </div>
                   <div className="grid grid-cols-7 gap-1">
                     {Array.from({ length: (new Date(selectedMonth.getFullYear(), selectedMonth.getMonth(), 1).getDay() + 6) % 7 }).map((_, i) => <div key={`e${i}`} className="aspect-square" />)}
                     {monthStats.map((day, i) => <div key={i} className={`aspect-square rounded-md ${getHeatmapColor(day.evening.percent)} flex items-center justify-center transition-all hover:scale-110`}><span className="text-[10px] text-white/70">{day.dayNum}</span></div>)}
@@ -7309,24 +7503,24 @@ const LifeArchitect = () => {
               <div className="glass-card rounded-2xl p-4 text-center">
                 <div className="text-2xl mb-1">✅</div>
                 <p className="text-3xl font-bold text-white">{weekTasksCompleted}</p>
-                <p className="text-slate-400 text-xs">Completed</p>
+                <p className="text-slate-400 text-xs">{t('patterns.completion')}</p>
               </div>
               <div className="glass-card rounded-2xl p-4 text-center">
                 <div className="text-2xl mb-1">📊</div>
                 <p className="text-3xl font-bold text-white">{weekTasksPercent}%</p>
-                <p className="text-slate-400 text-xs">Completion</p>
+                <p className="text-slate-400 text-xs">{t('patterns.completion')}</p>
               </div>
               <div className="glass-card rounded-2xl p-4 text-center">
                 <div className="text-2xl mb-1">📁</div>
                 <p className="text-3xl font-bold text-white">{activeProjects.length}</p>
-                <p className="text-slate-400 text-xs">Active Projects</p>
+                <p className="text-slate-400 text-xs">{t('patterns.activeProjects')}</p>
               </div>
             </div>
 
             {/* View Toggle */}
             <div className="flex gap-2 mb-6">
-              <button onClick={() => setPatternsViewMode('week')} className={`flex-1 py-3 rounded-xl font-medium text-sm transition-all ${patternsViewMode === 'week' ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white' : 'glass-card text-slate-400'}`}>Week View</button>
-              <button onClick={() => setPatternsViewMode('month')} className={`flex-1 py-3 rounded-xl font-medium text-sm transition-all ${patternsViewMode === 'month' ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white' : 'glass-card text-slate-400'}`}>Month View</button>
+              <button onClick={() => setPatternsViewMode('week')} className={`flex-1 py-3 rounded-xl font-medium text-sm transition-all ${patternsViewMode === 'week' ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white' : 'glass-card text-slate-400'}`}>{t('patterns.weekView')}</button>
+              <button onClick={() => setPatternsViewMode('month')} className={`flex-1 py-3 rounded-xl font-medium text-sm transition-all ${patternsViewMode === 'month' ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white' : 'glass-card text-slate-400'}`}>{t('patterns.monthView')}</button>
             </div>
 
             {patternsViewMode === 'week' ? (
@@ -7334,7 +7528,7 @@ const LifeArchitect = () => {
                 {/* Tasks Completed - Week Chart */}
                 <div className="glass-card rounded-2xl p-4 mb-4">
                   <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2"><span className="text-xl">📋</span><h3 className="text-white font-medium">Daily Tasks</h3></div>
+                    <div className="flex items-center gap-2"><span className="text-xl">📋</span><h3 className="text-white font-medium">{t('patterns.dailyTasks')}</h3></div>
                     <span className="text-cyan-400 text-sm font-medium">{weekTasksCompleted} total</span>
                   </div>
                   <div className="flex items-end justify-between gap-2 h-32">
@@ -7352,9 +7546,9 @@ const LifeArchitect = () => {
 
                 {/* Project Progress */}
                 <div className="glass-card rounded-2xl p-4 mb-4">
-                  <h3 className="text-white font-medium mb-4">Project Progress</h3>
+                  <h3 className="text-white font-medium mb-4">{t('patterns.projectProgress')}</h3>
                   {projects.length === 0 ? (
-                    <p className="text-slate-500 text-sm text-center py-4">No projects yet</p>
+                    <p className="text-slate-500 text-sm text-center py-4">{t('patterns.noProjects')}</p>
                   ) : (
                     <div className="space-y-4">
                       {projects.map(project => {
@@ -7387,14 +7581,14 @@ const LifeArchitect = () => {
 
                 {/* Tasks by Energy Level */}
                 <div className="glass-card rounded-2xl p-4">
-                  <h3 className="text-white font-medium mb-4">Tasks by Energy</h3>
+                  <h3 className="text-white font-medium mb-4">{t('patterns.tasksByEnergy')}</h3>
                   {totalEnergyTasks === 0 ? (
-                    <p className="text-slate-500 text-sm text-center py-4">No tasks yet</p>
+                    <p className="text-slate-500 text-sm text-center py-4">{t('patterns.noTasks')}</p>
                   ) : (
                     <div className="space-y-3">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-lg bg-rose-500/20 flex items-center justify-center"><span className="text-sm">🔥</span></div>
-                        <span className="text-slate-300 text-sm flex-1">High Energy</span>
+                        <span className="text-slate-300 text-sm flex-1">{t('patterns.highEnergy')}</span>
                         <div className="w-32 h-2 bg-white/10 rounded-full overflow-hidden">
                           <div className="h-full rounded-full bg-gradient-to-r from-rose-500 to-orange-500" style={{ width: `${(tasksByEnergy.high / totalEnergyTasks) * 100}%` }} />
                         </div>
@@ -7402,7 +7596,7 @@ const LifeArchitect = () => {
                       </div>
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center"><span className="text-sm">⚡</span></div>
-                        <span className="text-slate-300 text-sm flex-1">Medium Energy</span>
+                        <span className="text-slate-300 text-sm flex-1">{t('patterns.mediumEnergy')}</span>
                         <div className="w-32 h-2 bg-white/10 rounded-full overflow-hidden">
                           <div className="h-full rounded-full bg-gradient-to-r from-amber-500 to-yellow-500" style={{ width: `${(tasksByEnergy.medium / totalEnergyTasks) * 100}%` }} />
                         </div>
@@ -7410,7 +7604,7 @@ const LifeArchitect = () => {
                       </div>
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center"><span className="text-sm">🌿</span></div>
-                        <span className="text-slate-300 text-sm flex-1">Low Energy</span>
+                        <span className="text-slate-300 text-sm flex-1">{t('patterns.lowEnergy')}</span>
                         <div className="w-32 h-2 bg-white/10 rounded-full overflow-hidden">
                           <div className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-green-500" style={{ width: `${(tasksByEnergy.low / totalEnergyTasks) * 100}%` }} />
                         </div>
@@ -7425,14 +7619,27 @@ const LifeArchitect = () => {
                 {/* Month Navigation */}
                 <div className="flex items-center justify-between mb-4">
                   <button onClick={prevMonth} className="w-10 h-10 rounded-xl glass-card flex items-center justify-center text-slate-400 hover:text-white transition-all"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg></button>
-                  <h3 className="text-white font-medium">{selectedMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</h3>
+                  <h3 className="text-white font-medium">{selectedMonth.toLocaleDateString(currentLocale, { month: 'long', year: 'numeric' })}</h3>
                   <button onClick={nextMonth} className="w-10 h-10 rounded-xl glass-card flex items-center justify-center text-slate-400 hover:text-white transition-all"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg></button>
                 </div>
 
                 {/* Month Heatmap - Task Completion */}
                 <div className="glass-card rounded-2xl p-4 mb-4">
-                  <div className="flex items-center gap-2 mb-3"><span className="text-lg">📋</span><h3 className="text-white font-medium">Task Completion</h3></div>
-                  <div className="grid grid-cols-7 gap-1 mb-2">{['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => <div key={i} className="text-center text-[10px] text-slate-500">{d}</div>)}</div>
+                  <div className="flex items-center gap-2 mb-3"><span className="text-lg">📋</span><h3 className="text-white font-medium">{t('patterns.completion')}</h3></div>
+                  <div className="grid grid-cols-7 gap-1 mb-2">
+                    {(() => {
+                      const baseDate = new Date(2024, 0, 1);
+                      return Array.from({ length: 7 }).map((_, i) => {
+                        const d = new Date(baseDate);
+                        d.setDate(baseDate.getDate() + i);
+                        return (
+                          <div key={i} className="text-center text-[10px] text-slate-500">
+                            {d.toLocaleDateString(currentLocale, { weekday: 'narrow' })}
+                          </div>
+                        );
+                      });
+                    })()}
+                  </div>
                   <div className="grid grid-cols-7 gap-1">
                     {Array.from({ length: (new Date(selectedMonth.getFullYear(), selectedMonth.getMonth(), 1).getDay() + 6) % 7 }).map((_, i) => <div key={`e${i}`} className="aspect-square" />)}
                     {monthTaskStats.map((day, i) => <div key={i} className={`aspect-square rounded-md ${getHeatmapColor(day.percent)} flex items-center justify-center transition-all hover:scale-110`}><span className="text-[10px] text-white/70">{day.dayNum}</span></div>)}
@@ -7442,8 +7649,21 @@ const LifeArchitect = () => {
 
                 {/* Month Heatmap - Tasks Count */}
                 <div className="glass-card rounded-2xl p-4">
-                  <div className="flex items-center gap-2 mb-3"><span className="text-lg">✅</span><h3 className="text-white font-medium">Tasks Completed</h3></div>
-                  <div className="grid grid-cols-7 gap-1 mb-2">{['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => <div key={i} className="text-center text-[10px] text-slate-500">{d}</div>)}</div>
+                  <div className="flex items-center gap-2 mb-3"><span className="text-lg">✅</span><h3 className="text-white font-medium">{t('patterns.dailyTasks')}</h3></div>
+                  <div className="grid grid-cols-7 gap-1 mb-2">
+                    {(() => {
+                      const baseDate = new Date(2024, 0, 1);
+                      return Array.from({ length: 7 }).map((_, i) => {
+                        const d = new Date(baseDate);
+                        d.setDate(baseDate.getDate() + i);
+                        return (
+                          <div key={i} className="text-center text-[10px] text-slate-500">
+                            {d.toLocaleDateString(currentLocale, { weekday: 'narrow' })}
+                          </div>
+                        );
+                      });
+                    })()}
+                  </div>
                   <div className="grid grid-cols-7 gap-1">
                     {Array.from({ length: (new Date(selectedMonth.getFullYear(), selectedMonth.getMonth(), 1).getDay() + 6) % 7 }).map((_, i) => <div key={`e${i}`} className="aspect-square" />)}
                     {monthTaskStats.map((day, i) => {
@@ -7472,30 +7692,30 @@ const LifeArchitect = () => {
               <div className="glass-card rounded-2xl p-4 text-center">
                 <div className="text-2xl mb-1">🔥</div>
                 <p className="text-3xl font-bold text-white">{reflectStreak}</p>
-                <p className="text-slate-400 text-xs">Day Streak</p>
+                <p className="text-slate-400 text-xs">{t('patterns.dayStreak')}</p>
               </div>
               <div className="glass-card rounded-2xl p-4 text-center">
                 <div className="text-2xl mb-1">⭐</div>
                 <p className="text-3xl font-bold text-white">{weekAvgRating}</p>
-                <p className="text-slate-400 text-xs">Avg Rating</p>
+                <p className="text-slate-400 text-xs">{t('patterns.avgRating')}</p>
               </div>
               <div className="glass-card rounded-2xl p-4 text-center">
                 <div className="text-2xl mb-1">📝</div>
                 <p className="text-3xl font-bold text-white">{weekReflectionCount}/7</p>
-                <p className="text-slate-400 text-xs">This Week</p>
+                <p className="text-slate-400 text-xs">{t('patterns.thisWeek')}</p>
               </div>
             </div>
             {/* Reflect Stats View Toggle */}
             <div className="flex bg-white/5 p-1 rounded-xl mb-6">
-              <button onClick={() => setPatternsViewMode('week')} className={`flex-1 py-3 rounded-xl font-medium text-sm transition-all ${patternsViewMode === 'week' ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white' : 'glass-card text-slate-400'}`}>Week View</button>
-              <button onClick={() => setPatternsViewMode('month')} className={`flex-1 py-3 rounded-xl font-medium text-sm transition-all ${patternsViewMode === 'month' ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white' : 'glass-card text-slate-400'}`}>Month View</button>
+              <button onClick={() => setPatternsViewMode('week')} className={`flex-1 py-3 rounded-xl font-medium text-sm transition-all ${patternsViewMode === 'week' ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white' : 'glass-card text-slate-400'}`}>{t('patterns.weekView')}</button>
+              <button onClick={() => setPatternsViewMode('month')} className={`flex-1 py-3 rounded-xl font-medium text-sm transition-all ${patternsViewMode === 'month' ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white' : 'glass-card text-slate-400'}`}>{t('patterns.monthView')}</button>
             </div>
 
             {patternsViewMode === 'week' ? (
               <>
                 <div className="glass-card rounded-2xl p-4 mb-4">
                   <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2"><span className="text-xl">📊</span><h3 className="text-white font-medium">Day Ratings</h3></div>
+                    <div className="flex items-center gap-2"><span className="text-xl">📊</span><h3 className="text-white font-medium">{t('patterns.dayRatings')}</h3></div>
                     <span className="text-indigo-400 text-sm font-medium">{weekAvgRating} avg</span>
                   </div>
                   <div className="flex items-end justify-between gap-2 h-40">
@@ -7513,7 +7733,7 @@ const LifeArchitect = () => {
                 </div>
 
                 <div className="glass-card rounded-2xl p-4 mb-4">
-                  <h3 className="text-white font-medium mb-4">This Week's Reflections</h3>
+                  <h3 className="text-white font-medium mb-4">{t('patterns.habits')}</h3>
                   <div className="space-y-3">
                     {weekReflectStats.map((day, idx) => {
                       const dateKey = getDateKey(day.date);
@@ -7525,8 +7745,8 @@ const LifeArchitect = () => {
                               <span className="text-xl">{getRatingEmoji(day.rating)}</span>
                             </div>
                             <div className="flex-1">
-                              <p className="text-white font-medium text-sm">{day.date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</p>
-                              {reflection?.topResult ? <p className="text-slate-400 text-xs truncate">{reflection.topResult}</p> : <p className="text-slate-500 text-xs italic">No reflection</p>}
+                              <p className="text-white font-medium text-sm">{day.date.toLocaleDateString(currentLocale, { weekday: 'long', month: 'short', day: 'numeric' })}</p>
+                              {reflection?.topResult ? <p className="text-slate-400 text-xs truncate">{reflection.topResult}</p> : <p className="text-slate-500 text-xs italic">{t('patterns.noReflection')}</p>}
                             </div>
                             <div className="flex items-center gap-2">
                               {day.hasPhoto && <span className="text-sm">📸</span>}
@@ -7542,7 +7762,7 @@ const LifeArchitect = () => {
 
                 {weekPhotoCount > 0 && (
                   <div className="glass-card rounded-2xl p-4">
-                    <div className="flex items-center gap-2 mb-3"><span className="text-lg">📸</span><h3 className="text-white font-medium">Photos This Week</h3><span className="text-slate-400 text-sm">({weekPhotoCount})</span></div>
+                    <div className="flex items-center gap-2 mb-3"><span className="text-lg">📸</span><h3 className="text-white font-medium">{t('patterns.photosThisWeek')}</h3><span className="text-slate-400 text-sm">({weekPhotoCount})</span></div>
                     <div className="grid grid-cols-4 gap-2">
                       {weekReflectStats.filter(d => d.hasPhoto).map((day, idx) => {
                         const dateKey = getDateKey(day.date);
@@ -7562,8 +7782,21 @@ const LifeArchitect = () => {
                 </div>
 
                 <div className="glass-card rounded-2xl p-4 mb-4">
-                  <div className="flex items-center gap-2 mb-3"><span className="text-lg">📊</span><h3 className="text-white font-medium">Day Ratings</h3></div>
-                  <div className="grid grid-cols-7 gap-1 mb-2">{['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => <div key={i} className="text-center text-[10px] text-slate-500">{d}</div>)}</div>
+                  <div className="flex items-center gap-2 mb-3"><span className="text-lg">📊</span><h3 className="text-white font-medium">{t('patterns.dayRatings')}</h3></div>
+                  <div className="grid grid-cols-7 gap-1 mb-2">
+                    {(() => {
+                      const baseDate = new Date(2024, 0, 1);
+                      return Array.from({ length: 7 }).map((_, i) => {
+                        const d = new Date(baseDate);
+                        d.setDate(baseDate.getDate() + i);
+                        return (
+                          <div key={i} className="text-center text-[10px] text-slate-500">
+                            {d.toLocaleDateString(currentLocale, { weekday: 'narrow' })}
+                          </div>
+                        );
+                      });
+                    })()}
+                  </div>
                   <div className="grid grid-cols-7 gap-1">
                     {Array.from({ length: (new Date(selectedMonth.getFullYear(), selectedMonth.getMonth(), 1).getDay() + 6) % 7 }).map((_, i) => <div key={`e${i}`} className="aspect-square" />)}
                     {monthReflectStats.map((day, i) => <div key={i} className={`aspect-square rounded-md ${getRatingHeatmapColor(day.rating)} flex items-center justify-center transition-all hover:scale-110`}><span className="text-[10px] text-white/70">{day.dayNum}</span></div>)}
@@ -7572,17 +7805,30 @@ const LifeArchitect = () => {
                 </div>
 
                 <div className="glass-card rounded-2xl p-4">
-                  <div className="flex items-center gap-2 mb-3"><span className="text-lg">📝</span><h3 className="text-white font-medium">Reflections Completed</h3></div>
-                  <div className="grid grid-cols-7 gap-1 mb-2">{['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => <div key={i} className="text-center text-[10px] text-slate-500">{d}</div>)}</div>
+                  <div className="flex items-center gap-2 mb-3"><span className="text-lg">📝</span><h3 className="text-white font-medium">{t('patterns.reflectionsCompleted')}</h3></div>
+                  <div className="grid grid-cols-7 gap-1 mb-2">
+                    {(() => {
+                      const baseDate = new Date(2024, 0, 1);
+                      return Array.from({ length: 7 }).map((_, i) => {
+                        const d = new Date(baseDate);
+                        d.setDate(baseDate.getDate() + i);
+                        return (
+                          <div key={i} className="text-center text-[10px] text-slate-500">
+                            {d.toLocaleDateString(currentLocale, { weekday: 'narrow' })}
+                          </div>
+                        );
+                      });
+                    })()}
+                  </div>
                   <div className="grid grid-cols-7 gap-1">
                     {Array.from({ length: (new Date(selectedMonth.getFullYear(), selectedMonth.getMonth(), 1).getDay() + 6) % 7 }).map((_, i) => <div key={`e${i}`} className="aspect-square" />)}
                     {monthReflectStats.map((day, i) => <div key={i} className={`aspect-square rounded-md flex items-center justify-center transition-all hover:scale-110 ${day.hasCapsule ? 'bg-purple-500' : day.hasPhoto && day.hasReflection ? 'bg-indigo-500' : day.hasReflection ? 'bg-indigo-400/70' : 'bg-white/10'}`}><span className="text-[10px] text-white/70">{day.dayNum}</span></div>)}
                   </div>
                   <div className="flex items-center justify-center gap-2 mt-3">
-                    <div className="flex items-center gap-1"><div className="w-3 h-3 rounded bg-white/10"></div><span className="text-[10px] text-slate-500">None</span></div>
-                    <div className="flex items-center gap-1"><div className="w-3 h-3 rounded bg-indigo-400/70"></div><span className="text-[10px] text-slate-500">Reflected</span></div>
-                    <div className="flex items-center gap-1"><div className="w-3 h-3 rounded bg-indigo-500"></div><span className="text-[10px] text-slate-500">+ Photo</span></div>
-                    <div className="flex items-center gap-1"><div className="w-3 h-3 rounded bg-purple-500"></div><span className="text-[10px] text-slate-500">Capsule</span></div>
+                    <div className="flex items-center gap-1"><div className="w-3 h-3 rounded bg-white/10"></div><span className="text-[10px] text-slate-500">{t('common.none')}</span></div>
+                    <div className="flex items-center gap-1"><div className="w-3 h-3 rounded bg-indigo-400/70"></div><span className="text-[10px] text-slate-500">{t('patterns.reflected')}</span></div>
+                    <div className="flex items-center gap-1"><div className="w-3 h-3 rounded bg-indigo-500"></div><span className="text-[10px] text-slate-500">+ {t('patterns.photo')}</span></div>
+                    <div className="flex items-center gap-1"><div className="w-3 h-3 rounded bg-purple-500"></div><span className="text-[10px] text-slate-500">{t('patterns.capsule')}</span></div>
                   </div>
                 </div>
               </>
@@ -7610,18 +7856,18 @@ const LifeArchitect = () => {
 
     // Project color options
     const projectColors = [
-      { value: '#8b5cf6', name: 'Purple' },
-      { value: '#6366f1', name: 'Indigo' },
-      { value: '#3b82f6', name: 'Blue' },
-      { value: '#06b6d4', name: 'Cyan' },
-      { value: '#10b981', name: 'Emerald' },
-      { value: '#22c55e', name: 'Green' },
-      { value: '#eab308', name: 'Yellow' },
-      { value: '#f97316', name: 'Orange' },
-      { value: '#ef4444', name: 'Red' },
-      { value: '#ec4899', name: 'Pink' },
-      { value: '#f43f5e', name: 'Rose' },
-      { value: '#64748b', name: 'Slate' }
+      { value: '#8b5cf6', name: t('colors.purple') },
+      { value: '#6366f1', name: t('colors.indigo') },
+      { value: '#3b82f6', name: t('colors.blue') },
+      { value: '#06b6d4', name: t('colors.cyan') },
+      { value: '#10b981', name: t('colors.emerald') },
+      { value: '#22c55e', name: t('colors.green') },
+      { value: '#eab308', name: t('colors.yellow') },
+      { value: '#f97316', name: t('colors.orange') },
+      { value: '#ef4444', name: t('colors.red') },
+      { value: '#ec4899', name: t('colors.pink') },
+      { value: '#f43f5e', name: t('colors.rose') },
+      { value: '#64748b', name: t('colors.slate') }
     ];
 
     const [localTaskData, setLocalTaskData] = useState({
@@ -7781,10 +8027,10 @@ const LifeArchitect = () => {
     }, [pendingEditTask, selectedProject]);
 
     const statusColors = {
-      'not-started': { bg: 'bg-slate-500/20', text: 'text-slate-400', label: 'Not Started' },
-      'active': { bg: 'bg-emerald-500/20', text: 'text-emerald-400', label: 'Active' },
-      'on-hold': { bg: 'bg-amber-500/20', text: 'text-amber-400', label: 'On Hold' },
-      'completed': { bg: 'bg-purple-500/20', text: 'text-purple-400', label: 'Completed' }
+      'not-started': { bg: 'bg-slate-500/20', text: 'text-slate-400', label: t('projectStatus.not_started') },
+      'active': { bg: 'bg-emerald-500/20', text: 'text-emerald-400', label: t('projectStatus.active') },
+      'on-hold': { bg: 'bg-amber-500/20', text: 'text-amber-400', label: t('projectStatus.on_hold') },
+      'completed': { bg: 'bg-purple-500/20', text: 'text-purple-400', label: t('projectStatus.completed') }
     };
 
     // Notes editing state
@@ -7809,16 +8055,16 @@ const LifeArchitect = () => {
     };
 
     const timeOptions = [
-      { value: 15, label: '15 min' },
-      { value: 30, label: '30 min' },
-      { value: 45, label: '45 min' },
-      { value: 60, label: '1 hour' },
-      { value: 90, label: '1.5 hours' },
-      { value: 120, label: '2 hours' },
-      { value: 180, label: '3 hours' },
-      { value: 240, label: '4 hours' },
-      { value: 360, label: '6 hours' },
-      { value: 480, label: '8 hours' },
+      { value: 15, label: `15 ${t('units.m')}` },
+      { value: 30, label: `30 ${t('units.m')}` },
+      { value: 45, label: `45 ${t('units.m')}` },
+      { value: 60, label: `1 ${t('units.h')}` },
+      { value: 90, label: `1.5 ${t('units.h')}` },
+      { value: 120, label: `2 ${t('units.h')}` },
+      { value: 180, label: `3 ${t('units.h')}` },
+      { value: 240, label: `4 ${t('units.h')}` },
+      { value: 360, label: `6 ${t('units.h')}` },
+      { value: 480, label: `8 ${t('units.h')}` },
     ];
 
     const openNewProject = () => {
@@ -7860,7 +8106,7 @@ const LifeArchitect = () => {
       setShowProjectModal(false);
     };
 
-    const openNewTask = () => {
+    const openNewTask = (folderId = null) => {
       setLocalTaskData({
         title: '',
         icon: '📝',
@@ -7872,7 +8118,9 @@ const LifeArchitect = () => {
         alerts: [],
         date: new Date(),
         startTime: '',
-        endTime: ''
+        startTime: '',
+        endTime: '',
+        folderId: folderId
       });
       setLocalEditShowTime(false);
       setLocalEditShowAlerts(false);
@@ -7888,6 +8136,21 @@ const LifeArchitect = () => {
       setLocalEditShowDate(false);
       setLocalEditShowIconPicker(false);
       setEditingProjectTask(task);
+      setLocalTaskData(prev => ({
+        ...prev,
+        title: task.title,
+        icon: task.icon || '📝',
+        value: task.value || 5,
+        energy: task.energy || 'medium',
+        timeEstimate: task.timeEstimate || 30,
+        dueDate: task.dueDate || '',
+        notes: task.notes || '',
+        alerts: task.alerts || [],
+        date: task.date ? new Date(task.date) : new Date(),
+        startTime: task.startTime ? new Date(task.startTime).toTimeString().slice(0, 5) : '',
+        endTime: task.endTime ? new Date(task.endTime).toTimeString().slice(0, 5) : '',
+        folderId: task.folderId || null
+      }));
       setShowProjectTaskModal(true);
     };
 
@@ -7898,19 +8161,29 @@ const LifeArchitect = () => {
       const project = projects.find(p => p.id === selectedProject.id);
       if (!project) return;
 
-      const [sh, sm] = localTaskData.startTime.split(':').map(Number);
-      const sDate = new Date(localTaskData.date);
-      sDate.setHours(sh, sm, 0, 0);
+      let sDate = null;
+      if (localTaskData.startTime) {
+        const [sh, sm] = localTaskData.startTime.split(':').map(Number);
+        if (!isNaN(sh) && !isNaN(sm)) {
+          sDate = new Date(localTaskData.date);
+          sDate.setHours(sh, sm, 0, 0);
+        }
+      }
 
-      const [eh, em] = localTaskData.endTime.split(':').map(Number);
-      const eDate = new Date(localTaskData.date);
-      eDate.setHours(eh, em, 0, 0);
+      let eDate = null;
+      if (localTaskData.endTime) {
+        const [eh, em] = localTaskData.endTime.split(':').map(Number);
+        if (!isNaN(eh) && !isNaN(em)) {
+          eDate = new Date(localTaskData.date);
+          eDate.setHours(eh, em, 0, 0);
+        }
+      }
 
       const taskUpdates = {
         ...localTaskData,
         date: localTaskData.date instanceof Date ? localTaskData.date.toISOString() : localTaskData.date,
-        startTime: sDate.toISOString(),
-        endTime: eDate.toISOString()
+        startTime: sDate ? sDate.toISOString() : null,
+        endTime: eDate ? eDate.toISOString() : null
       };
 
       if (editingProjectTask) {
@@ -7938,9 +8211,9 @@ const LifeArchitect = () => {
           {/* Header */}
           <div className="mb-6 text-center">
             <p className="text-cyan-400/80 text-xs font-medium uppercase tracking-widest mb-2">
-              {projects.filter(p => p.status === 'active').length} Active
+              {projects.filter(p => p.status === 'active').length} {t('projects.active')}
             </p>
-            <h1 className="text-3xl font-semibold text-white tracking-tight">Projects</h1>
+            <h1 className="text-3xl font-semibold text-white tracking-tight">{t('projects.title')}</h1>
           </div>
 
           {/* Reminders Section */}
@@ -7951,7 +8224,7 @@ const LifeArchitect = () => {
             >
               <div className="flex items-center gap-2">
                 <span className="text-lg">💭</span>
-                <h3 className="font-medium">Quick Reminders</h3>
+                <h3 className="font-medium">{t('plan.quickReminders')}</h3>
                 <span className="bg-slate-800 text-slate-400 text-xs px-2 py-0.5 rounded-full">
                   {reminders.length}
                 </span>
@@ -7973,7 +8246,7 @@ const LifeArchitect = () => {
                     value={newReminderText}
                     onChange={(e) => setNewReminderText(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && addQuickReminder()}
-                    placeholder="Capture an idea..."
+                    placeholder={t('placeholders.captureIdea')}
                     className="flex-1 px-4 py-3 rounded-xl text-white placeholder:text-slate-500 outline-none"
                     style={{
                       background: 'rgba(255,255,255,0.05)',
@@ -8050,7 +8323,7 @@ const LifeArchitect = () => {
                   </div>
                 ) : (
                   <div className="text-center py-4 text-slate-500 text-sm">
-                    No reminders. Add ideas here or in Plan!
+                    {t('projects.noReminders')}
                   </div>
                 )}
 
@@ -8061,7 +8334,7 @@ const LifeArchitect = () => {
 
                   return (
                     <div className="mt-4">
-                      <h3 className="text-slate-400 text-sm font-medium mb-3 uppercase tracking-wider">Completed</h3>
+                      <h3 className="text-slate-400 text-sm font-medium mb-3 uppercase tracking-wider">{t('plan.completed')}</h3>
                       <div className="space-y-2">
                         {completedReminders.map(reminder => (
                           <div
@@ -8175,15 +8448,15 @@ const LifeArchitect = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
               </div>
-              <span className="text-slate-400 group-hover:text-cyan-400 font-medium">New Project</span>
+              <span className="text-slate-400 group-hover:text-cyan-400 font-medium">{t('modals.newProject')}</span>
             </button>
           </div>
 
           {projects.length === 0 && (
             <div className="glass-card rounded-2xl p-8 text-center">
               <div className="text-5xl mb-4">🎯</div>
-              <p className="text-slate-300 font-medium mb-2">No projects yet</p>
-              <p className="text-slate-500 text-sm">Create your first project to start tracking progress</p>
+              <p className="text-slate-300 font-medium mb-2">{t('projects.noProjects')}</p>
+              <p className="text-slate-500 text-sm">{t('projects.createPromo')}</p>
             </div>
           )}
 
@@ -8202,7 +8475,7 @@ const LifeArchitect = () => {
               >
                 <div className="px-5 pt-5 pb-4 border-b border-white/10">
                   <div className="flex items-center justify-between">
-                    <h2 className="text-lg font-semibold text-white">Edit Reminder</h2>
+                    <h2 className="text-lg font-semibold text-white">{t('modals.editReminder')}</h2>
                     <button
                       onClick={closeEditReminder}
                       className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-slate-400"
@@ -8217,7 +8490,7 @@ const LifeArchitect = () => {
                 <div className="p-5 space-y-4">
                   {/* Icon Picker */}
                   <div>
-                    <label className="text-slate-400 text-sm mb-2 block">Icon</label>
+                    <label className="text-slate-400 text-sm mb-2 block">{t('common.icon')}</label>
                     <div className="flex flex-wrap gap-2">
                       {reminderIcons.map(icon => (
                         <button
@@ -8236,7 +8509,7 @@ const LifeArchitect = () => {
 
                   {/* Name Input */}
                   <div>
-                    <label className="text-slate-400 text-sm mb-2 block">Name</label>
+                    <label className="text-slate-400 text-sm mb-2 block">{t('common.reminder')}</label>
                     <input
                       type="text"
                       value={editReminderName}
@@ -8254,7 +8527,7 @@ const LifeArchitect = () => {
                       background: 'linear-gradient(135deg, rgba(245,158,11,0.8) 0%, rgba(217,119,6,0.8) 100%)'
                     }}
                   >
-                    Save Changes
+                    {t('common.saveChanges')}
                   </button>
 
                   {/* Delete Button */}
@@ -8265,7 +8538,7 @@ const LifeArchitect = () => {
                     }}
                     className="w-full py-3 rounded-xl font-medium text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 transition-all"
                   >
-                    Delete Reminder
+                    {t('modals.deleteReminder')}
                   </button>
                 </div>
               </div>
@@ -8287,7 +8560,7 @@ const LifeArchitect = () => {
               >
                 <div className="px-5 pt-5 pb-4 border-b border-white/10">
                   <div className="flex items-center justify-between">
-                    <h2 className="text-lg font-semibold text-white">Move to Project</h2>
+                    <h2 className="text-lg font-semibold text-white">{t('projects.moveToProject')}</h2>
                     <button
                       onClick={() => setProjectsShowMoveModal(false)}
                       className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-slate-400"
@@ -8298,7 +8571,7 @@ const LifeArchitect = () => {
                     </button>
                   </div>
                   <p className="text-slate-400 text-sm mt-2">
-                    Moving: <span className="text-cyan-400">{projectsReminderToMove.name}</span>
+                    {t('projects.moving')} <span className="text-cyan-400">{projectsReminderToMove.name}</span>
                   </p>
                 </div>
 
@@ -8324,7 +8597,7 @@ const LifeArchitect = () => {
                     ))
                   ) : (
                     <div className="text-center py-8">
-                      <p className="text-slate-400 mb-4">No projects yet</p>
+                      <p className="text-slate-400 mb-4">{t('projects.noProjects')}</p>
                       <button
                         onClick={() => {
                           setProjectsShowMoveModal(false);
@@ -8332,7 +8605,7 @@ const LifeArchitect = () => {
                         }}
                         className="px-4 py-2 bg-cyan-500/20 text-cyan-400 rounded-xl font-medium hover:bg-cyan-500/30 transition-all"
                       >
-                        Create Project First
+                        {t('projects.createFirst')}
                       </button>
                     </div>
                   )}
@@ -8357,7 +8630,7 @@ const LifeArchitect = () => {
                 <div className="px-5 pt-5 pb-4 border-b border-white/10">
                   <div className="flex items-center justify-between">
                     <h2 className="text-lg font-semibold text-white">
-                      {editingProject ? 'Edit Project' : 'New Project'}
+                      {editingProject ? t('modals.editProject') : t('modals.newProject')}
                     </h2>
                     <button
                       onClick={() => setShowProjectModal(false)}
@@ -8373,23 +8646,23 @@ const LifeArchitect = () => {
                 <div className="p-5 space-y-4">
                   {/* Title */}
                   <div>
-                    <label className="text-slate-400 text-sm mb-2 block">Title *</label>
+                    <label className="text-slate-400 text-sm mb-2 block">{t('common.title')} *</label>
                     <input
                       type="text"
                       value={localProjectData.title}
                       onChange={(e) => setLocalProjectData(prev => ({ ...prev, title: e.target.value }))}
-                      placeholder="Project name"
+                      placeholder={t('placeholders.projectName')}
                       className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-500 outline-none focus:border-cyan-500/50"
                     />
                   </div>
 
                   {/* Description */}
                   <div>
-                    <label className="text-slate-400 text-sm mb-2 block">Description (optional)</label>
+                    <label className="text-slate-400 text-sm mb-2 block">{t('common.description')}</label>
                     <textarea
                       value={localProjectData.description}
                       onChange={(e) => setLocalProjectData(prev => ({ ...prev, description: e.target.value }))}
-                      placeholder="What is this project about?"
+                      placeholder={t('placeholders.projectAbout')}
                       rows={3}
                       className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-500 outline-none focus:border-cyan-500/50 resize-none"
                     />
@@ -8398,7 +8671,7 @@ const LifeArchitect = () => {
                   {/* Dates */}
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="text-slate-400 text-sm mb-2 block">Start Date</label>
+                      <label className="text-slate-400 text-sm mb-2 block">{t('common.startDate')}</label>
                       <input
                         type="date"
                         value={localProjectData.startDate}
@@ -8407,7 +8680,7 @@ const LifeArchitect = () => {
                       />
                     </div>
                     <div>
-                      <label className="text-slate-400 text-sm mb-2 block">End Date</label>
+                      <label className="text-slate-400 text-sm mb-2 block">{t('common.endDate')}</label>
                       <input
                         type="date"
                         value={localProjectData.endDate}
@@ -8419,7 +8692,7 @@ const LifeArchitect = () => {
 
                   {/* Status */}
                   <div>
-                    <label className="text-slate-400 text-sm mb-2 block">Status</label>
+                    <label className="text-slate-400 text-sm mb-2 block">{t('common.status')}</label>
                     <div className="grid grid-cols-2 gap-2">
                       {Object.entries(statusColors).map(([key, val]) => (
                         <button
@@ -8438,7 +8711,7 @@ const LifeArchitect = () => {
 
                   {/* Project Color */}
                   <div>
-                    <label className="text-slate-400 text-sm mb-2 block">Timeline Color</label>
+                    <label className="text-slate-400 text-sm mb-2 block">{t('common.timelineColor')}</label>
                     <div className="flex flex-wrap gap-2">
                       {projectColors.map(color => (
                         <button
@@ -8464,7 +8737,7 @@ const LifeArchitect = () => {
                       background: 'linear-gradient(135deg, rgba(6,182,212,0.8) 0%, rgba(139,92,246,0.8) 100%)'
                     }}
                   >
-                    {editingProject ? 'Save Changes' : 'Create Project'}
+                    {editingProject ? t('common.saveChanges') : t('modals.createProject')}
                   </button>
 
                   {editingProject && (
@@ -8504,7 +8777,7 @@ const LifeArchitect = () => {
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
-            <span className="text-sm">Back to Projects</span>
+            <span className="text-sm">{t('projects.backToProjects')}</span>
           </button>
 
           <div className="flex items-start justify-between">
@@ -8561,14 +8834,14 @@ const LifeArchitect = () => {
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <span className="text-lg">📝</span>
-              <h3 className="text-slate-400 text-sm font-medium uppercase tracking-wider">Notes</h3>
+              <h3 className="text-slate-400 text-sm font-medium uppercase tracking-wider">{t('common.notes')}</h3>
             </div>
             {!projectsIsEditingNotes && (
               <button
                 onClick={() => startEditingNotes(currentProject)}
                 className="text-cyan-400 text-xs hover:text-cyan-300 transition-colors"
               >
-                {currentProject.notes ? 'Edit' : '+ Add'}
+                {currentProject.notes ? t('common.edit') : t('projects.add')}
               </button>
             )}
           </div>
@@ -8578,7 +8851,7 @@ const LifeArchitect = () => {
               <textarea
                 value={notesText}
                 onChange={(e) => setNotesText(e.target.value)}
-                placeholder="Write your ideas, thoughts, and reminders about this project..."
+                placeholder={t('placeholders.projectNotes')}
                 rows={4}
                 className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-500 outline-none focus:border-cyan-500/50 resize-none text-sm"
                 autoFocus
@@ -8588,13 +8861,13 @@ const LifeArchitect = () => {
                   onClick={saveNotes}
                   className="flex-1 py-2 rounded-xl text-sm font-medium text-white bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/30 transition-all"
                 >
-                  Save
+                  {t('common.save')}
                 </button>
                 <button
                   onClick={cancelEditingNotes}
                   className="flex-1 py-2 rounded-xl text-sm font-medium text-slate-400 bg-white/5 hover:bg-white/10 transition-all"
                 >
-                  Cancel
+                  {t('common.cancel')}
                 </button>
               </div>
             </div>
@@ -8603,55 +8876,227 @@ const LifeArchitect = () => {
               {currentProject.notes ? (
                 <p className="text-slate-300 text-sm leading-relaxed whitespace-pre-wrap">{currentProject.notes}</p>
               ) : (
-                <p className="text-slate-500 text-sm italic">No notes yet. Click "+ Add" to add your ideas.</p>
+                <p className="text-slate-500 text-sm italic">{t('projects.noNotes')}</p>
               )}
             </div>
           )}
         </div>
 
-        {/* Pending Tasks */}
-        {pendingTasks.length > 0 && (
-          <div className="mb-4">
-            <h3 className="text-slate-400 text-sm font-medium mb-3 uppercase tracking-wider">To Do</h3>
-            <div className="space-y-2">
-              {pendingTasks.map(task => (
-                <div
-                  key={task.id}
-                  onClick={() => openEditTask(task)}
-                  className="glass-card rounded-xl p-4 flex items-center gap-3 cursor-pointer hover:bg-white/10 transition-all active:scale-[0.98]"
+        {/* Folders & Tasks */}
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-slate-400 text-sm font-medium uppercase tracking-wider">{t('projects.toDo')}</h3>
+            {!projectsShowNewFolderInput && (
+              <button
+                onClick={() => setProjectsShowNewFolderInput(true)}
+                className="text-cyan-400 text-xs hover:text-cyan-300 transition-colors flex items-center gap-1"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                {t('projects.createFolder')}
+              </button>
+            )}
+          </div>
+
+          {/* New Folder Input */}
+          {projectsShowNewFolderInput && (
+            <div className="mb-4 animate-fadeIn">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={projectsNewFolderName}
+                  onChange={(e) => setProjectsNewFolderName(e.target.value)}
+                  placeholder={t('projects.folderName')}
+                  className="flex-1 px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-500 outline-none focus:border-cyan-500/50 text-sm"
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && projectsNewFolderName.trim()) {
+                      createFolder(currentProject.id, projectsNewFolderName);
+                      setProjectsNewFolderName('');
+                      setProjectsShowNewFolderInput(false);
+                    }
+                  }}
+                />
+                <button
+                  onClick={() => {
+                    if (projectsNewFolderName.trim()) {
+                      createFolder(currentProject.id, projectsNewFolderName);
+                      setProjectsNewFolderName('');
+                      setProjectsShowNewFolderInput(false);
+                    }
+                  }}
+                  disabled={!projectsNewFolderName.trim()}
+                  className="px-4 py-2 bg-cyan-500/20 text-cyan-400 rounded-xl text-sm font-medium hover:bg-cyan-500/30 disabled:opacity-50 transition-all"
                 >
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleProjectTask(currentProject.id, task.id);
-                    }}
-                    className="w-6 h-6 rounded-full border-2 border-slate-500 hover:border-cyan-400 transition-colors flex-shrink-0"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-white font-medium truncate">{task.title}</p>
-                    <div className="flex items-center gap-3 mt-1">
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${task.energy === 'high' ? 'bg-rose-500/20 text-rose-400' :
-                        task.energy === 'medium' ? 'bg-amber-500/20 text-amber-400' :
-                          'bg-emerald-500/20 text-emerald-400'
-                        }`}>
-                        {task.energy}
-                      </span>
-                      <span className="text-slate-500 text-xs">
-                        Impact: {task.value}/10
-                      </span>
-                      <span className="text-slate-500 text-xs">
-                        {timeOptions.find(t => t.value === task.timeEstimate)?.label || task.timeEstimate + 'm'}
-                      </span>
+                  {t('common.add')}
+                </button>
+                <button
+                  onClick={() => {
+                    setProjectsNewFolderName('');
+                    setProjectsShowNewFolderInput(false);
+                  }}
+                  className="px-4 py-2 bg-white/5 text-slate-400 rounded-xl text-sm font-medium hover:bg-white/10 transition-all"
+                >
+                  {t('common.cancel')}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Folders List */}
+          <div className="space-y-6">
+            {(currentProject.folders || []).map(folder => {
+              const folderTasks = pendingTasks.filter(t => t.folderId === folder.id);
+
+              return (
+                <div key={folder.id} className="animate-fadeIn">
+                  <div className="flex items-center justify-between mb-2 group">
+                    <div
+                      className="flex items-center gap-2 cursor-pointer hover:text-cyan-400 transition-colors"
+                      onClick={() => toggleFolderCollapse(currentProject.id, folder.id)}
+                    >
+                      <svg
+                        className={`w-4 h-4 text-slate-500 transition-transform duration-200 ${folder.isCollapsed ? '-rotate-90' : 'rotate-0'}`}
+                        fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                      <svg className="w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                      </svg>
+                      <h4 className="text-white font-medium">{folder.name}</h4>
+                      <span className="text-slate-500 text-xs">({folderTasks.length})</span>
+                    </div>
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                      <button
+                        onClick={() => openNewTask(folder.id)}
+                        className="p-1 text-slate-500 hover:text-cyan-400 transition-all"
+                        title={t('projects.addTask')}
+                      >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={() => deleteFolder(currentProject.id, folder.id)}
+                        className="p-1 text-slate-500 hover:text-rose-400 transition-all"
+                        title={t('projects.deleteFolder')}
+                      >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
                     </div>
                   </div>
-                  <svg className="w-5 h-5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
+
+                  {/* Tasks in Folder */}
+                  {!folder.isCollapsed && (
+                    <div className="space-y-2 pl-2 border-l border-white/5">
+                      {folderTasks.length > 0 ? (
+                        folderTasks.map(task => (
+                          <div
+                            key={task.id}
+                            onClick={() => openEditTask(task)}
+                            className="glass-card rounded-xl p-4 flex items-center gap-3 cursor-pointer hover:bg-white/10 transition-all active:scale-[0.98]"
+                          >
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleProjectTask(currentProject.id, task.id);
+                              }}
+                              className="w-6 h-6 rounded-full border-2 border-slate-500 hover:border-cyan-400 transition-colors flex-shrink-0"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-white font-medium truncate">{task.title}</p>
+                              <div className="flex items-center gap-3 mt-1">
+                                <span className={`text-xs px-2 py-0.5 rounded-full ${task.energy === 'high' ? 'bg-rose-500/20 text-rose-400' :
+                                  task.energy === 'medium' ? 'bg-amber-500/20 text-amber-400' :
+                                    'bg-emerald-500/20 text-emerald-400'
+                                  }`}>
+                                  {task.energy}
+                                </span>
+                                <span className="text-slate-500 text-xs">
+                                  {t('common.impact')}: {task.value}/10
+                                </span>
+                                <span className="text-slate-500 text-xs">
+                                  {timeOptions.find(t => t.value === task.timeEstimate)?.label || task.timeEstimate + t('units.m')}
+                                </span>
+                              </div>
+                            </div>
+                            <svg className="w-5 h-5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="py-2 text-slate-500 text-xs italic pl-2">
+                          {t('projects.noTasks')}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
-              ))}
-            </div>
+              );
+            })}
+
+            {/* Uncategorized Tasks */}
+            {(() => {
+              const uncategorizedTasks = pendingTasks.filter(t => !currentProject.folders?.some(f => f.id === t.folderId));
+              if (uncategorizedTasks.length === 0 && (currentProject.folders || []).length > 0) return null;
+
+              return (
+                <div className="animate-fadeIn">
+                  {(currentProject.folders || []).length > 0 && (
+                    <h4 className="text-slate-400 text-xs font-medium uppercase tracking-wider mb-2 mt-4">{t('projects.uncategorized')}</h4>
+                  )}
+                  <div className="space-y-2">
+                    {uncategorizedTasks.map(task => (
+                      <div
+                        key={task.id}
+                        onClick={() => openEditTask(task)}
+                        className="glass-card rounded-xl p-4 flex items-center gap-3 cursor-pointer hover:bg-white/10 transition-all active:scale-[0.98]"
+                      >
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleProjectTask(currentProject.id, task.id);
+                          }}
+                          className="w-6 h-6 rounded-full border-2 border-slate-500 hover:border-cyan-400 transition-colors flex-shrink-0"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-white font-medium truncate">{task.title}</p>
+                          <div className="flex items-center gap-3 mt-1">
+                            <span className={`text-xs px-2 py-0.5 rounded-full ${task.energy === 'high' ? 'bg-rose-500/20 text-rose-400' :
+                              task.energy === 'medium' ? 'bg-amber-500/20 text-amber-400' :
+                                'bg-emerald-500/20 text-emerald-400'
+                              }`}>
+                              {task.energy}
+                            </span>
+                            <span className="text-slate-500 text-xs">
+                              {t('common.impact')}: {task.value}/10
+                            </span>
+                            <span className="text-slate-500 text-xs">
+                              {timeOptions.find(t => t.value === task.timeEstimate)?.label || task.timeEstimate + t('units.m')}
+                            </span>
+                          </div>
+                        </div>
+                        <svg className="w-5 h-5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </div>
+                    ))}
+                    {uncategorizedTasks.length === 0 && (currentProject.folders || []).length === 0 && (
+                      <div className="text-center py-8 text-slate-500">
+                        {t('projects.noTasks')}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
-        )}
+        </div>
 
         {/* Add Task Button */}
         <button
@@ -8661,13 +9106,13 @@ const LifeArchitect = () => {
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
-          <span className="font-medium">Add Task</span>
+          <span className="font-medium">{t('projects.addTask')}</span>
         </button>
 
         {/* Completed Tasks */}
         {completedTasks.length > 0 && (
           <div>
-            <h3 className="text-slate-400 text-sm font-medium mb-3 uppercase tracking-wider">Completed</h3>
+            <h3 className="text-slate-400 text-sm font-medium mb-3 uppercase tracking-wider">{t('plan.completed')}</h3>
             <div className="space-y-2">
               {completedTasks.map(task => (
                 <div
@@ -8701,7 +9146,7 @@ const LifeArchitect = () => {
         {currentProject.tasks?.length === 0 && (
           <div className="glass-card rounded-2xl p-8 text-center">
             <div className="text-4xl mb-3">📋</div>
-            <p className="text-slate-400">No tasks yet. Add your first task!</p>
+            <p className="text-slate-400">{t('projects.noTasks')}</p>
           </div>
         )}
 
@@ -8721,7 +9166,7 @@ const LifeArchitect = () => {
               <div className="px-5 pt-5 pb-4 border-b border-white/10">
                 <div className="flex items-center justify-between">
                   <h2 className="text-lg font-semibold text-white">
-                    {editingProjectTask ? 'Edit Task' : 'New Task'}
+                    {editingProjectTask ? t('modals.editTask') : t('modals.newTask')}
                   </h2>
                   <button
                     onClick={closeTaskModal}
@@ -8737,7 +9182,7 @@ const LifeArchitect = () => {
               <div className="p-5 space-y-4">
                 {/* Title & Icon Header */}
                 <div className="mb-4">
-                  <label className="text-slate-400 text-sm mb-2 block">Task</label>
+                  <label className="text-slate-400 text-sm mb-2 block">{t('common.task')}</label>
                   <div className="flex gap-3">
                     <button
                       onClick={() => setLocalEditShowIconPicker(!localEditShowIconPicker)}
@@ -8749,7 +9194,7 @@ const LifeArchitect = () => {
                       type="text"
                       value={localTaskData.title}
                       onChange={(e) => setLocalTaskData(prev => ({ ...prev, title: e.target.value }))}
-                      placeholder="Task name"
+                      placeholder={t('placeholders.taskName')}
                       className="flex-1 px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-500 outline-none focus:border-cyan-500/50"
                     />
                   </div>
@@ -8775,6 +9220,32 @@ const LifeArchitect = () => {
                     </div>
                   )}
                 </div>
+
+                {/* Folder Selection */}
+                {(currentProject.folders || []).length > 0 && (
+                  <div className="mb-4">
+                    <label className="text-slate-400 text-sm mb-2 block">{t('projects.folderName')}</label>
+                    <div className="relative">
+                      <select
+                        value={localTaskData.folderId || ''}
+                        onChange={(e) => setLocalTaskData(prev => ({ ...prev, folderId: e.target.value ? Number(e.target.value) : null }))}
+                        className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white outline-none focus:border-cyan-500/50 appearance-none"
+                      >
+                        <option value="" className="bg-slate-800">{t('projects.uncategorized')}</option>
+                        {currentProject.folders.map(folder => (
+                          <option key={folder.id} value={folder.id} className="bg-slate-800">
+                            {folder.name}
+                          </option>
+                        ))}
+                      </select>
+                      <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
+                        <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Details List (iOS Style) - Moved Up */}
                 <TaskDetailsList
@@ -8824,13 +9295,15 @@ const LifeArchitect = () => {
                   repeat={localTaskData.repeat}
                   showRepeatPicker={localEditShowRepeat}
                   onRepeatChange={(repeat) => setLocalTaskData(prev => ({ ...prev, repeat }))}
+                  t={t}
+                  locale={currentLocale}
                 />
 
 
                 {/* Alerts Picker (Collapsible) */}
                 {localEditShowAlerts && (
                   <div className="mb-6 p-4 rounded-2xl bg-white/5 border border-white/5 animate-fadeIn">
-                    <label className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-3 block">Manage Alerts</label>
+                    <label className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-3 block">{t('common.manageAlerts')}</label>
                     <div className="space-y-2">
                       {localTaskData.alerts.map((alert, index) => (
                         <div key={index} className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5">
@@ -8866,7 +9339,7 @@ const LifeArchitect = () => {
 
                 {/* Value (Impact) */}
                 <div>
-                  <label className="text-slate-400 text-sm mb-2 block">Impact Value: {localTaskData.value}/10</label>
+                  <label className="text-slate-400 text-sm mb-2 block">{t('common.impactValue')}: {localTaskData.value}/10</label>
                   <input
                     type="range"
                     min="1"
@@ -8879,7 +9352,7 @@ const LifeArchitect = () => {
 
                 {/* Energy */}
                 <div>
-                  <label className="text-slate-400 text-sm mb-2 block">Energy Required</label>
+                  <label className="text-slate-400 text-sm mb-2 block">{t('common.energyRequired')}</label>
                   <div className="grid grid-cols-3 gap-2">
                     {['low', 'medium', 'high'].map(level => (
                       <button
@@ -8900,11 +9373,11 @@ const LifeArchitect = () => {
 
                 {/* Notes */}
                 <div>
-                  <label className="text-slate-400 text-sm mb-2 block">Notes</label>
+                  <label className="text-slate-400 text-sm mb-2 block">{t('common.notes')}</label>
                   <textarea
                     value={localTaskData.notes}
                     onChange={(e) => setLocalTaskData(prev => ({ ...prev, notes: e.target.value }))}
-                    placeholder="Additional details, links, files..."
+                    placeholder={t('placeholders.projectTaskDetails')}
                     rows={2}
                     className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-500 outline-none focus:border-cyan-500/50 resize-none"
                   />
@@ -8919,7 +9392,7 @@ const LifeArchitect = () => {
                     background: 'linear-gradient(135deg, rgba(6,182,212,0.8) 0%, rgba(139,92,246,0.8) 100%)'
                   }}
                 >
-                  {editingProjectTask ? 'Save Changes' : 'Add Task'}
+                  {editingProjectTask ? t('common.saveChanges') : t('projects.addTask')}
                 </button>
 
                 {editingProjectTask && (
@@ -8930,7 +9403,7 @@ const LifeArchitect = () => {
                     }}
                     className="w-full py-3 rounded-xl font-medium text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 transition-all"
                   >
-                    Delete Task
+                    {t('common.deleteTask')}
                   </button>
                 )}
               </div>
@@ -8953,7 +9426,7 @@ const LifeArchitect = () => {
             >
               <div className="px-5 pt-5 pb-4 border-b border-white/10">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-semibold text-white">Edit Project</h2>
+                  <h2 className="text-lg font-semibold text-white">{t('modals.editProject')}</h2>
                   <button
                     onClick={() => setShowProjectModal(false)}
                     className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-slate-400"
@@ -8967,7 +9440,7 @@ const LifeArchitect = () => {
 
               <div className="p-5 space-y-4">
                 <div>
-                  <label className="text-slate-400 text-sm mb-2 block">Title *</label>
+                  <label className="text-slate-400 text-sm mb-2 block">{t('common.title')} *</label>
                   <input
                     type="text"
                     value={localProjectData.title}
@@ -8977,11 +9450,11 @@ const LifeArchitect = () => {
                 </div>
 
                 <div>
-                  <label className="text-slate-400 text-sm mb-2 block">Description</label>
+                  <label className="text-slate-400 text-sm mb-2 block">{t('common.description')}</label>
                   <textarea
                     value={localProjectData.description}
                     onChange={(e) => setLocalProjectData(prev => ({ ...prev, description: e.target.value }))}
-                    placeholder="What is this project about?"
+                    placeholder={t('placeholders.projectAbout')}
                     rows={3}
                     className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white outline-none focus:border-cyan-500/50 resize-none"
                   />
@@ -8989,7 +9462,7 @@ const LifeArchitect = () => {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-slate-400 text-sm mb-2 block">Start Date</label>
+                    <label className="text-slate-400 text-sm mb-2 block">{t('common.startDate')}</label>
                     <input
                       type="date"
                       value={localProjectData.startDate}
@@ -8998,7 +9471,7 @@ const LifeArchitect = () => {
                     />
                   </div>
                   <div>
-                    <label className="text-slate-400 text-sm mb-2 block">End Date</label>
+                    <label className="text-slate-400 text-sm mb-2 block">{t('common.endDate')}</label>
                     <input
                       type="date"
                       value={localProjectData.endDate}
@@ -9009,7 +9482,7 @@ const LifeArchitect = () => {
                 </div>
 
                 <div>
-                  <label className="text-slate-400 text-sm mb-2 block">Status</label>
+                  <label className="text-slate-400 text-sm mb-2 block">{t('common.status')}</label>
                   <div className="grid grid-cols-2 gap-2">
                     {Object.entries(statusColors).map(([key, val]) => (
                       <button
@@ -9028,7 +9501,7 @@ const LifeArchitect = () => {
 
                 {/* Project Color */}
                 <div>
-                  <label className="text-slate-400 text-sm mb-2 block">Timeline Color</label>
+                  <label className="text-slate-400 text-sm mb-2 block">{t('common.timelineColor')}</label>
                   <div className="flex flex-wrap gap-2">
                     {[
                       { value: '#8b5cf6', name: 'Purple' },
@@ -9069,7 +9542,7 @@ const LifeArchitect = () => {
                     background: 'linear-gradient(135deg, rgba(6,182,212,0.8) 0%, rgba(139,92,246,0.8) 100%)'
                   }}
                 >
-                  Save Changes
+                  {t('common.saveChanges')}
                 </button>
 
                 <button
@@ -9079,7 +9552,7 @@ const LifeArchitect = () => {
                   }}
                   className="w-full py-3 rounded-xl font-medium text-rose-400 bg-rose-500/10"
                 >
-                  Delete Project
+                  {t('common.delete')} {t('common.project')}
                 </button>
               </div>
             </div>
@@ -9142,6 +9615,16 @@ const LifeArchitect = () => {
 
       {/* Main Content */}
       <div className="relative max-w-md mx-auto px-5 pt-8">
+        {/* Settings Button */}
+        <button
+          onClick={() => setShowSettingsModal(true)}
+          className="absolute top-8 right-5 w-8 h-8 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-all duration-200 z-20"
+        >
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+        </button>
         {activeTab === 'projects' && <ProjectsScreen />}
         {activeTab === 'plan' && <PlanScreen />}
         {activeTab === 'execute' && <ExecuteScreen />}
@@ -9154,7 +9637,7 @@ const LifeArchitect = () => {
         <div className="max-w-md mx-auto flex justify-around items-end py-2">
           <NavItem
             id="projects"
-            label="Projects"
+            label={t('tabs.projects')}
             active={activeTab === 'projects'}
             icon={
               <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -9164,7 +9647,7 @@ const LifeArchitect = () => {
           />
           <NavItem
             id="plan"
-            label="Plan"
+            label={t('tabs.plan')}
             active={activeTab === 'plan'}
             icon={
               <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -9174,7 +9657,7 @@ const LifeArchitect = () => {
           />
           <NavItem
             id="execute"
-            label="Execute"
+            label={t('tabs.execute')}
             active={activeTab === 'execute'}
             isMain={true}
             icon={
@@ -9186,7 +9669,7 @@ const LifeArchitect = () => {
           />
           <NavItem
             id="review"
-            label="Reflect"
+            label={t('tabs.reflect')}
             active={activeTab === 'review'}
             icon={
               <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -9196,7 +9679,7 @@ const LifeArchitect = () => {
           />
           <NavItem
             id="patterns"
-            label="Patterns"
+            label={t('patterns.title')}
             active={activeTab === 'patterns'}
             icon={
               <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -9243,7 +9726,7 @@ const LifeArchitect = () => {
             <div className="px-5 pt-5 pb-4 border-b border-white/10">
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-semibold text-white">
-                  {globalTaskMode === 'reminder' ? 'New Reminder' : globalTaskMode === 'priority' ? 'New Priority' : 'New Task'}
+                  {globalTaskMode === 'reminder' ? t('modals.newReminder') : globalTaskMode === 'priority' ? t('modals.newPriority') : t('modals.newTask')}
                 </h2>
                 <button
                   onClick={() => setShowGlobalTaskModal(false)}
@@ -9265,7 +9748,7 @@ const LifeArchitect = () => {
                       : 'bg-white/10 text-slate-400'
                       }`}
                   >
-                    ⏰ Scheduled Task
+                    ⏰ {t('common.scheduledTask')}
                   </button>
                   <button
                     onClick={() => setGlobalTaskMode('reminder')}
@@ -9274,7 +9757,7 @@ const LifeArchitect = () => {
                       : 'bg-white/10 text-slate-400'
                       }`}
                   >
-                    📌 Reminder
+                    📌 {t('common.reminder')}
                   </button>
                 </div>
               )}
@@ -9285,7 +9768,7 @@ const LifeArchitect = () => {
                   <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500/30 to-indigo-600/30 border border-purple-500/30 flex items-center justify-center">
                     <span className="text-purple-400 text-sm font-bold">{globalTaskPrioritySlot + 1}</span>
                   </div>
-                  <span className="text-slate-400 text-sm">Priority #{globalTaskPrioritySlot + 1}</span>
+                  <span className="text-slate-400 text-sm">{t('common.priority')} #{globalTaskPrioritySlot + 1}</span>
                 </div>
               )}
             </div>
@@ -9296,7 +9779,7 @@ const LifeArchitect = () => {
               {/* Title & Icon Header */}
               <div className="mb-4">
                 <label className="text-slate-400 text-sm mb-2 block">
-                  {globalTaskMode === 'reminder' ? 'Reminder' : globalTaskMode === 'priority' ? 'Priority' : 'Task'}
+                  {globalTaskMode === 'reminder' ? t('common.reminder') : globalTaskMode === 'priority' ? t('common.priority') : t('common.task')}
                 </label>
                 <div className="flex gap-3">
                   <button
@@ -9309,7 +9792,7 @@ const LifeArchitect = () => {
                     type="text"
                     value={globalTaskName}
                     onChange={(e) => setGlobalTaskName(e.target.value)}
-                    placeholder={globalTaskMode === 'reminder' ? "What do you need to remember?" : "What do you need to do?"}
+                    placeholder={globalTaskMode === 'reminder' ? t('placeholders.reminder') : t('placeholders.whatToDo')}
                     className="flex-1 px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-500 outline-none focus:border-amber-500/50"
                     autoFocus
                   />
@@ -9387,13 +9870,15 @@ const LifeArchitect = () => {
                     repeat={globalTaskRepeat}
                     showRepeatPicker={globalTaskShowRepeat}
                     onRepeatChange={(repeat) => setGlobalTaskRepeat(repeat)}
+                    t={t}
+                    locale={currentLocale}
                   />
 
 
                   {/* Alerts Picker */}
                   {globalTaskShowAlerts && (
                     <div className="mb-6 p-4 rounded-2xl bg-white/5 border border-white/5 animate-fadeIn">
-                      <label className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-3 block">Manage Alerts</label>
+                      <label className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-3 block">{t('common.manageAlerts')}</label>
                       <div className="space-y-2">
                         {globalTaskAlerts.map((alert, index) => (
                           <div key={index} className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5">
@@ -9431,7 +9916,7 @@ const LifeArchitect = () => {
 
               {/* Value (New) */}
               <div className="mb-4">
-                <label className="text-slate-400 text-sm mb-2 block">Impact Value: {globalTaskValue}/10</label>
+                <label className="text-slate-400 text-sm mb-2 block">{t('common.impactValue')}: {globalTaskValue}/10</label>
                 <input
                   type="range"
                   min="1"
@@ -9444,7 +9929,7 @@ const LifeArchitect = () => {
 
               {/* Energy Level */}
               <div className="mb-4">
-                <label className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-2 block">Energy Level</label>
+                <label className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-2 block">{t('common.energyLevel')}</label>
                 <div className="flex gap-2">
                   {['low', 'medium', 'high'].map(e => (
                     <button
@@ -9459,7 +9944,7 @@ const LifeArchitect = () => {
                               : 'bg-rose-500/80 text-white shadow-lg shadow-rose-500/30'
                           : 'bg-white/10 text-slate-400 hover:bg-white/20'}`}
                     >
-                      {e === 'low' ? '🌱 Low' : e === 'medium' ? '⚡ Med' : '🔥 High'}
+                      {e === 'low' ? `🌱 ${t('energyLevels.light')}` : e === 'medium' ? `⚡ ${t('energyLevels.moderate')}` : `🔥 ${t('energyLevels.heavy')}`}
                     </button>
                   ))}
                 </div>
@@ -9467,11 +9952,11 @@ const LifeArchitect = () => {
 
               {/* Notes (New) */}
               <div className="mb-4">
-                <label className="text-slate-400 text-sm mb-2 block">Notes</label>
+                <label className="text-slate-400 text-sm mb-2 block">{t('common.notes')}</label>
                 <textarea
                   value={globalTaskNotes}
                   onChange={(e) => setGlobalTaskNotes(e.target.value)}
-                  placeholder="Additional details..."
+                  placeholder={t('placeholders.additionalDetails')}
                   rows={2}
                   className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-500 outline-none focus:border-amber-500/50 resize-none"
                 />
@@ -9489,7 +9974,7 @@ const LifeArchitect = () => {
                       : 'bg-white/5 text-slate-400 border border-white/10 hover:bg-white/10'}`}
                 >
                   <span>{globalTaskIsNonNegotiable ? '🎯' : '○'}</span>
-                  <span>Non-negotiable</span>
+                  <span>{t('common.nonNegotiable')}</span>
                 </button>
               )}
             </div>
@@ -9501,7 +9986,7 @@ const LifeArchitect = () => {
                   onClick={() => setShowGlobalTaskModal(false)}
                   className="flex-1 py-3 rounded-xl font-medium text-slate-400 bg-white/10 hover:bg-white/20 transition-all"
                 >
-                  Cancel
+                  {t('common.cancel')}
                 </button>
                 <button
                   onClick={createGlobalTask}
@@ -9518,9 +10003,99 @@ const LifeArchitect = () => {
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
-                  {globalTaskMode === 'reminder' ? 'Add Reminder' : globalTaskMode === 'priority' ? 'Add Priority' : 'Add Task'}
+                  {globalTaskMode === 'reminder' ? `${t('common.add')} ${t('common.reminder')}` : globalTaskMode === 'priority' ? `${t('common.add')} ${t('common.priority')}` : t('projects.addTask')}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Settings Modal */}
+      {showSettingsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center animate-fadeIn">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setShowSettingsModal(false)}
+          />
+
+          {/* Modal Card */}
+          <div className="relative w-[90%] max-w-sm glass-card rounded-3xl overflow-hidden shadow-2xl animate-popIn">
+            <div className="p-6">
+              <h3 className="text-xl font-semibold text-white mb-6">{t('settings.title')}</h3>
+
+              {/* Profile Section */}
+              <div className="mb-6">
+                <label className="block text-xs font-medium text-slate-400 uppercase tracking-widest mb-2">
+                  {t('settings.profileName')}
+                </label>
+                <div className="relative">
+                  <div className="absolute left-3 top-1/2 -translate-y-1/2 text-lg">
+                    👋
+                  </div>
+                  <input
+                    type="text"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white outline-none focus:border-purple-500/50 transition-colors"
+                  />
+                </div>
+              </div>
+
+              {/* Language Selector */}
+              <div className="mb-6">
+                <label className="block text-xs font-medium text-slate-400 uppercase tracking-widest mb-2">
+                  {t('settings.language')}
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { code: 'en', label: 'English' },
+                    { code: 'fr', label: 'Français' },
+                    { code: 'zh', label: '中文' },
+                    { code: 'ru', label: 'Русский' }
+                  ].map((lang) => (
+                    <button
+                      key={lang.code}
+                      onClick={() => setLanguage(lang.code)}
+                      className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${language === lang.code
+                        ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/25'
+                        : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white'
+                        }`}
+                    >
+                      {lang.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Data Section */}
+              <div>
+                <button
+                  onClick={() => {
+                    if (window.confirm(t('settings.resetWarning'))) {
+                      localStorage.clear();
+                      window.location.reload();
+                    }
+                  }}
+                  className="w-full py-3 rounded-xl bg-rose-500/10 text-rose-400 border border-rose-500/20 hover:bg-rose-500/20 transition-all font-medium text-sm flex items-center justify-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                  {t('settings.resetButton')}
+                </button>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="bg-white/5 p-4 flex justify-end">
+              <button
+                onClick={() => setShowSettingsModal(false)}
+                className="px-6 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-medium transition-colors"
+              >
+                {t('settings.done')}
+              </button>
             </div>
           </div>
         </div>
