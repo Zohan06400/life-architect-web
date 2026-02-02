@@ -94,14 +94,11 @@ const ReflectionInput = ({ question, description, placeholder, icon, defaultValu
       recognition.maxAlternatives = 1;
 
       recognition.onstart = () => {
-        console.log('Speech recognition started');
         setIsRecording(true);
       };
 
       recognition.onresult = (event) => {
-        console.log('Speech recognition result:', event);
         const transcript = event.results[0][0].transcript;
-        console.log('Transcript:', transcript);
 
         if (textareaRef.current && transcript) {
           const currentValue = textareaRef.current.value;
@@ -136,13 +133,11 @@ const ReflectionInput = ({ question, description, placeholder, icon, defaultValu
       };
 
       recognition.onend = () => {
-        console.log('Speech recognition ended');
         setIsRecording(false);
       };
 
       recognitionRef.current = recognition;
       recognition.start();
-      console.log('Recognition start called');
 
     } catch (error) {
       console.error('Error starting speech recognition:', error);
@@ -833,11 +828,22 @@ const LifeArchitect = () => {
   const [executeEditingTask, setExecuteEditingTask] = useState(null);
   const [executeEditingRoutine, setExecuteEditingRoutine] = useState(null);
 
-  // Edit Task State
+  // Edit Task State (lifted to App level to prevent reset on re-render)
+  const [editTaskName, setEditTaskName] = useState('');
+  const [editTaskIcon, setEditTaskIcon] = useState('📌');
+  const [editTaskEnergy, setEditTaskEnergy] = useState('medium');
+  const [editTaskStartHour, setEditTaskStartHour] = useState(9);
+  const [editTaskStartMinute, setEditTaskStartMinute] = useState(0);
+  const [editTaskEndHour, setEditTaskEndHour] = useState(10);
+  const [editTaskEndMinute, setEditTaskEndMinute] = useState(0);
   const [editTaskAlerts, setEditTaskAlerts] = useState([]);
+  const [editTaskRepeat, setEditTaskRepeat] = useState({ type: 'none', label: 'None', days: [] });
   const [editTaskShowTime, setEditTaskShowTime] = useState(false);
   const [editTaskShowAlerts, setEditTaskShowAlerts] = useState(false);
   const [editTaskDate, setEditTaskDate] = useState(new Date()); // For date editing
+  const [editTaskShowDate, setEditTaskShowDate] = useState(false);
+  const [editTaskShowRepeat, setEditTaskShowRepeat] = useState(false);
+  const [editTaskShowIconPicker, setEditTaskShowIconPicker] = useState(false);
 
   // Consistency fields
   const [editTaskValue, setEditTaskValue] = useState(5);
@@ -1270,18 +1276,8 @@ const LifeArchitect = () => {
       }
     }));
   };
-
   // Get tasks for Execute screen's selected date
   const tasks = getResolvedTasksForDate(selectedExecuteDate);
-
-  // Set tasks for a specific date
-  const setTasksForDate = (date, newTasks) => {
-    const key = getDateKey(date);
-    setTasksByDate(prev => ({
-      ...prev,
-      [key]: typeof newTasks === 'function' ? newTasks(prev[key] || []) : newTasks
-    }));
-  };
 
   // Reflections storage by date
   const [selectedReflectDate, setSelectedReflectDate] = useState(getToday());
@@ -1366,6 +1362,7 @@ const LifeArchitect = () => {
   const [globalTaskShowRepeat, setGlobalTaskShowRepeat] = useState(false);
   const [globalTaskValue, setGlobalTaskValue] = useState(5);
   const [globalTaskNotes, setGlobalTaskNotes] = useState('');
+  const [globalEditingTaskId, setGlobalEditingTaskId] = useState(null);
 
   const globalIconOptions = [
     '📌', '📧', '💪', '📝', '📞', '📚', '🧘', '🎯', '💼', '🏃',
@@ -1383,27 +1380,66 @@ const LifeArchitect = () => {
   ];
 
   // Open global task modal
-  const openGlobalTaskModal = (mode = 'task', prioritySlot = null) => {
+  const openGlobalTaskModal = (mode = 'task', prioritySlot = null, taskToEdit = null) => {
     const now = new Date();
     const nextHour = Math.min(22, now.getHours() + 1);
 
     // Choose date based on view or default to today
     const defaultDate = activeTab === 'execute' ? selectedExecuteDate : selectedPlanDate;
 
-    setGlobalTaskName('');
-    setGlobalTaskIcon('📌');
-    setGlobalTaskEnergy('medium');
-    setGlobalTaskStartHour(nextHour);
-    setGlobalTaskStartMinute(0);
-    setGlobalTaskEndHour(Math.min(23, nextHour + 1));
-    setGlobalTaskEndMinute(0);
-    setGlobalTaskReminder(null);
-    setGlobalTaskIsNonNegotiable(false);
+    if (taskToEdit) {
+      // Edit mode
+      setGlobalEditingTaskId(taskToEdit.id);
+      setGlobalTaskName(taskToEdit.name || taskToEdit.title || '');
+      setGlobalTaskIcon(taskToEdit.icon || '📌');
+      setGlobalTaskEnergy(taskToEdit.energy || 'medium');
+      setGlobalTaskValue(taskToEdit.value || 5);
+      setGlobalTaskNotes(taskToEdit.notes || '');
 
-    setGlobalTaskDate(defaultDate ? new Date(defaultDate) : new Date());
-    setGlobalTaskAlerts([]);
-    setGlobalTaskValue(5);
-    setGlobalTaskNotes('');
+      const taskDate = taskToEdit.date ? new Date(taskToEdit.date) : (taskToEdit.startTime ? new Date(taskToEdit.startTime) : new Date());
+      setGlobalTaskDate(taskDate);
+
+      if (taskToEdit.startTime) {
+        const s = new Date(taskToEdit.startTime);
+        setGlobalTaskStartHour(s.getHours());
+        setGlobalTaskStartMinute(s.getMinutes());
+      } else {
+        setGlobalTaskStartHour(nextHour);
+        setGlobalTaskStartMinute(0);
+      }
+
+      if (taskToEdit.endTime) {
+        const e = new Date(taskToEdit.endTime);
+        setGlobalTaskEndHour(e.getHours());
+        setGlobalTaskEndMinute(e.getMinutes());
+      } else {
+        setGlobalTaskEndHour(Math.min(23, nextHour + 1));
+        setGlobalTaskEndMinute(0);
+      }
+
+      setGlobalTaskAlerts(taskToEdit.alerts || []);
+      setGlobalTaskRepeat(taskToEdit.repeat || { type: 'none', label: 'None', days: [] });
+
+    } else {
+      // Create mode
+      setGlobalEditingTaskId(null);
+      setGlobalTaskName('');
+      setGlobalTaskIcon('📌');
+      setGlobalTaskEnergy('medium');
+      setGlobalTaskStartHour(nextHour);
+      setGlobalTaskStartMinute(0);
+      setGlobalTaskEndHour(Math.min(23, nextHour + 1));
+      setGlobalTaskEndMinute(0);
+      setGlobalTaskReminder(null); // Assuming this is distinct from alerts, kept for compatibility
+
+      setGlobalTaskDate(defaultDate ? new Date(defaultDate) : new Date());
+      setGlobalTaskAlerts([]);
+      setGlobalTaskValue(5);
+      setGlobalTaskNotes('');
+      setGlobalTaskRepeat({ type: 'none', label: 'None', days: [] });
+    }
+
+    setGlobalTaskIsNonNegotiable(false);
     setGlobalTaskShowTime(false);
     setGlobalTaskShowAlerts(false);
     setGlobalTaskShowDate(false);
@@ -1421,8 +1457,6 @@ const LifeArchitect = () => {
 
     if (globalTaskMode === 'reminder') {
       // Add as reminder
-      // Should we support Date/Time for global new reminders?
-      // Yes, if we want consistency.
       const sTime = new Date(globalTaskDate);
       sTime.setHours(globalTaskStartHour, globalTaskStartMinute, 0, 0);
 
@@ -1430,7 +1464,7 @@ const LifeArchitect = () => {
       eTime.setHours(globalTaskEndHour, globalTaskEndMinute, 0, 0);
 
       const newReminder = {
-        id: Date.now(),
+        id: globalEditingTaskId || Date.now(),
         icon: globalTaskIcon,
         name: globalTaskName.trim(),
         energy: globalTaskEnergy,
@@ -1440,28 +1474,160 @@ const LifeArchitect = () => {
         endTime: eTime.toISOString(),
         repeat: globalTaskRepeat,
         value: globalTaskValue,
-        notes: globalTaskNotes
+        notes: globalTaskNotes,
+        completed: false // Reset completed on edit? Probably not if editing. 
+        // But for now assuming this is create path for reminder or simple update.
+        // Use spread if editing.
       };
-      setReminders(prev => [...prev, newReminder]);
+
+      if (globalEditingTaskId) {
+        setReminders(prev => prev.map(r => r.id === globalEditingTaskId ? { ...r, ...newReminder, completed: r.completed } : r));
+      } else {
+        setReminders(prev => [...prev, newReminder]);
+      }
+
     } else if (globalTaskMode === 'priority' && globalTaskPrioritySlot !== null) {
-      // Add to specific priority slot
-      const newTask = {
-        id: Date.now(),
-        icon: globalTaskIcon,
-        name: globalTaskName.trim(),
-        energy: globalTaskEnergy,
-        value: globalTaskValue,
-        notes: globalTaskNotes
-        // Priorities don't usually have scheduled time in this model
-      };
-      const newPriorities = [...priorities];
-      newPriorities[globalTaskPrioritySlot] = {
-        slot: globalTaskPrioritySlot + 1,
-        task: newTask,
-        energy: globalTaskEnergy,
-        time: null
-      };
-      setPriorities(newPriorities);
+      const sTime = new Date(globalTaskDate);
+      sTime.setHours(globalTaskStartHour, globalTaskStartMinute, 0, 0);
+
+      const eTime = new Date(globalTaskDate);
+      eTime.setHours(globalTaskEndHour, globalTaskEndMinute, 0, 0);
+
+      // Calculate duration for priority display
+      const duration = Math.round((eTime - sTime) / (1000 * 60)); // minutes
+      const hours = Math.floor(duration / 60);
+      const minutes = duration % 60;
+      let timeStr = '1h';
+      if (hours === 0 && minutes > 0) timeStr = `${minutes}m`;
+      else if (hours > 0 && minutes === 0) timeStr = `${hours}h`;
+      else if (hours > 0 && minutes > 0) timeStr = `${hours}h ${minutes}m`;
+
+      if (globalEditingTaskId) {
+        // UPDATE EXISTING PRIORITY TASK
+        const existingPriority = priorities[globalTaskPrioritySlot];
+        const updatedTask = {
+          ...existingPriority.task,
+          name: globalTaskName.trim(),
+          title: globalTaskName.trim(),
+          icon: globalTaskIcon,
+          energy: globalTaskEnergy,
+          value: globalTaskValue,
+          notes: globalTaskNotes,
+          startTime: sTime,
+          endTime: eTime,
+          alerts: globalTaskAlerts,
+          repeat: globalTaskRepeat
+        };
+
+        const newPriorities = [...priorities];
+        newPriorities[globalTaskPrioritySlot] = {
+          ...existingPriority,
+          task: updatedTask,
+          energy: globalTaskEnergy,
+          time: timeStr
+        };
+        setPriorities(newPriorities);
+
+        // Sync to Reminder
+        if (updatedTask.originalReminderId) {
+          const updatedReminders = reminders.map(r =>
+            r.id === updatedTask.originalReminderId ? {
+              ...r,
+              name: globalTaskName.trim(),
+              icon: globalTaskIcon,
+              energy: globalTaskEnergy,
+              value: globalTaskValue,
+              notes: globalTaskNotes,
+              startTime: sTime.toISOString(),
+              endTime: eTime.toISOString(),
+              alerts: globalTaskAlerts,
+              repeat: globalTaskRepeat,
+              date: globalTaskDate.toISOString()
+            } : r
+          );
+          setReminders(updatedReminders);
+          saveToStorage('reminders', updatedReminders);
+        }
+
+        // Sync to Project Task
+        if (updatedTask.projectId && updatedTask.projectTaskId) {
+          const updatedProjects = projects.map(p => {
+            if (p.id === updatedTask.projectId) {
+              return {
+                ...p,
+                tasks: p.tasks.map(t => {
+                  if (t.id === updatedTask.projectTaskId) {
+                    return {
+                      ...t,
+                      title: globalTaskName.trim(),
+                      icon: globalTaskIcon,
+                      energy: globalTaskEnergy,
+                      value: globalTaskValue,
+                      notes: globalTaskNotes,
+                      startTime: sTime.toISOString(),
+                      endTime: eTime.toISOString(),
+                      dueDate: globalTaskDate.toISOString(),
+                      alerts: globalTaskAlerts,
+                      repeat: globalTaskRepeat
+                    };
+                  }
+                  return t;
+                })
+              };
+            }
+            return p;
+          });
+          setProjects(updatedProjects);
+          saveToStorage('projects', updatedProjects);
+        }
+
+      } else {
+        // CREATE NEW PRIORITY TASK
+        const newReminder = {
+          id: Date.now(),
+          icon: globalTaskIcon,
+          name: globalTaskName.trim(),
+          energy: globalTaskEnergy,
+          alerts: globalTaskAlerts,
+          date: globalTaskDate.toISOString(),
+          startTime: sTime.toISOString(),
+          endTime: eTime.toISOString(),
+          repeat: globalTaskRepeat,
+          value: globalTaskValue,
+          notes: globalTaskNotes,
+          completed: false
+        };
+
+        // Save to reminders array
+        const updatedReminders = [...reminders, newReminder];
+        setReminders(updatedReminders);
+        saveToStorage('reminders', updatedReminders);
+
+        // Create priority task with reference to reminder
+        const newTask = {
+          id: Date.now() + 1,
+          icon: globalTaskIcon,
+          name: globalTaskName.trim(),
+          title: globalTaskName.trim(),
+          energy: globalTaskEnergy,
+          value: globalTaskValue,
+          notes: globalTaskNotes,
+          originalReminderId: newReminder.id, // Link to reminder for completion sync
+          startTime: sTime,
+          endTime: eTime,
+          alerts: globalTaskAlerts,
+          repeat: globalTaskRepeat
+        };
+
+        const newPriorities = [...priorities];
+        newPriorities[globalTaskPrioritySlot] = {
+          slot: globalTaskPrioritySlot + 1,
+          task: newTask,
+          energy: globalTaskEnergy,
+          time: timeStr
+        };
+        setPriorities(newPriorities);
+      } // End create new
     } else {
       // Add as scheduled task
       const targetDate = globalTaskDate; // Use the selected date from modal
@@ -1625,14 +1791,18 @@ const LifeArchitect = () => {
           dayTasks.push({
             id: `p${idx}`,
             icon: p.task.icon,
-            title: p.task.name,
+            title: p.task.title || p.task.name || '',
             startTime: new Date(startTime),
             endTime: endTime,
             duration: p.time || '1h',
             energy: p.energy || p.task.energy,
             color: colors[colorIndex % colors.length],
             isNonNegotiable: false,
-            completed: existingTask?.completed || false
+            completed: existingTask?.completed || false,
+            // Preserve original source fields for completion sync
+            originalReminderId: p.task.originalReminderId,
+            projectId: p.task.projectId,
+            projectTaskId: p.task.projectTaskId
           });
           startTime = endTime;
           colorIndex++;
@@ -1692,8 +1862,21 @@ const LifeArchitect = () => {
   };
 
   const addToNextSlot = (reminder) => {
+    // Prevent duplicates: check if this reminder is already in priorities
+    // Check using originalReminderId since we create new IDs for tasks
+    if (priorities.some(p => p.task && p.task.originalReminderId === reminder.id)) {
+      return; // Already in priorities, do nothing
+    }
+
     // Create a copy of the reminder for the slot (don't remove from reminders)
-    const taskCopy = { ...reminder, id: Date.now(), isVirtual: false }; // New ID so it's independent, and harden it
+    // Convert reminder's 'name' property to task's 'title' property
+    const taskCopy = {
+      ...reminder,
+      title: reminder.title || reminder.name || '',
+      originalReminderId: reminder.id, // Store original ID for duplicate checking
+      id: Date.now(),
+      isVirtual: false
+    };
 
     // Fill priorities 1, 2, 3
     for (let i = 0; i < 3; i++) {
@@ -1803,6 +1986,16 @@ const LifeArchitect = () => {
 
     if (task) {
       setCompletedTasks(prev => [...prev, { ...task, isVirtual: false, completed: true }]);
+
+      // If this task came from a reminder, mark the reminder as completed too
+      // ONLY if it's NOT a recurring task. Recurring reminders should stay active as templates.
+      if (task.originalReminderId && (!task.repeat || task.repeat.type === 'none')) {
+        const updatedReminders = reminders.map(r =>
+          r.id === task.originalReminderId ? { ...r, completed: true } : r
+        );
+        setReminders(updatedReminders);
+        saveToStorage('reminders', updatedReminders);
+      }
 
       // If this task came from a project, mark the project task as completed too
       // ONLY if it's NOT a recurring task. Recurring project tasks should stay active as templates.
@@ -2740,66 +2933,79 @@ const LifeArchitect = () => {
 
                 <div className={`overflow-hidden transition-all duration-300 ${isExpanded ? 'max-h-[600px]' : 'max-h-0'}`}>
                   <div className="px-4 pb-4 space-y-2">
-                    {pendingTasks.map(task => (
-                      <div
-                        key={task.id}
-                        onClick={() => openPlanTaskEdit(task, project)}
-                        className="flex items-center justify-between p-3 rounded-xl
+                    {pendingTasks
+                      .filter(task => {
+                        // Hide tasks that are already in the top 3 priorities
+                        // Check both id and projectTaskId since tasks store the original project task ID
+                        return !priorities.some(p => p.task && (p.task.id === task.id || p.task.projectTaskId === task.id));
+                      })
+                      .map(task => (
+                        <div
+                          key={task.id}
+                          onClick={() => openPlanTaskEdit(task, project)}
+                          className="flex items-center justify-between p-3 rounded-xl
                           hover:bg-white/10 transition-all duration-200 cursor-pointer select-none hover:scale-[1.01]"
-                        style={{ background: 'rgba(255,255,255,0.03)' }}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="text-slate-500">
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                            </svg>
-                          </div>
-                          <div>
-                            <span className="text-slate-200 font-medium text-sm">{task.title}</span>
-                            <div className="flex items-center gap-2 mt-0.5">
-                              <span className={`text-xs px-1.5 py-0.5 rounded ${task.energy === 'high' ? 'bg-rose-500/20 text-rose-400' :
-                                task.energy === 'medium' ? 'bg-amber-500/20 text-amber-400' :
-                                  'bg-emerald-500/20 text-emerald-400'
-                                }`}>
-                                {task.energy}
-                              </span>
-                              <span className="text-slate-500 text-xs">Impact: {task.value}</span>
+                          style={{ background: 'rgba(255,255,255,0.03)' }}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="text-slate-500">
+                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                              </svg>
+                            </div>
+                            <div>
+                              <span className="text-slate-200 font-medium text-sm">{task.title}</span>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                <span className={`text-xs px-1.5 py-0.5 rounded ${task.energy === 'high' ? 'bg-rose-500/20 text-rose-400' :
+                                  task.energy === 'medium' ? 'bg-amber-500/20 text-amber-400' :
+                                    'bg-emerald-500/20 text-emerald-400'
+                                  }`}>
+                                  {task.energy}
+                                </span>
+                                <span className="text-slate-500 text-xs">Impact: {task.value}</span>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const taskToAdd = {
-                              id: Date.now(),
-                              icon: '📋',
-                              name: task.title,
-                              energy: task.energy,
-                              time: task.timeEstimate,
-                              projectId: project.id,
-                              projectTaskId: task.id,
-                              projectTitle: project.title
-                            };
-                            const emptySlotIndex = priorities.findIndex(p => !p.task);
-                            if (emptySlotIndex !== -1) {
-                              const newPriorities = [...priorities];
-                              newPriorities[emptySlotIndex] = {
-                                ...newPriorities[emptySlotIndex],
-                                task: taskToAdd,
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+
+                              // Prevent duplicates: check if this task is already in priorities
+                              // Check using projectTaskId since we create new IDs for tasks
+                              if (priorities.some(p => p.task && p.task.projectTaskId === task.id)) {
+                                return; // Already in priorities, do nothing
+                              }
+
+                              const taskToAdd = {
+                                id: Date.now(),
+                                icon: '📋',
+                                name: task.title,
                                 energy: task.energy,
-                                time: task.timeEstimate
+                                time: task.timeEstimate,
+                                projectId: project.id,
+                                projectTaskId: task.id,
+                                projectTitle: project.title
                               };
-                              setPriorities(newPriorities);
-                            }
-                          }}
-                          className="w-7 h-7 rounded-lg bg-cyan-500/30 text-cyan-300 flex items-center justify-center hover:bg-cyan-500/50 hover:scale-105 transition-all duration-200"
-                        >
-                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-                          </svg>
-                        </button>
-                      </div>
-                    ))}
+                              const emptySlotIndex = priorities.findIndex(p => !p.task);
+                              if (emptySlotIndex !== -1) {
+                                const newPriorities = [...priorities];
+                                newPriorities[emptySlotIndex] = {
+                                  ...newPriorities[emptySlotIndex],
+                                  task: taskToAdd,
+                                  energy: task.energy,
+                                  time: task.timeEstimate
+                                };
+                                setPriorities(newPriorities);
+                              }
+                            }}
+                            className="w-7 h-7 rounded-lg bg-cyan-500/30 text-cyan-300 flex items-center justify-center hover:bg-cyan-500/50 hover:scale-105 transition-all duration-200"
+                          >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+                            </svg>
+                          </button>
+                        </div>
+                      ))}
                     {pendingTasks.length === 0 && (
                       <div className="text-center py-3 text-slate-500 text-sm">
                         All tasks completed! 🎉
@@ -2826,42 +3032,60 @@ const LifeArchitect = () => {
 
         {/* Expanded Reminders List */}
         <div className={`space-y-2 overflow-hidden transition-all duration-300 mb-8 ${remindersExpanded ? 'max-h-[1200px] opacity-100' : 'max-h-0 opacity-0'}`}>
-          {getResolvedRemindersForDate(selectedExecuteDate).map(reminder => (
-            <div
-              key={reminder.id}
-              onClick={() => openReminderEdit(reminder)}
-              className="flex items-center justify-between p-3.5 rounded-2xl
+          {getResolvedRemindersForDate(selectedExecuteDate)
+            .filter(reminder => {
+              // Hide completed reminders from active list
+              if (reminder.completed) return false;
+              // Hide reminders that are already in the top 3 priorities
+              // Check both id and originalReminderId since tasks store the original reminder ID
+              return !priorities.some(p => p.task && (p.task.id === reminder.id || p.task.originalReminderId === reminder.id));
+            })
+            .map(reminder => (
+              <div
+                key={reminder.id}
+                onClick={() => openReminderEdit(reminder)}
+                className="flex items-center justify-between p-3.5 rounded-2xl
                 hover:bg-white/10 transition-all duration-200 cursor-pointer select-none hover:scale-[1.01]"
-              style={{
-                background: 'linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%)',
-                backdropFilter: 'blur(10px)',
-                border: '1px solid rgba(255,255,255,0.1)'
-              }}
-            >
-              <div className="flex items-center gap-3">
-                <div className="text-slate-500">
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </div>
-                <span className="text-xl">{reminder.icon}</span>
-                <span className="text-slate-200 font-medium flex-1 truncate">{reminder.name}</span>
-                <EnergyBadge energy={reminder.energy} />
-              </div>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  addToNextSlot(reminder);
+                style={{
+                  background: 'linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%)',
+                  backdropFilter: 'blur(10px)',
+                  border: '1px solid rgba(255,255,255,0.1)'
                 }}
-                className="w-8 h-8 rounded-xl text-purple-300 flex items-center justify-center hover:scale-105 transition-all duration-200 ml-2"
-                style={{ background: 'linear-gradient(135deg, rgba(168,85,247,0.3) 0%, rgba(236,72,153,0.3) 100%)' }}
               >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-                </svg>
-              </button>
-            </div>
-          ))}
+                <div className="flex items-center gap-3">
+                  {/* Completion checkbox */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const updatedReminders = reminders.map(r =>
+                        r.id === reminder.id ? { ...r, completed: true } : r
+                      );
+                      setReminders(updatedReminders);
+                      saveToStorage('reminders', updatedReminders);
+                    }}
+                    className="w-6 h-6 rounded-full border-2 border-purple-400 flex items-center justify-center hover:bg-purple-500/20 transition-all flex-shrink-0"
+                  >
+                    {/* Empty circle for uncompleted */}
+                  </button>
+
+                  <span className="text-xl">{reminder.icon}</span>
+                  <span className="text-slate-200 font-medium flex-1 truncate">{reminder.name}</span>
+                  <EnergyBadge energy={reminder.energy} />
+                </div>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    addToNextSlot(reminder);
+                  }}
+                  className="w-8 h-8 rounded-xl text-purple-300 flex items-center justify-center hover:scale-105 transition-all duration-200 ml-2"
+                  style={{ background: 'linear-gradient(135deg, rgba(168,85,247,0.3) 0%, rgba(236,72,153,0.3) 100%)' }}
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+                  </svg>
+                </button>
+              </div>
+            ))}
 
           {/* New Reminder Button */}
           <button
@@ -2877,6 +3101,56 @@ const LifeArchitect = () => {
             </svg>
             <span className="font-medium">New Reminder</span>
           </button>
+
+          {/* Completed Reminders */}
+          {(() => {
+            const completedReminders = reminders.filter(r => r.completed);
+            if (completedReminders.length === 0) return null;
+
+            return (
+              <div className="mt-4">
+                <h3 className="text-slate-400 text-sm font-medium mb-3 uppercase tracking-wider">Completed</h3>
+                <div className="space-y-2">
+                  {completedReminders.map(reminder => (
+                    <div
+                      key={reminder.id}
+                      onClick={() => openReminderEdit(reminder)}
+                      className="flex items-center justify-between p-3.5 rounded-2xl opacity-60 cursor-pointer hover:opacity-80 transition-all"
+                      style={{
+                        background: 'linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%)',
+                        backdropFilter: 'blur(10px)',
+                        border: '1px solid rgba(255,255,255,0.1)'
+                      }}
+                    >
+                      <div className="flex items-center gap-3 flex-1">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            // Uncomplete the reminder
+                            const updatedReminders = reminders.map(r =>
+                              r.id === reminder.id ? { ...r, completed: false } : r
+                            );
+                            setReminders(updatedReminders);
+                            saveToStorage('reminders', updatedReminders);
+                          }}
+                          className="w-6 h-6 rounded-full bg-purple-500 flex items-center justify-center flex-shrink-0"
+                        >
+                          <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                        </button>
+                        <span className="text-xl opacity-50">{reminder.icon}</span>
+                        <span className="text-slate-400 font-medium line-through flex-1 truncate">{reminder.name}</span>
+                      </div>
+                      <svg className="w-5 h-5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
         </div>
 
         {/* Priorities */}
@@ -2891,7 +3165,7 @@ const LifeArchitect = () => {
                 onMouseDown={(e) => priority.task && startDrag(e, 'p', idx)}
                 onMouseEnter={() => handleSlotMouseEnter('p', idx)}
                 onMouseLeave={handleSlotMouseLeave}
-                onClick={() => !priority.task && !isDragging && openGlobalTaskModal('priority', idx)}
+                onClick={() => !isDragging && openGlobalTaskModal('priority', idx, priority.task)}
                 className={`p-4 glass-card rounded-2xl transition-all duration-200 ease-out select-none
                   ${priority.task ? 'ring-1 ring-purple-500/30 cursor-grab active:cursor-grabbing' : 'cursor-pointer hover:bg-white/10 hover:scale-[1.01]'}
                   ${isDragging && dragOverSlot?.type === 'p' && dragOverSlot?.index === idx
@@ -2901,12 +3175,35 @@ const LifeArchitect = () => {
               >
                 {priority.task ? (
                   <div className="flex items-center gap-3">
-                    {/* Drag handle */}
-                    <div className="text-slate-500 pointer-events-none">
-                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
-                      </svg>
-                    </div>
+                    {/* Completion checkbox */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        // Mark the priority task as completed
+                        const newPriorities = [...priorities];
+                        newPriorities[idx] = {
+                          ...priority,
+                          task: { ...priority.task, completed: true }
+                        };
+                        setPriorities(newPriorities);
+
+                        // Also sync with original reminder/project if applicable
+                        if (priority.task.originalReminderId) {
+                          const updatedReminders = reminders.map(r =>
+                            r.id === priority.task.originalReminderId ? { ...r, completed: true } : r
+                          );
+                          setReminders(updatedReminders);
+                          saveToStorage('reminders', updatedReminders);
+                        }
+
+                        if (priority.task.projectId && priority.task.projectTaskId) {
+                          toggleProjectTask(priority.task.projectId, priority.task.projectTaskId);
+                        }
+                      }}
+                      className="w-6 h-6 rounded-full border-2 border-purple-400 flex items-center justify-center hover:bg-purple-500/20 transition-all flex-shrink-0"
+                    >
+                      {/* Empty circle for uncompleted */}
+                    </button>
 
                     {/* Task icon */}
                     <span className="text-xl">{priority.task.icon}</span>
@@ -3521,7 +3818,6 @@ const LifeArchitect = () => {
   const ExecuteScreen = () => {
     const today = new Date();
     // Verify lifted state availability
-    // console.log('ExecuteScreen State:', { executeEditingTask, executeEditingRoutine });
     const [currentTime, setCurrentTime] = useState(new Date());
     const [draggingTask, setDraggingTask] = useState(null);
     const [dragStartY, setDragStartY] = useState(0);
@@ -3537,28 +3833,8 @@ const LifeArchitect = () => {
     // Get current routines for selected date
     const currentRoutines = getRoutinesForDate(selectedExecuteDate);
 
-    // Task edit modal state
-    // editingTask is now lifted to App component as executeEditingTask
-    const [editTaskName, setEditTaskName] = useState('');
-    const [editTaskIcon, setEditTaskIcon] = useState('📌');
-    const [editTaskEnergy, setEditTaskEnergy] = useState('medium');
-    const [editTaskStartHour, setEditTaskStartHour] = useState(9);
-    const [editTaskStartMinute, setEditTaskStartMinute] = useState(0);
-    const [editTaskEndHour, setEditTaskEndHour] = useState(10);
-    const [editTaskEndMinute, setEditTaskEndMinute] = useState(0);
-
-    const [editTaskValue, setEditTaskValue] = useState(5);
-    const [editTaskNotes, setEditTaskNotes] = useState('');
-    const [editTaskAlerts, setEditTaskAlerts] = useState([]);
-    const [editTaskDate, setEditTaskDate] = useState(new Date());
-
-    // UI Toggles
-    const [editTaskShowTime, setEditTaskShowTime] = useState(false);
-    const [editTaskShowAlerts, setEditTaskShowAlerts] = useState(false);
-    const [editTaskShowDate, setEditTaskShowDate] = useState(false);
-    const [editTaskShowIconPicker, setEditTaskShowIconPicker] = useState(false);
-    const [editTaskRepeat, setEditTaskRepeat] = useState({ type: 'none', label: 'None', days: [] });
-    const [editTaskShowRepeat, setEditTaskShowRepeat] = useState(false);
+    // Task edit modal state - NOW LIFTED TO APP COMPONENT LEVEL
+    // All editTask* state variables are now defined at the App level to prevent reset on re-render
 
     // Focus mode / Pomodoro state
     const [focusMode, setFocusMode] = useState(false);
@@ -3608,7 +3884,7 @@ const LifeArchitect = () => {
     // Open task for editing
     const openTaskEdit = (task) => {
       setExecuteEditingTask(task);
-      setEditTaskName(task.title);
+      setEditTaskName(task.title || task.name || '');
       setEditTaskIcon(task.icon || '📌');
       setEditTaskEnergy(task.energy || 'medium');
       setEditTaskStartHour(task.startTime ? task.startTime.getHours() : 9);
@@ -3669,6 +3945,103 @@ const LifeArchitect = () => {
           [dateKey]: dayTasks.sort((a, b) => a.startTime - b.startTime)
         };
       });
+
+      // Sync time changes back to original reminder if applicable
+      if (updatedTask.originalReminderId) {
+        const updatedReminders = reminders.map(r => {
+          if (r.id === updatedTask.originalReminderId) {
+            return {
+              ...r,
+              name: editTaskName.trim(),
+              icon: editTaskIcon,
+              energy: editTaskEnergy,
+              startTime: newStartTime.toISOString(),
+              endTime: newEndTime.toISOString(),
+              date: editTaskDate.toISOString(),
+              alerts: editTaskAlerts,
+              repeat: editTaskRepeat,
+              value: editTaskValue,
+              notes: editTaskNotes
+            };
+          }
+          return r;
+        });
+        setReminders(updatedReminders);
+        saveToStorage('reminders', updatedReminders);
+      }
+
+      // Sync time changes back to original project task if applicable
+      if (updatedTask.projectId && updatedTask.projectTaskId) {
+        const updatedProjects = projects.map(p => {
+          if (p.id === updatedTask.projectId) {
+            return {
+              ...p,
+              tasks: p.tasks.map(t => {
+                if (t.id === updatedTask.projectTaskId) {
+                  return {
+                    ...t,
+                    title: editTaskName.trim(),
+                    icon: editTaskIcon,
+                    energy: editTaskEnergy,
+                    startTime: newStartTime.toISOString(),
+                    endTime: newEndTime.toISOString(),
+                    dueDate: editTaskDate.toISOString(),
+                    alerts: editTaskAlerts,
+                    repeat: editTaskRepeat,
+                    value: editTaskValue,
+                    notes: editTaskNotes
+                  };
+                }
+                return t;
+              })
+            };
+          }
+          return p;
+        });
+        setProjects(updatedProjects);
+        saveToStorage('projects', updatedProjects);
+      }
+
+      // Update priority slot if this task is in priorities
+      const updatedPriorities = priorities.map(p => {
+        if (p.task && (
+          (p.task.originalReminderId && p.task.originalReminderId === updatedTask.originalReminderId) ||
+          (p.task.projectId && p.task.projectTaskId &&
+            p.task.projectId === updatedTask.projectId &&
+            p.task.projectTaskId === updatedTask.projectTaskId) ||
+          p.task.id === updatedTask.id
+        )) {
+          // Calculate new duration string
+          const duration = Math.round((newEndTime - newStartTime) / (1000 * 60)); // minutes
+          const hours = Math.floor(duration / 60);
+          const minutes = duration % 60;
+          let timeStr = '1h';
+          if (hours === 0 && minutes > 0) timeStr = `${minutes}m`;
+          else if (hours > 0 && minutes === 0) timeStr = `${hours}h`;
+          else if (hours > 0 && minutes > 0) timeStr = `${hours}h ${minutes}m`;
+
+          return {
+            ...p,
+            task: {
+              ...p.task,
+              name: editTaskName.trim(),
+              title: editTaskName.trim(),
+              icon: editTaskIcon,
+              energy: editTaskEnergy,
+              startTime: newStartTime,
+              endTime: newEndTime,
+              alerts: editTaskAlerts,
+              repeat: editTaskRepeat,
+              value: editTaskValue,
+              notes: editTaskNotes
+            },
+            energy: editTaskEnergy,
+            time: timeStr
+          };
+        }
+        return p;
+      });
+      setPriorities(updatedPriorities);
 
       setExecuteEditingTask(null);
     };
@@ -5717,7 +6090,7 @@ const LifeArchitect = () => {
             text: shareText,
           });
         } catch (error) {
-          console.log('Error sharing:', error);
+          // Error sharing
         }
       } else {
         navigator.clipboard.writeText(shareText);
@@ -5727,10 +6100,8 @@ const LifeArchitect = () => {
 
     // Generate Memory Capsule
     const createMemoryCapsule = () => {
-      console.log('Creating memory capsule...');
       updateReflection(selectedReflectDate, 'capsuleCreated', true);
       setReviewViewMode('capsule');
-      console.log('View mode set to capsule');
     };
 
     // Week navigation state
@@ -6267,28 +6638,6 @@ const LifeArchitect = () => {
             </div>
 
 
-            {/* Create Memory Capsule Button - Always visible */}
-            <div className="mt-6">
-              <button
-                onClick={createMemoryCapsule}
-                className="w-full py-4 rounded-2xl font-semibold text-white transition-all duration-300 flex items-center justify-center gap-3 hover:scale-[1.02] active:scale-[0.98]"
-                style={{
-                  background: canCreateCapsule
-                    ? 'linear-gradient(135deg, rgba(139,92,246,0.8) 0%, rgba(99,102,241,0.8) 100%)'
-                    : 'linear-gradient(135deg, rgba(100,100,120,0.5) 0%, rgba(80,80,100,0.5) 100%)',
-                  boxShadow: canCreateCapsule ? '0 10px 40px rgba(139,92,246,0.3)' : 'none',
-                  border: '1px solid rgba(255,255,255,0.2)'
-                }}
-              >
-                <span className="text-xl">✨</span>
-                <span>Create Memory Capsule</span>
-              </button>
-              <p className="text-center text-slate-500 text-xs mt-3">
-                {canCreateCapsule
-                  ? "Capture this day's reflection as a beautiful memory"
-                  : "Answer at least one question to create your capsule"}
-              </p>
-            </div>
 
             {/* Photo of the Day */}
             <div className="glass-card rounded-2xl p-4 mt-6">
@@ -6351,6 +6700,29 @@ const LifeArchitect = () => {
                 onChange={handlePhotoUpload}
                 className="hidden"
               />
+            </div>
+
+            {/* Create Memory Capsule Button - Always visible */}
+            <div className="mt-6 mb-12">
+              <button
+                onClick={createMemoryCapsule}
+                className="w-full py-4 rounded-2xl font-semibold text-white transition-all duration-300 flex items-center justify-center gap-3 hover:scale-[1.02] active:scale-[0.98]"
+                style={{
+                  background: canCreateCapsule
+                    ? 'linear-gradient(135deg, rgba(139,92,246,0.8) 0%, rgba(99,102,241,0.8) 100%)'
+                    : 'linear-gradient(135deg, rgba(100,100,120,0.5) 0%, rgba(80,80,100,0.5) 100%)',
+                  boxShadow: canCreateCapsule ? '0 10px 40px rgba(139,92,246,0.3)' : 'none',
+                  border: '1px solid rgba(255,255,255,0.2)'
+                }}
+              >
+                <span className="text-xl">✨</span>
+                <span>Create Memory Capsule</span>
+              </button>
+              <p className="text-center text-slate-500 text-xs mt-3">
+                {canCreateCapsule
+                  ? "Capture this day's reflection as a beautiful memory"
+                  : "Answer at least one question to create your capsule"}
+              </p>
             </div>
 
             {/* Auto-save indicator */}
@@ -7282,7 +7654,6 @@ const LifeArchitect = () => {
     // Icon options for reminders
     const reminderIcons = ['📝', '💡', '🎯', '📌', '⭐', '🔔', '📋', '💼', '🏠', '🛒', '📞', '✉️', '🎨', '🔧', '📚', '💪'];
 
-    const nonProjectReminders = reminders;
 
 
     // Add quick reminder
@@ -7582,7 +7953,7 @@ const LifeArchitect = () => {
                 <span className="text-lg">💭</span>
                 <h3 className="font-medium">Quick Reminders</h3>
                 <span className="bg-slate-800 text-slate-400 text-xs px-2 py-0.5 rounded-full">
-                  {nonProjectReminders.length}
+                  {reminders.length}
                 </span>
               </div>
               <svg
@@ -7625,9 +7996,9 @@ const LifeArchitect = () => {
                 </div>
 
                 {/* Reminders List */}
-                {getResolvedRemindersForDate(selectedExecuteDate).length > 0 ? (
+                {getResolvedRemindersForDate(selectedExecuteDate).filter(r => !r.completed).length > 0 ? (
                   <div className="space-y-2">
-                    {getResolvedRemindersForDate(selectedExecuteDate).map(reminder => (
+                    {getResolvedRemindersForDate(selectedExecuteDate).filter(r => !r.completed).map(reminder => (
                       <div
                         key={reminder.id}
                         onClick={() => openEditReminder(reminder)}
@@ -7638,6 +8009,21 @@ const LifeArchitect = () => {
                           border: '1px solid rgba(255,255,255,0.1)'
                         }}
                       >
+                        {/* Completion checkbox */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const updatedReminders = reminders.map(r =>
+                              r.id === reminder.id ? { ...r, completed: true } : r
+                            );
+                            setReminders(updatedReminders);
+                            saveToStorage('reminders', updatedReminders);
+                          }}
+                          className="w-6 h-6 rounded-full border-2 border-amber-400 flex items-center justify-center hover:bg-amber-500/20 transition-all flex-shrink-0"
+                        >
+                          {/* Empty circle for uncompleted */}
+                        </button>
+
                         <span className="text-lg">{reminder.icon}</span>
                         <span className="text-slate-300 flex-1 truncate">{reminder.name}</span>
                         <div className="flex items-center gap-1">
@@ -7667,6 +8053,51 @@ const LifeArchitect = () => {
                     No reminders. Add ideas here or in Plan!
                   </div>
                 )}
+
+                {/* Completed Reminders */}
+                {(() => {
+                  const completedReminders = reminders.filter(r => r.completed);
+                  if (completedReminders.length === 0) return null;
+
+                  return (
+                    <div className="mt-4">
+                      <h3 className="text-slate-400 text-sm font-medium mb-3 uppercase tracking-wider">Completed</h3>
+                      <div className="space-y-2">
+                        {completedReminders.map(reminder => (
+                          <div
+                            key={reminder.id}
+                            onClick={() => openEditReminder(reminder)}
+                            className="rounded-xl p-3 flex items-center gap-3 opacity-60 cursor-pointer hover:opacity-80 transition-all"
+                            style={{
+                              background: 'linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%)',
+                              backdropFilter: 'blur(10px)',
+                              border: '1px solid rgba(255,255,255,0.1)'
+                            }}
+                          >
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                // Uncomplete the reminder
+                                const updatedReminders = reminders.map(r =>
+                                  r.id === reminder.id ? { ...r, completed: false } : r
+                                );
+                                setReminders(updatedReminders);
+                                saveToStorage('reminders', updatedReminders);
+                              }}
+                              className="w-6 h-6 rounded-full bg-amber-500 flex items-center justify-center flex-shrink-0"
+                            >
+                              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                            </button>
+                            <span className="text-lg opacity-50">{reminder.icon}</span>
+                            <span className="text-slate-400 font-medium line-through flex-1 truncate">{reminder.name}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             )}
           </div>
@@ -8906,8 +9337,8 @@ const LifeArchitect = () => {
                 )}
               </div>
 
-              {/* iOS Style Details List - For Tasks & Reminders */}
-              {(globalTaskMode === 'task' || globalTaskMode === 'reminder') && (
+              {/* iOS Style Details List - For Tasks, Reminders & Priorities */}
+              {(globalTaskMode === 'task' || globalTaskMode === 'reminder' || globalTaskMode === 'priority') && (
                 <>
                   <TaskDetailsList
                     date={globalTaskDate}
