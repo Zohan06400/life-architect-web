@@ -7354,20 +7354,7 @@ const LifeArchitect = () => {
         </div>
       </nav>
 
-      {/* Global Floating Add Button */}
-      <button
-        onClick={() => openGlobalTaskModal('task')}
-        className="fixed bottom-24 right-6 w-14 h-14 rounded-full shadow-2xl z-40 flex items-center justify-center transition-all duration-300 hover:scale-110 active:scale-95"
-        style={{
-          background: 'linear-gradient(135deg, rgba(251,191,36,0.9) 0%, rgba(245,158,11,0.9) 100%)',
-          backdropFilter: 'blur(10px)',
-          boxShadow: '0 10px 40px rgba(251,191,36,0.4), inset 0 1px 1px rgba(255,255,255,0.3)'
-        }}
-      >
-        <svg className="w-7 h-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-        </svg>
-      </button>
+      {/* Global Floating Add Button - Removed per user request */}
 
       {/* Global New Task Modal */}
       {showGlobalTaskModal && (

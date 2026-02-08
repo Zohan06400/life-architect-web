@@ -8,7 +8,7 @@ export const translations = {
             patterns: "Patterns"
         },
         plan: {
-            greeting: "Plan Your Day, {name}",
+            greeting: "Plan Your Day",
             morningRoutine: "Morning Routine",
             topPriorities: "Top 3 Priorities",
             scheduledTasks: "Scheduled Tasks",
