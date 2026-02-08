@@ -1,11 +1,13 @@
 {
   "short_name": "Life Architect",
   "name": "Life Architect - Productivity App",
+  "description": "Plan, Execute, and Reflect on your days with this comprehensive productivity app. Features focus mode, habit tracking, and daily reflection.",
+  "id": "com.lifearchitect.app",
   "icons": [
     {
-      "src": "favicon.ico",
-      "sizes": "64x64 32x32 24x24 16x16",
-      "type": "image/x-icon"
+      "src": "favicon.png",
+      "sizes": "64x64",
+      "type": "image/png"
     },
     {
       "src": "logo192.png",
@@ -22,5 +24,6 @@
   "display": "standalone",
   "theme_color": "#0f0a1a",
   "background_color": "#0f0a1a",
-  "orientation": "portrait"
+  "orientation": "portrait",
+  "categories": ["productivity", "lifestyle", "utilities"]
 }
