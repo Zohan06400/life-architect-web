@@ -155,7 +155,13 @@ export const translations = {
             done: "Done",
             cancel: "Cancel",
             save: "Save",
-            resetButton: "Reset Data"
+            resetButton: "Reset Data",
+            reminders: {
+                title: "Apple Reminders",
+                sync: "Sync Reminders",
+                desc: "Import tasks from iOS",
+                selectList: "Select List to Sync"
+            }
         },
         common: {
             edit: "Edit",
@@ -175,6 +181,7 @@ export const translations = {
             status: "Status",
             color: "Color",
             timelineColor: "Timeline Color",
+            addAlert: "Add Alert",
             manageAlerts: "Manage Alerts",
             reminder: "Reminder",
             task: "Task",

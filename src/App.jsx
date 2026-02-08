@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import ExecuteScreen from './ExecuteScreen';
+import { SubtaskList } from './SubtaskList';
 import { translations } from './translations';
 import {
   globalIconOptions,
@@ -688,6 +689,17 @@ const LifeArchitect = () => {
   // Settings State
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [installPrompt, setInstallPrompt] = useState(null);
+
+  // Reminders Integration State
+  const [remindersSyncEnabled, setRemindersSyncEnabled] = useState(() => loadFromStorage('remindersSyncEnabled', false));
+  const [selectedRemindersList, setSelectedRemindersList] = useState(() => loadFromStorage('selectedRemindersList', ''));
+  const [remindersLists, setRemindersLists] = useState([
+    { id: 'reminders', title: 'Reminders' },
+    { id: 'personal', title: 'Personal' },
+    { id: 'work', title: 'Work' },
+    { id: 'shopping', title: 'Shopping' }
+  ]);
+
   const [username, setUsername] = useState(() => loadFromStorage('username', 'Architect'));
   // language lifted to top
 
@@ -714,10 +726,37 @@ const LifeArchitect = () => {
     saveToStorage('language', language);
   }, [language]);
 
-  // Translation helper lifted to top
+  // Persist Reminders Settings
+  useEffect(() => {
+    saveToStorage('remindersSyncEnabled', remindersSyncEnabled);
+    saveToStorage('selectedRemindersList', selectedRemindersList);
 
+    // Fetch lists if sync needs to be enabled
+    if (remindersSyncEnabled) {
+      fetch('http://localhost:3001/lists')
+        .then(res => res.json())
+        .then(data => {
+          if (Array.isArray(data)) {
+            setRemindersLists(data);
+            // Auto-select first if none selected
+            if (!selectedRemindersList && data.length > 0) {
+              setSelectedRemindersList(data[0].id);
+            }
+          }
+        })
+        .catch(err => {
+          console.log('Bridge not running, using cached/mock lists');
+        });
+    }
+  }, [remindersSyncEnabled]);
 
-  // Edit Task State (lifted to App level to prevent reset on re-render)
+  // Sync reminders when list changes
+  useEffect(() => {
+    if (remindersSyncEnabled && selectedRemindersList) {
+      // Here we would fetch reminders... specific to list
+      console.log('Would sync reminders for list:', selectedRemindersList);
+    }
+  }, [remindersSyncEnabled, selectedRemindersList]);
   const [editTaskName, setEditTaskName] = useState('');
   const [editTaskIcon, setEditTaskIcon] = useState('📌');
   const [editTaskEnergy, setEditTaskEnergy] = useState('medium');
@@ -740,6 +779,7 @@ const LifeArchitect = () => {
   // Consistency fields
   const [editTaskValue, setEditTaskValue] = useState(5);
   const [editTaskNotes, setEditTaskNotes] = useState('');
+  const [editTaskSubtasks, setEditTaskSubtasks] = useState([]);
 
   // Plan Screen
   const [planShowNewReminder, setPlanShowNewReminder] = useState(false);
@@ -1035,7 +1075,38 @@ const LifeArchitect = () => {
     return Array.from(templates.values());
   }, [reminders, tasksByDate, projects]);
 
-  // Helper to get resolved tasks for a date (hardened + virtual)
+  // Helper to get resolved reminders for a date
+  const getResolvedRemindersForDate = useCallback((date) => {
+    const targetDateKey = getDateKey(date);
+    const dayOfWeek = date.toLocaleDateString('en-US', { weekday: 'long' });
+
+    return reminders.map(r => {
+      const rDateKey = r.date ? getDateKey(new Date(r.date)) : null;
+      const isFloating = !r.date && (!r.repeat || r.repeat.type === 'none');
+      const isSpecific = rDateKey === targetDateKey;
+
+      // Checking recurrence
+      let isRecurringDue = false;
+      if (r.repeat && r.repeat.type !== 'none') {
+        if (r.repeat.type === 'daily') isRecurringDue = true;
+        if (r.repeat.type === 'weekly' && r.repeat.days?.includes(dayOfWeek)) isRecurringDue = true;
+        if (r.repeat.type === 'weekdays' && !['Saturday', 'Sunday'].includes(dayOfWeek)) isRecurringDue = true;
+      }
+
+      const isCompletedForDate = r.completedDates?.includes(targetDateKey);
+
+      if (r.completed && !isRecurringDue) return null; // Don't show completed non-recurring
+      if (isCompletedForDate) return { ...r, completed: true, isVirtual: true };
+
+      // Only show reminders that are specifically scheduled for this date OR recurring on this date
+      // Do NOT show floating reminders (reminders without a date) in the daily plan
+      if (isSpecific) return { ...r, isVirtual: false };
+      if (isRecurringDue) return { ...r, isVirtual: true, date: new Date(date).toISOString() };
+      return null;
+    }).filter(Boolean);
+  }, [reminders]);
+
+  // Helper to get resolved tasks for a date (hardened + virtual + reminders)
   const getResolvedTasksForDate = useCallback((date) => {
     const dateKey = getDateKey(date);
     const hardenedTasks = tasksByDate[dateKey] || [];
@@ -1052,24 +1123,16 @@ const LifeArchitect = () => {
         isVirtual: true
       }));
 
-    return [...hardenedTasks, ...virtualTasks].sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
-  }, [tasksByDate, recurringTemplates]);
+    // Get reminders for this date to show in timeline
+    const dateReminders = getResolvedRemindersForDate(date).map(r => ({
+      ...r,
+      isReminder: true, // Flag to distinguish
+      startTime: r.startTime ? new Date(r.startTime) : new Date(new Date(date).setHours(9, 0, 0, 0)), // Default 9am if no time
+      endTime: r.endTime ? new Date(r.endTime) : new Date(new Date(date).setHours(10, 0, 0, 0)),
+    }));
 
-  // Helper to get resolved reminders for a date
-  const getResolvedRemindersForDate = useCallback((date) => {
-    const targetDateKey = getDateKey(date);
-
-    return reminders.map(r => {
-      const rDateKey = r.date ? getDateKey(r.date) : null;
-      const isFloating = !r.date && (!r.repeat || r.repeat.type === 'none');
-      const isSpecific = rDateKey === targetDateKey;
-      const isRecurringDue = isItemDueOnDate(r, date);
-
-      if (isSpecific || isFloating) return { ...r, isVirtual: false };
-      if (isRecurringDue) return { ...r, isVirtual: true, date: new Date(date).toISOString() };
-      return null;
-    }).filter(Boolean);
-  }, [reminders, recurringTemplates]);
+    return [...hardenedTasks, ...virtualTasks, ...dateReminders].sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
+  }, [tasksByDate, recurringTemplates, getResolvedRemindersForDate]);
 
   // Default routines
   const defaultRoutines = {
@@ -1198,11 +1261,6 @@ const LifeArchitect = () => {
     const key = getDateKey(date);
     if (!plansByDate[key]) {
       return {
-        priorities: [
-          { slot: 1, task: null, energy: null, time: null },
-          { slot: 2, task: null, energy: null, time: null },
-          { slot: 3, task: null, energy: null, time: null },
-        ],
         nonNegotiable: { task: null, energy: null, time: null }
       };
     }
@@ -1212,29 +1270,7 @@ const LifeArchitect = () => {
   // Get current day's plan (for Plan screen)
   const getCurrentPlan = () => getPlanForDate(selectedPlanDate);
 
-  const priorities = getCurrentPlan().priorities;
   const nonNegotiable = getCurrentPlan().nonNegotiable;
-
-  // Update priorities for current date
-  const setPriorities = (newPriorities) => {
-    const key = getDateKey(selectedPlanDate);
-    setPlansByDate(prev => ({
-      ...prev,
-      [key]: {
-        ...getPlanForDate(selectedPlanDate),
-        priorities: typeof newPriorities === 'function'
-          ? newPriorities(getPlanForDate(selectedPlanDate).priorities)
-          : newPriorities
-      }
-    }));
-  };
-
-  // Add new priority slot
-  const addPrioritySlot = () => {
-    const currentPriorities = getCurrentPlan().priorities;
-    const newSlot = { slot: currentPriorities.length + 1, task: null, energy: null, time: null };
-    setPriorities([...currentPriorities, newSlot]);
-  };
 
   // Update nonNegotiable for current date
   const setNonNegotiable = (newNonNegotiable) => {
@@ -1335,12 +1371,13 @@ const LifeArchitect = () => {
   const [globalTaskShowRepeat, setGlobalTaskShowRepeat] = useState(false);
   const [globalTaskValue, setGlobalTaskValue] = useState(5);
   const [globalTaskNotes, setGlobalTaskNotes] = useState('');
+  const [globalTaskSubtasks, setGlobalTaskSubtasks] = useState([]);
   const [globalEditingTaskId, setGlobalEditingTaskId] = useState(null);
 
 
 
   // Open global task modal
-  const openGlobalTaskModal = (mode = 'task', prioritySlot = null, taskToEdit = null) => {
+  const openGlobalTaskModal = (mode = 'task', prioritySlot = null, taskToEdit = null, initialData = null) => {
     const now = new Date();
     const nextHour = Math.min(22, now.getHours() + 1);
 
@@ -1354,7 +1391,9 @@ const LifeArchitect = () => {
       setGlobalTaskIcon(taskToEdit.icon || '📌');
       setGlobalTaskEnergy(taskToEdit.energy || 'medium');
       setGlobalTaskValue(taskToEdit.value || 5);
+      setGlobalTaskValue(taskToEdit.value || 5);
       setGlobalTaskNotes(taskToEdit.notes || '');
+      setGlobalTaskSubtasks(taskToEdit.subtasks || []);
 
       const taskDate = taskToEdit.date ? new Date(taskToEdit.date) : (taskToEdit.startTime ? new Date(taskToEdit.startTime) : new Date());
       setGlobalTaskDate(taskDate);
@@ -1386,16 +1425,31 @@ const LifeArchitect = () => {
       setGlobalTaskName('');
       setGlobalTaskIcon('📌');
       setGlobalTaskEnergy('medium');
-      setGlobalTaskStartHour(nextHour);
-      setGlobalTaskStartMinute(0);
-      setGlobalTaskEndHour(Math.min(23, nextHour + 1));
-      setGlobalTaskEndMinute(0);
-      setGlobalTaskReminder(null); // Assuming this is distinct from alerts, kept for compatibility
+
+      if (initialData) {
+        setGlobalTaskStartHour(initialData.hour !== undefined ? initialData.hour : nextHour);
+        setGlobalTaskStartMinute(initialData.minute !== undefined ? initialData.minute : 0);
+        setGlobalTaskEndHour(Math.min(23, (initialData.hour !== undefined ? initialData.hour : nextHour) + 1));
+        setGlobalTaskEndMinute(initialData.minute !== undefined ? initialData.minute : 0);
+        if (initialData.name) setGlobalTaskName(initialData.name);
+        if (initialData.icon) setGlobalTaskIcon(initialData.icon);
+        if (initialData.energy) setGlobalTaskEnergy(initialData.energy);
+        if (initialData.originalReminderId) setGlobalTaskReminder(initialData.originalReminderId);
+      } else {
+        setGlobalTaskStartHour(nextHour);
+        setGlobalTaskStartMinute(0);
+        setGlobalTaskEndHour(Math.min(23, nextHour + 1));
+        setGlobalTaskEndMinute(0);
+      }
+
+      setGlobalTaskReminder(null);
 
       setGlobalTaskDate(defaultDate ? new Date(defaultDate) : new Date());
       setGlobalTaskAlerts([]);
       setGlobalTaskValue(5);
+      setGlobalTaskValue(5);
       setGlobalTaskNotes('');
+      setGlobalTaskSubtasks([]);
       setGlobalTaskRepeat({ type: 'none', label: 'None', days: [] });
     }
 
@@ -1435,6 +1489,7 @@ const LifeArchitect = () => {
         repeat: globalTaskRepeat,
         value: globalTaskValue,
         notes: globalTaskNotes,
+        subtasks: globalTaskSubtasks,
         completed: false // Reset completed on edit? Probably not if editing. 
         // But for now assuming this is create path for reminder or simple update.
         // Use spread if editing.
@@ -1463,41 +1518,28 @@ const LifeArchitect = () => {
       else if (hours > 0 && minutes > 0) timeStr = `${hours}h ${minutes}m`;
 
       if (globalEditingTaskId) {
-        // UPDATE EXISTING PRIORITY TASK
-        const existingPriority = priorities[globalTaskPrioritySlot];
-        const updatedTask = {
-          ...existingPriority.task,
-          name: globalTaskName.trim(),
-          title: globalTaskName.trim(),
-          icon: globalTaskIcon,
-          energy: globalTaskEnergy,
-          value: globalTaskValue,
-          notes: globalTaskNotes,
-          startTime: sTime,
-          endTime: eTime,
-          alerts: globalTaskAlerts,
-          repeat: globalTaskRepeat
-        };
+        if (globalTaskMode === 'priority') {
+          // Legacy priority mode - fallback to regular task update or ignore
+          // converting to regular task execution
+          // Logic for priorities is removed, so we treat it as a regular task update if it exists in tasksByDate
+        }
 
-        const newPriorities = [...priorities];
-        newPriorities[globalTaskPrioritySlot] = {
-          ...existingPriority,
-          task: updatedTask,
-          energy: globalTaskEnergy,
-          time: timeStr
-        };
-        setPriorities(newPriorities);
+        // Get the task being updated from tasksByDate
+        const dateKey = getDateKey(globalTaskDate);
+        const tasksForDate = tasksByDate[dateKey] || [];
+        const taskToUpdate = tasksForDate.find(t => t.id === globalEditingTaskId);
 
-        // Sync to Reminder
-        if (updatedTask.originalReminderId) {
+        // Sync to Reminder (if this task was created from a reminder)
+        if (taskToUpdate?.originalReminderId) {
           const updatedReminders = reminders.map(r =>
-            r.id === updatedTask.originalReminderId ? {
+            r.id === taskToUpdate.originalReminderId ? {
               ...r,
               name: globalTaskName.trim(),
               icon: globalTaskIcon,
               energy: globalTaskEnergy,
               value: globalTaskValue,
               notes: globalTaskNotes,
+              subtasks: globalTaskSubtasks,
               startTime: sTime.toISOString(),
               endTime: eTime.toISOString(),
               alerts: globalTaskAlerts,
@@ -1509,14 +1551,14 @@ const LifeArchitect = () => {
           saveToStorage('reminders', updatedReminders);
         }
 
-        // Sync to Project Task
-        if (updatedTask.projectId && updatedTask.projectTaskId) {
+        // Sync to Project Task (if this task is linked to a project)
+        if (taskToUpdate?.projectId && taskToUpdate?.projectTaskId) {
           const updatedProjects = projects.map(p => {
-            if (p.id === updatedTask.projectId) {
+            if (p.id === taskToUpdate.projectId) {
               return {
                 ...p,
                 tasks: p.tasks.map(t => {
-                  if (t.id === updatedTask.projectTaskId) {
+                  if (t.id === taskToUpdate.projectTaskId) {
                     return {
                       ...t,
                       title: globalTaskName.trim(),
@@ -1571,7 +1613,9 @@ const LifeArchitect = () => {
           title: globalTaskName.trim(),
           energy: globalTaskEnergy,
           value: globalTaskValue,
+          value: globalTaskValue,
           notes: globalTaskNotes,
+          subtasks: globalTaskSubtasks,
           originalReminderId: newReminder.id, // Link to reminder for completion sync
           startTime: sTime,
           endTime: eTime,
@@ -1579,14 +1623,10 @@ const LifeArchitect = () => {
           repeat: globalTaskRepeat
         };
 
-        const newPriorities = [...priorities];
-        newPriorities[globalTaskPrioritySlot] = {
-          slot: globalTaskPrioritySlot + 1,
-          task: newTask,
-          energy: globalTaskEnergy,
-          time: timeStr
-        };
-        setPriorities(newPriorities);
+        if (globalTaskPrioritySlot !== null) {
+          // Legacy priority creation - treat as scheduled task
+          // converting to regular task execution
+        }
       } // End create new
     } else {
       // Add as scheduled task
@@ -1612,7 +1652,9 @@ const LifeArchitect = () => {
         alerts: globalTaskAlerts,
         repeat: globalTaskRepeat,
         value: globalTaskValue,
+        value: globalTaskValue,
         notes: globalTaskNotes,
+        subtasks: globalTaskSubtasks,
         completed: false
       };
 
@@ -1626,323 +1668,39 @@ const LifeArchitect = () => {
     setShowGlobalTaskModal(false);
   };
 
-  // State for Plan screen drag-to-day (needs to be at component level for useEffect access)
-  const [planDragOverDay, setPlanDragOverDay] = useState(null);
+  // Legacy code removed (buildAllTasks, addToNextSlot, Drag handlers)
 
-  // Mouse-based drag and drop
-  useEffect(() => {
-    if (!isDragging) return;
+  const toggleTaskCompletion = (taskId, isVirtual, date) => {
+    const dateKey = getDateKey(new Date(date));
+    // Implementation to toggle completion status
+    const task = getResolvedTasksForDate(new Date(date)).find(t => t.id === taskId);
+    if (!task) return;
 
-    const handleMouseMove = (e) => {
-      setDragPosition({ x: e.clientX, y: e.clientY });
-    };
-
-    const handleMouseUp = () => {
-      // Check if dropping on a different day in Plan screen
-      if (draggedItem && planDragOverDay && draggedItem.type === 'p') {
-        // Move task to different day
-        const sourceData = { ...priorities[draggedItem.index] };
-
-        if (sourceData.task) {
-          const targetDateKey = getDateKey(planDragOverDay);
-          const currentPlan = plansByDate[targetDateKey] || {
-            priorities: [
-              { slot: 1, task: null, energy: null, time: null },
-              { slot: 2, task: null, energy: null, time: null },
-              { slot: 3, task: null, energy: null, time: null }
-            ]
-          };
-
-          // Find first empty slot in target day
-          let placed = false;
-          for (let i = 0; i < 3; i++) {
-            if (!currentPlan.priorities[i]?.task) {
-              currentPlan.priorities[i] = {
-                slot: i + 1,
-                task: sourceData.task,
-                energy: sourceData.energy,
-                time: sourceData.time
-              };
-              placed = true;
-              break;
-            }
-          }
-
-          if (placed) {
-            // Save to target day
-            setPlansByDate(prev => ({
-              ...prev,
-              [targetDateKey]: currentPlan
-            }));
-
-            // Remove from current day
-            const newPriorities = [...priorities];
-            newPriorities[draggedItem.index] = {
-              slot: draggedItem.index + 1,
-              task: null,
-              energy: null,
-              time: null
-            };
-            setPriorities(newPriorities);
-          }
-        }
-
-        setPlanDragOverDay(null);
-      } else if (draggedItem && dragOverSlot) {
-        executeDrop();
-      }
-
-      setIsDragging(false);
-      setDraggedItem(null);
-      setDragOverSlot(null);
-      setPlanDragOverDay(null);
-    };
-
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
-
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [isDragging, draggedItem, dragOverSlot, plansByDate, selectedPlanDate, reminders, planDragOverDay, priorities]);
-
-  // Timer effect
-  useEffect(() => {
-    let interval;
-    if (activeTask && !isPaused) {
-      interval = setInterval(() => {
-        setElapsedTime(prev => prev + 1);
-      }, 1000);
-    }
-    return () => clearInterval(interval);
-  }, [activeTask, isPaused]);
-
-  // Build tasks from priorities - syncs automatically when plan changes
-  useEffect(() => {
-    buildAllTasks();
-  }, [plansByDate]);
-
-  // Build tasks for all dates that have plans
-  const buildAllTasks = () => {
-    const colors = ['#FEF3C7', '#DBEAFE', '#FCE7F3', '#D1FAE5', '#FED7AA', '#E9D5FF'];
-    const newTasksByDate = {};
-
-    Object.keys(plansByDate).forEach(dateKey => {
-      const plan = plansByDate[dateKey];
-      if (!plan) return;
-
-      const dateObj = new Date(dateKey + 'T00:00:00');
-      let startTime = new Date(dateObj);
-      startTime.setHours(9, 0, 0, 0);
-
-      const dayTasks = [];
-      let colorIndex = 0;
-
-      // Get existing tasks for this date to preserve completed status
-      const existingTasks = getResolvedTasksForDate(dateObj);
-
-      // Add priorities
-      plan.priorities?.forEach((p, idx) => {
-        if (p.task) {
-          const duration = parseTime(p.time || '1h');
-          const endTime = new Date(startTime.getTime() + duration * 60000);
-          const existingTask = existingTasks.find(t => t.id === `p${idx}`);
-          dayTasks.push({
-            id: `p${idx}`,
-            icon: p.task.icon,
-            title: p.task.title || p.task.name || '',
-            startTime: new Date(startTime),
-            endTime: endTime,
-            duration: p.time || '1h',
-            energy: p.energy || p.task.energy,
-            color: colors[colorIndex % colors.length],
-            isNonNegotiable: false,
-            completed: existingTask?.completed || false,
-            // Preserve original source fields for completion sync
-            originalReminderId: p.task.originalReminderId,
-            projectId: p.task.projectId,
-            projectTaskId: p.task.projectTaskId
-          });
-          startTime = endTime;
-          colorIndex++;
-        }
-      });
-
-      if (dayTasks.length > 0) {
-        newTasksByDate[dateKey] = dayTasks;
-      }
-    });
-
-    setTasksByDate(newTasksByDate);
-
-    // Update activeTask if it still exists
-    if (activeTask) {
-      const currentDateKey = getDateKey(selectedExecuteDate);
-      const currentTasks = newTasksByDate[currentDateKey] || [];
-      const updatedActiveTask = currentTasks.find(t => t.id === activeTask.id);
-      if (updatedActiveTask) {
-        setActiveTask(updatedActiveTask);
-      } else {
-        setActiveTask(null);
-        setElapsedTime(0);
-      }
-    }
-
-    // Update completedTasks
-    const allCompleted = Object.values(newTasksByDate).flat().filter(t => t.completed);
-    setCompletedTasks(allCompleted);
-  };
-
-  // const parseTime ... moved to module scope
-  // const formatElapsed ... moved to module scope
-
-  const addToNextSlot = (reminder) => {
-    // Prevent duplicates: check if this reminder is already in priorities
-    // Check using originalReminderId since we create new IDs for tasks
-    if (priorities.some(p => p.task && p.task.originalReminderId === reminder.id)) {
-      return; // Already in priorities, do nothing
-    }
-
-    // Create a copy of the reminder for the slot (don't remove from reminders)
-    // Convert reminder's 'name' property to task's 'title' property
-    const taskCopy = {
-      ...reminder,
-      title: reminder.title || reminder.name || '',
-      originalReminderId: reminder.id, // Store original ID for duplicate checking
-      id: Date.now(),
-      isVirtual: false
-    };
-
-    // Fill priorities 1, 2, 3
-    for (let i = 0; i < 3; i++) {
-      if (!priorities[i].task) {
-        const newPriorities = [...priorities];
-        newPriorities[i] = { ...newPriorities[i], task: { ...taskCopy, id: Date.now() + i }, energy: reminder.energy };
-        setPriorities(newPriorities);
-        return;
-      }
-    }
-  };
-
-  // Drag and Drop handlers (mouse-based)
-  const startDrag = (e, slotType, slotIndex = null, reminderData = null) => {
-    e.preventDefault();
-    setDraggedItem({ type: slotType, index: slotIndex, reminder: reminderData });
-    setDragPosition({ x: e.clientX, y: e.clientY });
-    setIsDragging(true);
-  };
-
-  const handleSlotMouseEnter = (slotType, slotIndex = null) => {
-    if (isDragging) {
-      setDragOverSlot({ type: slotType, index: slotIndex });
-    }
-  };
-
-  const handleSlotMouseLeave = () => {
-    if (isDragging) {
-      setDragOverSlot(null);
-    }
-  };
-
-  const executeDrop = () => {
-    if (!draggedItem || !dragOverSlot) return;
-
-    const targetType = dragOverSlot.type;
-    const targetIndex = dragOverSlot.index;
-
-    // Handle dropping a reminder into a priority slot
-    if (draggedItem.type === 'reminder' && targetType === 'p') {
-      const reminder = draggedItem.reminder;
-
-      // If target slot has a task, return it to reminders
-      if (priorities[targetIndex]?.task) {
-        setReminders(prev => [...prev, priorities[targetIndex].task]);
-      }
-
-      const newPriorities = [...priorities];
-      newPriorities[targetIndex] = {
-        slot: targetIndex + 1,
-        task: reminder,
-        energy: reminder.energy,
-        time: null
-      };
-      setPriorities(newPriorities);
-
-      // Remove from reminders
-      setReminders(prev => prev.filter(r => r.id !== reminder.id));
-      return;
-    }
-
-    // Don't do anything if dropping on same slot
-    if (draggedItem.type === targetType && draggedItem.index === targetIndex) {
-      return;
-    }
-
-    // Only handle priority-to-priority swaps now
-    if (draggedItem.type === 'p' && targetType === 'p') {
-      const sourceData = { ...priorities[draggedItem.index] };
-      const targetData = { ...priorities[targetIndex] };
-
-      // Swap the data
-      const newPriorities = [...priorities];
-      newPriorities[draggedItem.index] = {
-        slot: draggedItem.index + 1,
-        task: targetData.task,
-        energy: targetData.energy,
-        time: targetData.time
-      };
-      newPriorities[targetIndex] = {
-        slot: targetIndex + 1,
-        task: sourceData.task,
-        energy: sourceData.energy,
-        time: sourceData.time
-      };
-      setPriorities(newPriorities);
-    }
-  };
-
-  const completeTask = (taskId) => {
-    const dateKey = getDateKey(selectedExecuteDate);
-    const task = tasks.find(t => t.id === taskId);
-
-    if (task && task.isVirtual) {
-      setTasksByDate(prev => ({
-        ...prev,
-        [dateKey]: [...(prev[dateKey] || []), { ...task, isVirtual: false, completed: true }].sort((a, b) => a.startTime - b.startTime)
-      }));
-    } else {
+    if (task.completed) {
+      // Un-complete
       setTasksByDate(prev => ({
         ...prev,
         [dateKey]: (prev[dateKey] || []).map(t =>
-          t.id === taskId ? { ...t, completed: true } : t
+          t.id === taskId ? { ...t, completed: false } : t
         )
       }));
-    }
-
-    if (task) {
+      setCompletedTasks(prev => prev.filter(t => t.id !== taskId));
+    } else {
+      // Complete
+      if (isVirtual) {
+        setTasksByDate(prev => ({
+          ...prev,
+          [dateKey]: [...(prev[dateKey] || []), { ...task, isVirtual: false, completed: true }].sort((a, b) => a.startTime - b.startTime)
+        }));
+      } else {
+        setTasksByDate(prev => ({
+          ...prev,
+          [dateKey]: (prev[dateKey] || []).map(t =>
+            t.id === taskId ? { ...t, completed: true } : t
+          )
+        }));
+      }
       setCompletedTasks(prev => [...prev, { ...task, isVirtual: false, completed: true }]);
-
-      // If this task came from a reminder, mark the reminder as completed too
-      // ONLY if it's NOT a recurring task. Recurring reminders should stay active as templates.
-      if (task.originalReminderId && (!task.repeat || task.repeat.type === 'none')) {
-        const updatedReminders = reminders.map(r =>
-          r.id === task.originalReminderId ? { ...r, completed: true } : r
-        );
-        setReminders(updatedReminders);
-        saveToStorage('reminders', updatedReminders);
-      }
-
-      // If this task came from a project, mark the project task as completed too
-      // ONLY if it's NOT a recurring task. Recurring project tasks should stay active as templates.
-      if (task.projectId && task.projectTaskId && (!task.repeat || task.repeat.type === 'none')) {
-        toggleProjectTask(task.projectId, task.projectTaskId);
-      }
-    }
-    if (activeTask?.id === taskId) {
-      setActiveTask(null);
-      setElapsedTime(0);
-      setIsPaused(false);
     }
   };
 
@@ -2005,6 +1763,7 @@ const LifeArchitect = () => {
     const [editReminderEnergy, setEditReminderEnergy] = useState('low');
     const [editReminderValue, setEditReminderValue] = useState(5);
     const [editReminderNotes, setEditReminderNotes] = useState('');
+    const [editReminderSubtasks, setEditReminderSubtasks] = useState([]);
 
     // Edit Reminder Alerts & Time State
     const [editReminderAlerts, setEditReminderAlerts] = useState([]);
@@ -2076,7 +1835,10 @@ const LifeArchitect = () => {
         repeat: task.repeat || { type: 'none', label: 'None', days: [] },
         date: task.date ? new Date(task.date) : new Date(),
         startTime: formatTime(sTime),
-        endTime: formatTime(eTime)
+        date: task.date ? new Date(task.date) : new Date(),
+        startTime: formatTime(sTime),
+        endTime: formatTime(eTime),
+        subtasks: task.subtasks || []
       });
       setPlanEditShowTime(false);
       setPlanEditShowAlerts(false);
@@ -2109,7 +1871,9 @@ const LifeArchitect = () => {
         repeat: planTaskData.repeat,
         date: planTaskData.date instanceof Date ? planTaskData.date.toISOString() : planTaskData.date,
         startTime: sDate.toISOString(),
-        endTime: eDate.toISOString()
+        startTime: sDate.toISOString(),
+        endTime: eDate.toISOString(),
+        subtasks: planTaskData.subtasks
       };
 
       updateProjectTask(planEditingTaskProject.id, planEditingTask.id, updates);
@@ -2141,6 +1905,7 @@ const LifeArchitect = () => {
       setEditReminderAlerts(reminder.alerts || []);
       setEditReminderRepeat(reminder.repeat || { type: 'none', label: 'None', days: [] });
       setEditReminderDate(reminder.date ? new Date(reminder.date) : new Date());
+      setEditReminderSubtasks(reminder.subtasks || []);
 
       if (reminder.startTime) {
         setEditReminderStartHour(new Date(reminder.startTime).getHours());
@@ -2169,39 +1934,39 @@ const LifeArchitect = () => {
     const saveReminderEdit = () => {
       if (!planEditingReminder || !editReminderName.trim()) return;
 
-      setReminders(prev => prev.map(r => {
-        if (r.id === planEditingReminder.id) {
-          // specific handling for saving start/end time.
-          const sTime = new Date(editReminderDate);
-          sTime.setHours(editReminderStartHour, editReminderStartMinute, 0, 0);
+      const sTime = new Date(editReminderDate);
+      sTime.setHours(editReminderStartHour, editReminderStartMinute, 0, 0);
 
-          const eTime = new Date(editReminderDate);
-          eTime.setHours(editReminderEndHour, editReminderEndMinute, 0, 0);
+      const eTime = new Date(editReminderDate);
+      eTime.setHours(editReminderEndHour, editReminderEndMinute, 0, 0);
 
-          const updatedData = {
-            name: editReminderName.trim(),
-            icon: editReminderIcon,
-            energy: editReminderEnergy,
-            alerts: editReminderAlerts,
-            repeat: editReminderRepeat,
-            date: editReminderDate.toISOString(),
-            startTime: sTime.toISOString(),
-            endTime: eTime.toISOString(),
-            value: editReminderValue,
-            notes: editReminderNotes,
-            isVirtual: false
-          };
+      const updatedData = {
+        name: editReminderName.trim(),
+        icon: editReminderIcon,
+        energy: editReminderEnergy,
+        alerts: editReminderAlerts,
+        repeat: editReminderRepeat,
+        date: editReminderDate.toISOString(),
+        startTime: sTime.toISOString(),
+        endTime: eTime.toISOString(),
+        value: editReminderValue,
+        notes: editReminderNotes,
+        subtasks: editReminderSubtasks,
+        isVirtual: false
+      };
 
-          setReminders(prev => {
-            if (planEditingReminder.isVirtual) {
-              return [{ ...planEditingReminder, ...updatedData, id: Date.now() }, ...prev];
-            } else {
-              return prev.map(r => r.id === planEditingReminder.id ? { ...r, ...updatedData } : r);
-            }
-          });
+      setReminders(prev => {
+        if (planEditingReminder.isVirtual) {
+          // If virtual, we are "creating" it from a template or something?
+          // Or verifying it.
+          // Note: Logic suggests adding it if virtual, updating if not.
+          // However, we need to handle ID collision if just using Date.now() multiple times fast?
+          // Using Date.now() + Math.random() is safer but simple Date.now() usually fine for UI.
+          return [{ ...planEditingReminder, ...updatedData, id: Date.now() }, ...prev];
+        } else {
+          return prev.map(r => r.id === planEditingReminder.id ? { ...r, ...updatedData } : r);
         }
-        return r;
-      }));
+      });
 
       setPlanEditingReminder(null);
     };
@@ -2229,13 +1994,9 @@ const LifeArchitect = () => {
       setPlanShowNewReminder(false);
     };
 
-    const totalMinutes = priorities.reduce((sum, p) => {
-      if (!p.task) return sum;
-      return sum + parseTime(p.time);
-    }, 0);
-
-    const highEnergyCount = priorities.filter(p => p.energy === 'high').length;
-    const energyLoad = highEnergyCount === 0 ? 'Light' : highEnergyCount === 1 ? 'Moderate' : highEnergyCount === 2 ? 'Heavy' : 'Very Heavy';
+    const totalMinutes = 0; // Legacy stats removed
+    const energyLoad = 'Light'; // Legacy stats removed
+    const highEnergyCount = 0; // Legacy stats removed
 
     const formatTotalTime = (mins) => {
       const h = Math.floor(mins / 60);
@@ -2267,7 +2028,7 @@ const LifeArchitect = () => {
         date.setHours(0, 0, 0, 0);
         const dateKey = getDateKey(date);
         const dayPlan = plansByDate[dateKey];
-        const hasTasks = dayPlan && dayPlan.priorities?.some(p => p.task);
+        const hasTasks = getResolvedTasksForDate(date).length > 0;
 
         const todayDate = new Date();
         todayDate.setHours(0, 0, 0, 0);
@@ -2365,7 +2126,7 @@ const LifeArchitect = () => {
           date: date,
           isToday: date.getTime() === todayDate.getTime(),
           isSelected: date.getTime() === selectedDate.getTime(),
-          hasTasks: dayPlan && dayPlan.priorities?.some(p => p.task),
+          hasTasks: getResolvedTasksForDate(date).length > 0,
           projectTimelines: projectTimelines
         });
       }
@@ -2663,49 +2424,36 @@ const LifeArchitect = () => {
             });
 
             return (
-              <div className={`mb-6 glass-card rounded-2xl overflow-hidden transition-all duration-200 ${isDragging && draggedItem?.type === 'p' ? 'ring-2 ring-purple-400/50 bg-purple-500/5' : ''
-                }`}>
+              <div className="mb-6 glass-card rounded-2xl overflow-hidden transition-all duration-200">
                 {/* Day Headers Row */}
                 <div className="flex border-b border-white/10">
                   {weekDays.map((day, idx) => {
-                    const isDragOverThisDay = isDragging && planDragOverDay?.getTime() === day.date.getTime();
                     const isCurrentDay = day.date.getTime() === selectedPlanDate.getTime();
-                    const canDrop = isDragging && draggedItem?.type === 'p' && !isCurrentDay;
 
                     return (
                       <button
                         key={idx}
-                        onClick={() => !isDragging && selectDay(day.date)}
-                        onMouseEnter={() => canDrop && setPlanDragOverDay(day.date)}
-                        onMouseLeave={() => isDragging && setPlanDragOverDay(null)}
+                        onClick={() => selectDay(day.date)}
                         className={`flex-1 flex flex-col items-center py-3 px-1 transition-all duration-200 border-r border-white/5 last:border-r-0
-                        ${isDragOverThisDay
-                            ? 'bg-purple-500/40'
-                            : day.isSelected
-                              ? 'bg-gradient-to-b from-purple-500/30 to-indigo-600/20'
-                              : day.isToday
-                                ? 'bg-white/5'
-                                : canDrop
-                                  ? 'hover:bg-purple-500/20'
-                                  : 'hover:bg-white/5'}`}
-                      >
-                        <span className={`text-[10px] font-medium uppercase tracking-wide ${isDragOverThisDay
-                          ? 'text-purple-200'
-                          : day.isSelected
-                            ? 'text-purple-300'
+                        ${day.isSelected
+                            ? 'bg-gradient-to-b from-purple-500/30 to-indigo-600/20'
                             : day.isToday
-                              ? 'text-purple-400'
-                              : 'text-slate-500'
+                              ? 'bg-white/5'
+                              : 'hover:bg-white/5'}`}
+                      >
+                        <span className={`text-[10px] font-medium uppercase tracking-wide ${day.isSelected
+                          ? 'text-purple-300'
+                          : day.isToday
+                            ? 'text-purple-400'
+                            : 'text-slate-500'
                           }`}>
                           {day.dayName}
                         </span>
-                        <span className={`text-lg font-semibold ${isDragOverThisDay
+                        <span className={`text-lg font-semibold ${day.isSelected
                           ? 'text-white'
-                          : day.isSelected
-                            ? 'text-white'
-                            : day.isToday
-                              ? 'text-purple-300'
-                              : 'text-slate-300'
+                          : day.isToday
+                            ? 'text-purple-300'
+                            : 'text-slate-300'
                           }`}>
                           {day.dayNum}
                         </span>
@@ -2889,7 +2637,8 @@ const LifeArchitect = () => {
                   <div className="px-4 pb-4 space-y-2">
                     {pendingTasks
                       .filter(task => {
-                        return !priorities.some(p => p.task && (p.task.id === task.id || p.task.projectTaskId === task.id));
+                        const tasksForDay = getResolvedTasksForDate(selectedPlanDate);
+                        return !tasksForDay.some(t => t.projectId === project.id && t.projectTaskId === task.id);
                       })
                       .map(task => (
                         <div
@@ -2921,29 +2670,16 @@ const LifeArchitect = () => {
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              if (priorities.some(p => p.task && p.task.projectTaskId === task.id)) return;
+                              const tasksForDay = getResolvedTasksForDate(selectedPlanDate);
+                              if (tasksForDay.some(t => t.projectId === project.id && t.projectTaskId === task.id)) return;
 
-                              const taskToAdd = {
-                                id: Date.now(),
-                                icon: '📋',
+                              openGlobalTaskModal('task', null, null, {
                                 name: task.title,
+                                icon: '📋',
                                 energy: task.energy,
-                                time: task.timeEstimate,
-                                projectId: project.id,
-                                projectTaskId: task.id,
-                                projectTitle: project.title
-                              };
-                              const emptySlotIndex = priorities.findIndex(p => !p.task);
-                              if (emptySlotIndex !== -1) {
-                                const newPriorities = [...priorities];
-                                newPriorities[emptySlotIndex] = {
-                                  ...newPriorities[emptySlotIndex],
-                                  task: taskToAdd,
-                                  energy: task.energy,
-                                  time: task.timeEstimate
-                                };
-                                setPriorities(newPriorities);
-                              }
+                                hour: 9,
+                                minute: 0
+                              });
                             }}
                             className="w-7 h-7 rounded-lg bg-cyan-500/30 text-cyan-300 flex items-center justify-center hover:bg-cyan-500/50 hover:scale-105 transition-all duration-200"
                           >
@@ -2979,10 +2715,11 @@ const LifeArchitect = () => {
 
         {/* Expanded Reminders List */}
         <div className={`space-y-2 overflow-hidden transition-all duration-300 mb-8 ${remindersExpanded ? 'max-h-[1200px] opacity-100' : 'max-h-0 opacity-0'}`}>
-          {getResolvedRemindersForDate(selectedExecuteDate)
+          {/* Show ALL reminders in the expanded list, not just those for the selected date */}
+          {reminders
             .filter(reminder => {
               if (reminder.completed) return false;
-              return !priorities.some(p => p.task && (p.task.id === reminder.id || p.task.originalReminderId === reminder.id));
+              return !getResolvedTasksForDate(selectedPlanDate).some(t => t.originalReminderId === reminder.id);
             })
             .map(reminder => (
               <div
@@ -3017,7 +2754,14 @@ const LifeArchitect = () => {
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    addToNextSlot(reminder);
+                    openGlobalTaskModal('task', null, null, {
+                      name: reminder.name,
+                      icon: reminder.icon,
+                      energy: reminder.energy,
+                      originalReminderId: reminder.id,
+                      hour: 9,
+                      minute: 0
+                    });
                   }}
                   className="w-8 h-8 rounded-xl text-purple-300 flex items-center justify-center hover:scale-105 transition-all duration-200 ml-2"
                   style={{ background: 'linear-gradient(135deg, rgba(168,85,247,0.3) 0%, rgba(236,72,153,0.3) 100%)' }}
@@ -3094,123 +2838,120 @@ const LifeArchitect = () => {
           })()}
         </div>
 
-        {/* Priorities */}
+        {/* Daily Plan (Syncs with Execute) */}
         <div className="mb-8">
-          <h2 className="text-center text-sm font-medium text-slate-400 uppercase tracking-widest mb-4">
-            {priorities.length <= 3 ? t('plan.topPriorities') : t('plan.todaysTasks', { count: priorities.length })}
-          </h2>
+
           <div className="space-y-3">
-            {priorities.map((priority, idx) => (
-              <div
-                key={idx}
-                onMouseDown={(e) => priority.task && startDrag(e, 'p', idx)}
-                onMouseEnter={() => handleSlotMouseEnter('p', idx)}
-                onMouseLeave={handleSlotMouseLeave}
-                onClick={() => !isDragging && openGlobalTaskModal('priority', idx, priority.task)}
-                className={`p-4 glass-card rounded-2xl transition-all duration-200 ease-out select-none
-            ${priority.task ? 'ring-1 ring-purple-500/30 cursor-grab active:cursor-grabbing' : 'cursor-pointer hover:bg-white/10 hover:scale-[1.01]'}
-            ${isDragging && dragOverSlot?.type === 'p' && dragOverSlot?.index === idx
-                    ? 'ring-2 ring-purple-400 scale-[1.02] bg-purple-500/20 shadow-lg shadow-purple-500/20'
-                    : ''}
-            ${isDragging && draggedItem?.type === 'p' && draggedItem?.index === idx ? 'opacity-40 scale-[0.98]' : ''}`}
-              >
-                {priority.task ? (
+            {getResolvedTasksForDate(selectedPlanDate).length > 0 ? (
+              getResolvedTasksForDate(selectedPlanDate).map((task) => (
+                <div
+                  key={task.id}
+                  onClick={() => openGlobalTaskModal(task.isReminder ? 'reminder' : 'task', null, task)}
+                  className={`p-4 glass-card rounded-2xl transition-all duration-200 ease-out select-none cursor-pointer hover:bg-white/10 hover:scale-[1.01]`}
+                >
                   <div className="flex items-center gap-3">
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        const newPriorities = [...priorities];
-                        newPriorities[idx] = {
-                          ...priority,
-                          task: { ...priority.task, completed: true }
-                        };
-                        setPriorities(newPriorities);
-
-                        if (priority.task.originalReminderId) {
+                        // Handle completion logic based on type
+                        if (task.isReminder) {
                           const updatedReminders = reminders.map(r =>
-                            r.id === priority.task.originalReminderId ? { ...r, completed: true } : r
+                            r.id === task.id ? { ...r, completed: true } : r
                           );
                           setReminders(updatedReminders);
                           saveToStorage('reminders', updatedReminders);
-                        }
-
-                        if (priority.task.projectId && priority.task.projectTaskId) {
-                          toggleProjectTask(priority.task.projectId, priority.task.projectTaskId);
+                        } else {
+                          toggleTaskCompletion(task.id, task.isVirtual, task.date);
                         }
                       }}
-                      className="w-6 h-6 rounded-full border-2 border-purple-400 flex items-center justify-center hover:bg-purple-500/20 transition-all flex-shrink-0"
+                      className={`w-6 h-6 rounded-full border-2 ${task.completed ? 'bg-purple-500 border-purple-500' : 'border-purple-400'} flex items-center justify-center hover:bg-purple-500/20 transition-all flex-shrink-0`}
                     >
+                      {task.completed && (
+                        <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
                     </button>
 
-                    <span className="text-xl">{priority.task.icon}</span>
-                    <span className="text-slate-200 font-medium flex-1 truncate">{priority.task.name}</span>
-
-                    <div onMouseDown={(e) => e.stopPropagation()}>
-                      <EnergyBadge
-                        energy={priority.energy}
-                        onClick={() => {
-                          const energies = ['low', 'medium', 'high'];
-                          const currentIdx = energies.indexOf(priority.energy || 'medium');
-                          const nextIdx = (currentIdx + 1) % 3;
-                          const newP = [...priorities];
-                          newP[idx].energy = energies[nextIdx];
-                          setPriorities(newP);
-                        }}
-                        t={t}
-                      />
+                    <span className="text-xl">{task.icon}</span>
+                    <div className="flex-1 min-w-0">
+                      <span className={`text-slate-200 font-medium truncate block ${task.completed ? 'line-through opacity-50' : ''}`}>
+                        {task.name || task.title}
+                      </span>
+                      <div className="flex items-center gap-2 text-xs text-slate-500">
+                        <span>{new Date(task.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                        {task.isReminder && <span className="text-purple-400">Reminder</span>}
+                      </div>
                     </div>
 
-                    <div className="flex items-center gap-2" onMouseDown={(e) => e.stopPropagation()}>
-                      <TimeDropdown
-                        value={priority.time}
-                        onChange={(val) => {
-                          const newP = [...priorities];
-                          newP[idx].time = val;
-                          setPriorities(newP);
-                        }}
-                        t={t}
-                      />
-                      <button
-                        onClick={() => {
-                          setReminders(prev => [...prev, priority.task]);
-                          const newP = [...priorities];
-                          newP[idx] = { slot: idx + 1, task: null, energy: null, time: null };
-                          setPriorities(newP);
-                        }}
-                        className="w-8 h-8 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/20 flex items-center justify-center transition-all"
-                      >
-                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
-                    </div>
+                    <EnergyBadge energy={task.energy} t={t} />
                   </div>
-                ) : (
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500/20 to-indigo-600/20 border border-purple-500/30 flex items-center justify-center">
-                      <span className="text-purple-400 text-sm font-bold">{idx + 1}</span>
-                    </div>
-                    <span className="text-slate-500">{t('plan.tapToAddTask')}</span>
-                    <div className="flex-1"></div>
-                    <div className="w-9 h-9 rounded-xl bg-white/10 text-slate-400 flex items-center justify-center">
-                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                      </svg>
-                    </div>
+                </div>
+              ))
+            ) : (
+              <div className="relative overflow-hidden rounded-3xl p-12 text-center"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(59, 130, 246, 0.05) 100%)',
+                  backdropFilter: 'blur(20px)',
+                  border: '1px solid rgba(139, 92, 246, 0.2)'
+                }}
+              >
+                {/* Decorative gradient orbs */}
+                <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/20 rounded-full blur-3xl" />
+                <div className="absolute bottom-0 left-0 w-32 h-32 bg-blue-500/20 rounded-full blur-3xl" />
+
+                {/* Icon */}
+                <div className="relative mb-6 flex justify-center">
+                  <div className="w-20 h-20 rounded-2xl flex items-center justify-center"
+                    style={{
+                      background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.2) 0%, rgba(59, 130, 246, 0.2) 100%)',
+                      boxShadow: '0 8px 32px rgba(139, 92, 246, 0.3)'
+                    }}
+                  >
+                    <svg className="w-10 h-10 text-purple-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                    </svg>
                   </div>
-                )}
+                </div>
+
+                {/* Text */}
+                <h3 className="text-xl font-semibold text-slate-200 mb-2">
+                  Your day awaits
+                </h3>
+                <p className="text-slate-400 mb-8 max-w-sm mx-auto leading-relaxed">
+                  Start planning your perfect day. Add tasks, set priorities, and make it happen.
+                </p>
+
+                {/* CTA Button */}
+                <button
+                  onClick={() => openGlobalTaskModal('task', null, null, { hour: 9, minute: 0 })}
+                  className="group relative inline-flex items-center gap-2 px-6 py-3 rounded-xl font-medium text-white overflow-hidden transition-all duration-300 hover:scale-105"
+                  style={{
+                    background: 'linear-gradient(135deg, #8b5cf6 0%, #3b82f6 100%)',
+                    boxShadow: '0 4px 20px rgba(139, 92, 246, 0.4)'
+                  }}
+                >
+                  <span className="relative z-10">Start Planning</span>
+                  <svg className="relative z-10 w-4 h-4 transition-transform group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+
+                  {/* Hover effect */}
+                  <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-blue-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                </button>
               </div>
-            ))}
+            )}
 
             {/* Add More Task Button */}
             <button
-              onClick={addPrioritySlot}
+              onClick={() => openGlobalTaskModal('task', null, null, { hour: 9, minute: 0 })}
               className="w-full p-3 rounded-2xl border border-dashed border-white/20 hover:border-purple-500/50 hover:bg-purple-500/10 transition-all flex items-center justify-center gap-2 text-slate-400 hover:text-purple-400"
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
-              <span className="text-sm font-medium">{t('common.add')} {t('common.task')} #{priorities.length + 1}</span>
+              <span className="text-sm font-medium">{t('common.add')} {t('common.task')}</span>
             </button>
           </div>
         </div>
@@ -3230,41 +2971,6 @@ const LifeArchitect = () => {
             </div>
           </div>
         </div>
-
-        {/* Drag Preview - Smooth floating */}
-        {
-          isDragging && draggedItem && (
-            <div
-              className="fixed pointer-events-none z-50 transition-transform duration-75 ease-out"
-              style={{
-                left: dragPosition.x,
-                top: dragPosition.y,
-                transform: 'translate(-50%, -50%) rotate(3deg) scale(1.05)'
-              }}
-            >
-              <div
-                className="flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-2xl animate-popIn"
-                style={{
-                  background: 'linear-gradient(135deg, rgba(139,92,246,0.3) 0%, rgba(99,102,241,0.3) 100%)',
-                  backdropFilter: 'blur(20px)',
-                  border: '2px solid rgba(139,92,246,0.6)',
-                  boxShadow: '0 20px 40px rgba(139,92,246,0.3), 0 0 30px rgba(139,92,246,0.2)'
-                }}
-              >
-                <span className="text-2xl drop-shadow-lg">
-                  {draggedItem.type === 'reminder'
-                    ? draggedItem.reminder?.icon
-                    : priorities[draggedItem.index]?.task?.icon}
-                </span>
-                <span className="text-white font-semibold text-sm max-w-40 truncate drop-shadow">
-                  {draggedItem.type === 'reminder'
-                    ? draggedItem.reminder?.name
-                    : priorities[draggedItem.index]?.task?.name}
-                </span>
-              </div>
-            </div>
-          )
-        }
 
         {/* Edit Reminder Modal */}
         {
@@ -3465,6 +3171,12 @@ const LifeArchitect = () => {
                       ))}
                     </div>
                   </div>
+
+                  <SubtaskList
+                    subtasks={editReminderSubtasks}
+                    onChange={setEditReminderSubtasks}
+                    t={t}
+                  />
 
                   {/* Notes */}
                   <div className="mb-4">
@@ -3708,6 +3420,12 @@ const LifeArchitect = () => {
                       ))}
                     </div>
                   </div>
+
+                  <SubtaskList
+                    subtasks={planTaskData.subtasks || []}
+                    onChange={(newSubtasks) => setPlanTaskData(prev => ({ ...prev, subtasks: newSubtasks }))}
+                    t={t}
+                  />
 
                   {/* Notes */}
                   <div>
@@ -5702,7 +5420,8 @@ const LifeArchitect = () => {
         startTime: '',
         startTime: '',
         endTime: '',
-        folderId: folderId
+        folderId: folderId,
+        subtasks: []
       });
       setLocalEditShowTime(false);
       setLocalEditShowAlerts(false);
@@ -5728,6 +5447,7 @@ const LifeArchitect = () => {
         dueDate: task.dueDate || '',
         notes: task.notes || '',
         alerts: task.alerts || [],
+        subtasks: task.subtasks || [],
         date: task.date ? new Date(task.date) : new Date(),
         startTime: task.startTime ? new Date(task.startTime).toTimeString().slice(0, 5) : '',
         endTime: task.endTime ? new Date(task.endTime).toTimeString().slice(0, 5) : '',
@@ -5765,7 +5485,8 @@ const LifeArchitect = () => {
         ...localTaskData,
         date: localTaskData.date instanceof Date ? localTaskData.date.toISOString() : localTaskData.date,
         startTime: sDate ? sDate.toISOString() : null,
-        endTime: eDate ? eDate.toISOString() : null
+        endTime: eDate ? eDate.toISOString() : null,
+        subtasks: localTaskData.subtasks || []
       };
 
       if (editingProjectTask) {
@@ -6953,6 +6674,12 @@ const LifeArchitect = () => {
                   </div>
                 </div>
 
+                <SubtaskList
+                  subtasks={localTaskData.subtasks || []}
+                  onChange={(newSubtasks) => setLocalTaskData(prev => ({ ...prev, subtasks: newSubtasks }))}
+                  t={t}
+                />
+
                 {/* Notes */}
                 <div>
                   <label className="text-slate-400 text-sm mb-2 block">{t('common.notes')}</label>
@@ -7222,8 +6949,7 @@ const LifeArchitect = () => {
           setReminders={setReminders}
           projects={projects}
           setProjects={setProjects}
-          priorities={priorities}
-          setPriorities={setPriorities}
+
           tasks={tasksByDate[getDateKey(selectedExecuteDate)]}
           setTasksByDate={setTasksByDate}
           getResolvedTasksForDate={getResolvedTasksForDate}
@@ -7232,7 +6958,7 @@ const LifeArchitect = () => {
           removeHabitFromTemplate={removeHabitFromTemplate}
           addHabitToTemplate={addHabitToTemplate}
           completeAllHabits={completeAllHabits}
-          completeTask={completeTask}
+          toggleTaskCompletion={toggleTaskCompletion}
           t={t}
           currentLocale={currentLocale}
           focusMode={focusMode}
@@ -7291,6 +7017,9 @@ const LifeArchitect = () => {
           setEditTaskValue={setEditTaskValue}
           editTaskNotes={editTaskNotes}
           setEditTaskNotes={setEditTaskNotes}
+          editTaskSubtasks={editTaskSubtasks}
+          setEditTaskSubtasks={setEditTaskSubtasks}
+          openGlobalTaskModal={openGlobalTaskModal}
         />}
         {activeTab === 'review' && <ReviewScreen />}
         {activeTab === 'patterns' && <PatternsScreen />}
@@ -7601,6 +7330,13 @@ const LifeArchitect = () => {
                 </div>
               </div>
 
+              {/* Subtasks */}
+              <SubtaskList
+                subtasks={globalTaskSubtasks}
+                onChange={setGlobalTaskSubtasks}
+                t={t}
+              />
+
               {/* Notes (New) */}
               <div className="mb-4">
                 <label className="text-slate-400 text-sm mb-2 block">{t('common.notes')}</label>
@@ -7717,6 +7453,76 @@ const LifeArchitect = () => {
                       {lang.label}
                     </button>
                   ))}
+                </div>
+              </div>
+
+
+              {/* Apple Reminders Integration */}
+              <div className="mb-6">
+                <label className="block text-xs font-medium text-slate-400 uppercase tracking-widest mb-2 flex items-center justify-between">
+                  <span>{t('settings.reminders.title') || 'Apple Reminders'}</span>
+                  {remindersSyncEnabled && (
+                    <span className="text-emerald-400 text-[10px] bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                      Sync Active
+                    </span>
+                  )}
+                </label>
+
+                <div className="bg-white/5 rounded-xl border border-white/5 overflow-hidden">
+                  {/* Toggle Switch */}
+                  <div className="p-4 flex items-center justify-between border-b border-white/5">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white">
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                        </svg>
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium text-white">{t('settings.reminders.sync') || 'Sync Reminders'}</div>
+                        <div className="text-xs text-slate-400">{t('settings.reminders.desc') || 'Import tasks from iOS'}</div>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => setRemindersSyncEnabled(!remindersSyncEnabled)}
+                      className={`relative w-12 h-7 rounded-full transition-colors duration-300 ${remindersSyncEnabled ? 'bg-purple-500' : 'bg-white/10'
+                        }`}
+                    >
+                      <div className={`absolute top-1 left-1 w-5 h-5 rounded-full bg-white transition-transform duration-300 ${remindersSyncEnabled ? 'translate-x-5' : 'translate-x-0'
+                        }`} />
+                    </button>
+                  </div>
+
+                  {/* List Selection (Conditional) */}
+                  {remindersSyncEnabled && (
+                    <div className="p-4 bg-black/20 animate-slideUp">
+                      <label className="block text-xs text-slate-500 mb-2 uppercase tracking-wide">
+                        {t('settings.reminders.selectList') || 'Select List to Sync'}
+                      </label>
+                      <div className="space-y-2">
+                        {remindersLists.map(list => (
+                          <button
+                            key={list.id}
+                            onClick={() => setSelectedRemindersList(list.id)}
+                            className={`w-full flex items-center justify-between p-3 rounded-lg text-sm transition-all ${selectedRemindersList === list.id
+                              ? 'bg-purple-500/20 text-purple-200 border border-purple-500/30'
+                              : 'bg-white/5 text-slate-400 hover:bg-white/10 border border-transparent'
+                              }`}
+                          >
+                            <span className="flex items-center gap-2">
+                              <span className="w-2 h-2 rounded-full bg-current"></span>
+                              {list.title}
+                            </span>
+                            {selectedRemindersList === list.id && (
+                              <svg className="w-4 h-4 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 

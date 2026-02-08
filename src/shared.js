@@ -301,8 +301,8 @@ export const TaskDetailsList = ({
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
                         </div>
-                        <span className="text-sm font-medium">
-                            {startTime} - {endTime}
+                        <span className="text-sm font-medium text-slate-200">
+                            {(startTime || '00:00')} <span className="text-slate-500 mx-1">→</span> {(endTime || '00:00')}
                         </span>
                     </div>
                     <svg className={`w-4 h-4 transition-transform ${showTimePicker ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
