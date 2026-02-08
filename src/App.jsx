@@ -687,8 +687,23 @@ const LifeArchitect = () => {
   // Settings State
   // Settings State
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [installPrompt, setInstallPrompt] = useState(null);
   const [username, setUsername] = useState(() => loadFromStorage('username', 'Architect'));
   // language lifted to top
+
+  // Handle PWA Install Prompt
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e) => {
+      e.preventDefault();
+      setInstallPrompt(e);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, []);
 
   // Persist username & language
   useEffect(() => {
@@ -7734,6 +7749,42 @@ const LifeArchitect = () => {
                   </svg>
                   {t('settings.resetButton')}
                 </button>
+              </div>
+
+              {/* Install App Section */}
+              <div className="mt-6 mb-6">
+                <label className="block text-xs font-medium text-slate-400 uppercase tracking-widest mb-2">
+                  {t('settings.install')}
+                </label>
+                {installPrompt ? (
+                  <button
+                    onClick={() => {
+                      if (installPrompt) {
+                        installPrompt.prompt();
+                        installPrompt.userChoice.then((choiceResult) => {
+                          if (choiceResult.outcome === 'accepted') {
+                            setInstallPrompt(null);
+                          }
+                        });
+                      }
+                    }}
+                    className="w-full py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/20 hover:shadow-amber-500/40 transition-all font-bold text-sm flex items-center justify-center gap-2"
+                  >
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    Install App
+                  </button>
+                ) : (
+                  <div className="p-3 bg-white/5 rounded-xl border border-white/10 text-center">
+                    <p className="text-xs text-slate-400 mb-2">
+                      To install on iOS:
+                    </p>
+                    <div className="flex items-center justify-center gap-2 text-sm text-white font-medium">
+                      Tap <span className="text-xl">⎋</span> Share &rarr; Add to Home Screen
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
