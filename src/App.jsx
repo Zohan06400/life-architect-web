@@ -1835,8 +1835,7 @@ const LifeArchitect = () => {
         repeat: task.repeat || { type: 'none', label: 'None', days: [] },
         date: task.date ? new Date(task.date) : new Date(),
         startTime: formatTime(sTime),
-        date: task.date ? new Date(task.date) : new Date(),
-        startTime: formatTime(sTime),
+
         endTime: formatTime(eTime),
         subtasks: task.subtasks || []
       });
@@ -1871,7 +1870,7 @@ const LifeArchitect = () => {
         repeat: planTaskData.repeat,
         date: planTaskData.date instanceof Date ? planTaskData.date.toISOString() : planTaskData.date,
         startTime: sDate.toISOString(),
-        startTime: sDate.toISOString(),
+
         endTime: eDate.toISOString(),
         subtasks: planTaskData.subtasks
       };
@@ -4564,7 +4563,7 @@ const LifeArchitect = () => {
 
     // Task statistics helpers
     const getTaskStatsForDate = (date) => {
-      const dateKey = getDateKey(date);
+      getDateKey(date);
       const dayTasks = getResolvedTasksForDate(date);
       const completed = dayTasks.filter(t => t.completed).length;
       const total = dayTasks.length;
@@ -4590,9 +4589,9 @@ const LifeArchitect = () => {
     const weekTasksPercent = weekTasksTotal > 0 ? Math.round((weekTasksCompleted / weekTasksTotal) * 100) : 0;
 
     // Project stats
-    const activeProjects = projects.filter(p => p.status !== 'completed');
-    const completedProjects = projects.filter(p => p.status === 'completed');
 
+
+    const activeProjects = projects.filter(p => p.status !== 'completed');
     const getProjectProgress = (project) => {
       const total = project.tasks?.length || 0;
       const completed = project.tasks?.filter(t => t.completed).length || 0;
@@ -4609,17 +4608,7 @@ const LifeArchitect = () => {
     const totalEnergyTasks = tasksByEnergy.high + tasksByEnergy.medium + tasksByEnergy.low;
 
     // Get energy color
-    const getEnergyColor = (energy) => {
-      if (energy === 'high') return 'from-rose-500 to-orange-500';
-      if (energy === 'medium') return 'from-amber-500 to-yellow-500';
-      return 'from-emerald-500 to-green-500';
-    };
 
-    const getEnergyBgColor = (energy) => {
-      if (energy === 'high') return 'bg-rose-500';
-      if (energy === 'medium') return 'bg-amber-500';
-      return 'bg-emerald-500';
-    };
 
     return (
       <div className="pb-28 animate-fadeIn">
@@ -5418,7 +5407,7 @@ const LifeArchitect = () => {
         alerts: [],
         date: new Date(),
         startTime: '',
-        startTime: '',
+
         endTime: '',
         folderId: folderId,
         subtasks: []

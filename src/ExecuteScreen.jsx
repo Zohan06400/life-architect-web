@@ -1,21 +1,15 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { translations } from './translations';
+import React, { useState, useEffect } from 'react';
 import { SubtaskList } from './SubtaskList';
 import {
   globalIconOptions,
   globalReminderOptions,
   globalAlertOptions,
-  weekDays,
-  durationOptions,
-  RepeatPicker,
   TaskDetailsList,
-  loadFromStorage,
   saveToStorage,
   getToday,
   getDateKey,
   parseTime,
-  formatElapsed,
-  getTaskFocusDuration
+  formatElapsed
 } from './shared';
 
 const ExecuteScreen = ({
@@ -25,7 +19,7 @@ const ExecuteScreen = ({
   isPaused, setIsPaused,
   reminders, setReminders,
   projects, setProjects,
-  priorities, setPriorities,
+
   tasks: propTasks,
   setTasksByDate,
   getResolvedTasksForDate,
@@ -278,101 +272,7 @@ const ExecuteScreen = ({
 
   // formatPomodoroTime helper function...
 
-  // New task modal state
-  // executeShowNewTaskModal lifted to App as executeShowNewTaskModal
-  const [newTaskName, setNewTaskName] = useState('');
-  const [newTaskIcon, setNewTaskIcon] = useState('📌');
-  const [newTaskEnergy, setNewTaskEnergy] = useState('medium');
-  const [newTaskStartHour, setNewTaskStartHour] = useState(9);
-  const [newTaskStartMinute, setNewTaskStartMinute] = useState(0);
-  const [newTaskEndHour, setNewTaskEndHour] = useState(10);
-  const [newTaskEndMinute, setNewTaskEndMinute] = useState(0);
-  const [newTaskReminder, setNewTaskReminder] = useState(null); // null, 5, 10, 15, 30
-  const [newTaskIsNonNegotiable, setNewTaskIsNonNegotiable] = useState(false);
 
-  const iconOptions = [
-    '📌', '📧', '💪', '📝', '📞', '📚', '🧘', '🎯', '💼', '🏃',
-    '🍎', '💡', '🎨', '🎵', '📊', '🛒', '🏠', '💰', '✈️', '🎮',
-    '🧹', '👥', '📱', '💻', '🔧', '📦', '🎁', '❤️', '⭐', '🔔'
-  ];
-
-  const reminderOptions = [
-    { value: null, label: t('common.none') },
-    { value: 5, label: `5 ${t('units.m')} ${t('common.before')}` },
-    { value: 10, label: `10 ${t('units.m')} ${t('common.before')}` },
-    { value: 15, label: `15 ${t('units.m')} ${t('common.before')}` },
-    { value: 30, label: `30 ${t('units.m')} ${t('common.before')}` },
-    { value: 60, label: `1 ${t('units.h')} ${t('common.before')}` }
-  ];
-
-  // Create new task from modal
-  const createNewTask = () => {
-    if (!newTaskName.trim()) return;
-
-    const startTime = new Date(selectedExecuteDate);
-    startTime.setHours(newTaskStartHour, newTaskStartMinute, 0, 0);
-
-    const endTime = new Date(selectedExecuteDate);
-    endTime.setHours(newTaskEndHour, newTaskEndMinute, 0, 0);
-
-    // Validate end time is after start time
-    if (endTime <= startTime) {
-      endTime.setHours(newTaskStartHour + 1, newTaskStartMinute, 0, 0);
-    }
-
-    const newTask = {
-      id: Date.now(),
-      title: newTaskName.trim(),
-      icon: newTaskIcon,
-      energy: newTaskEnergy,
-      startTime: startTime,
-      endTime: endTime,
-      duration: `${Math.round((endTime - startTime) / 60000)}m`,
-      completed: false,
-      isNonNegotiable: newTaskIsNonNegotiable,
-      reminder: newTaskReminder
-    };
-
-    // Add task to the selected date
-    const dateKey = getDateKey(selectedExecuteDate);
-    setTasksByDate(prev => ({
-      ...prev,
-      [dateKey]: [...(prev[dateKey] || []), newTask].sort((a, b) => a.startTime - b.startTime)
-    }));
-
-    // Reset form
-    setNewTaskName('');
-    setNewTaskIcon('📌');
-    setNewTaskEnergy('medium');
-    setNewTaskStartHour(9);
-    setNewTaskStartMinute(0);
-    setNewTaskEndHour(10);
-    setNewTaskEndMinute(0);
-    setNewTaskReminder(null);
-    setNewTaskIsNonNegotiable(false);
-    setExecuteShowNewTaskModal(false);
-  };
-
-  // Reset modal form
-  const resetNewTaskForm = () => {
-    setNewTaskName('');
-    setNewTaskIcon('📌');
-    setNewTaskEnergy('medium');
-    // Set default start time to next hour
-    const nextHour = Math.min(22, currentTime.getHours() + 1);
-    setNewTaskStartHour(nextHour);
-    setNewTaskStartMinute(0);
-    setNewTaskEndHour(Math.min(23, nextHour + 1));
-    setNewTaskEndMinute(0);
-    setNewTaskReminder(null);
-    setNewTaskIsNonNegotiable(false);
-  };
-
-  // Open modal with smart defaults
-  const openNewTaskModal = () => {
-    resetNewTaskForm();
-    setExecuteShowNewTaskModal(true);
-  };
 
   // Update current time every 30 seconds for smoother sand clock
   useEffect(() => {
@@ -509,16 +409,7 @@ const ExecuteScreen = ({
     setDragStartTime(Date.now());
   };
 
-  // Handle task click (if not dragged)
-  const handleTaskClick = (task) => {
-    // If drag was very short (< 200ms and < 5px movement), treat as click
-    const timeDiff = Date.now() - dragStartTime;
-    const posDiff = Math.abs(dragCurrentY - dragStartY);
 
-    if (timeDiff < 200 && posDiff < 5) {
-      openTaskEdit(task);
-    }
-  };
 
   // Get drag preview position for smooth dragging
   const getDragTaskPosition = (task) => {
