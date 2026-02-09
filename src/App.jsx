@@ -621,6 +621,15 @@ const LifeArchitect = () => {
   const [isBreak, setIsBreak] = useState(false);
   const [totalFocusTime, setTotalFocusTime] = useState(0);
 
+  // Initialize app
+  useEffect(() => {
+    // Simulate initial loading or data fetching
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, []);
+
   // Pomodoro timer effect
   useEffect(() => {
     if (!pomodoroRunning || !focusMode) return;
