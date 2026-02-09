@@ -10,7 +10,9 @@ import {
   getDateKey,
   parseTime,
   parseTime,
+  parseTime,
   formatElapsed,
+  safeParseDate,,
   safeParseDate,
 } from './shared';
 
@@ -106,7 +108,7 @@ const ExecuteScreen = ({
     setEditTaskValue(task.value || 5);
     setEditTaskNotes(task.notes || '');
     setEditTaskSubtasks(task.subtasks || []);
-    setEditTaskDate(task.startTime ? new Date(task.startTime) : new Date(selectedExecuteDate));
+    setEditTaskDate(task.startTime ? safeParseDate(task.startTime) : safeParseDate(selectedExecuteDate));
     setEditTaskShowTime(false);
     setEditTaskShowAlerts(false);
     setEditTaskShowDate(false);
@@ -449,7 +451,7 @@ const ExecuteScreen = ({
       // Compare dates properly by resetting time
       const todayDate = new Date();
       todayDate.setHours(0, 0, 0, 0);
-      const selectedDate = new Date(selectedExecuteDate);
+      const selectedDate = safeParseDate(selectedExecuteDate);
       selectedDate.setHours(0, 0, 0, 0);
 
       // Get project timelines for this date
@@ -519,7 +521,7 @@ const ExecuteScreen = ({
     // Add all days of the month
     const todayDate = new Date();
     todayDate.setHours(0, 0, 0, 0);
-    const selectedDate = new Date(selectedExecuteDate);
+    const selectedDate = safeParseDate(selectedExecuteDate);
     selectedDate.setHours(0, 0, 0, 0);
 
     for (let i = 1; i <= daysInMonth; i++) {
@@ -600,7 +602,7 @@ const ExecuteScreen = ({
   }, [dragOverDay]);
 
   const selectExecuteDay = (date) => {
-    setSelectedExecuteDate(new Date(date));
+    setSelectedExecuteDate(safeParseDate(date));
     setActiveTask(null);
     setElapsedTime(0);
   };
