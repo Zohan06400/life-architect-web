@@ -9,7 +9,6 @@ import {
   getToday,
   getDateKey,
   parseTime,
-  parseTime,
   formatElapsed,
   safeParseDate
 } from './shared';
