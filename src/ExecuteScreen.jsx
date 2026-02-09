@@ -10,10 +10,8 @@ import {
   getDateKey,
   parseTime,
   parseTime,
-  parseTime,
   formatElapsed,
-  safeParseDate,,
-  safeParseDate,
+  safeParseDate
 } from './shared';
 
 const ExecuteScreen = ({
