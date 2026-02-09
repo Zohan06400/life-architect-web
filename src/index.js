@@ -14,8 +14,14 @@ root.render(
 );
 
 // Register service worker for PWA (optional)
+// Register service worker for PWA (optional)
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/service-worker.js').catch(() => { });
+    // Force unregister to clear stale caches
+    navigator.serviceWorker.getRegistrations().then(function (registrations) {
+      for (let registration of registrations) {
+        registration.unregister();
+      }
+    });
   });
 }
