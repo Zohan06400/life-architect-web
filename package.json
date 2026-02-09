@@ -2,6 +2,7 @@
   "name": "life-architect",
   "version": "1.0.0",
   "description": "A comprehensive productivity app for planning, executing, and reflecting on your days",
+  "homepage": ".",
   "private": true,
   "dependencies": {
     "cors": "^2.8.6",
