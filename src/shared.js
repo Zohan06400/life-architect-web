@@ -133,6 +133,33 @@ export const getTaskFocusDuration = (task) => {
     return 25 * 60;
 };
 
+// Safe date parser for Safari/iOS compatibility
+export const safeParseDate = (dateInput) => {
+    if (!dateInput) return new Date();
+
+    // If it's already a Date object
+    if (dateInput instanceof Date) {
+        return isNaN(dateInput.getTime()) ? new Date() : dateInput;
+    }
+
+    // Handle strings
+    let date = new Date(dateInput);
+
+    // If invalid, try replacing dashes with slashes (common Safari fix for YYYY-MM-DD)
+    if (isNaN(date.getTime()) && typeof dateInput === 'string') {
+        const replaceDashes = dateInput.replace(/-/g, '/');
+        date = new Date(replaceDashes);
+    }
+
+    // Final fallback
+    if (isNaN(date.getTime())) {
+        console.warn('Invalid date detected, falling back to now:', dateInput);
+        return new Date();
+    }
+
+    return date;
+};
+
 // ============================================
 // SHARED COMPONENTS
 // ============================================

@@ -4,6 +4,7 @@ import { SubtaskList } from './SubtaskList';
 import { translations } from './translations';
 import {
   globalIconOptions,
+  safeParseDate,
   globalReminderOptions,
   globalAlertOptions,
   weekDays,
@@ -567,14 +568,20 @@ const defaultProjects = [
 ];
 
 // Migration: Add color to existing projects that don't have one
+// Migration: Add color to existing projects that don't have one
 const migrateProjects = (projects) => {
-  const defaultColors = ['#8b5cf6', '#06b6d4', '#22c55e', '#f97316', '#ec4899', '#3b82f6', '#eab308', '#ef4444'];
-  return projects.map((project, index) => ({
-    ...project,
-    color: project.color || defaultColors[index % defaultColors.length],
-    startDate: project.startDate || null,
-    endDate: project.endDate || null
-  }));
+  try {
+    const defaultColors = ['#8b5cf6', '#06b6d4', '#22c55e', '#f97316', '#ec4899', '#3b82f6', '#eab308', '#ef4444'];
+    return projects.map((project, index) => ({
+      ...project,
+      color: project.color || defaultColors[index % defaultColors.length],
+      startDate: project.startDate ? safeParseDate(project.startDate).toISOString().split('T')[0] : null,
+      endDate: project.endDate ? safeParseDate(project.endDate).toISOString().split('T')[0] : null
+    }));
+  } catch (error) {
+    console.error('Project migration failed:', error);
+    return defaultProjects;
+  }
 };
 
 
