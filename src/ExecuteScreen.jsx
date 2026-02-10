@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { SubtaskList } from './SubtaskList';
+import { SubtaskList } from './shared/ui/SubtaskList';
 import {
   globalIconOptions,
   globalReminderOptions,
@@ -1713,20 +1713,17 @@ const ExecuteScreen = ({
                 onTimeClick={() => {
                   setEditTaskShowTime(!editTaskShowTime);
                   setEditTaskShowAlerts(false);
-                  setEditTaskShowDate(false);
                   setEditTaskShowRepeat(false);
                 }}
                 onAlertsClick={() => {
                   setEditTaskShowAlerts(!editTaskShowAlerts);
                   setEditTaskShowTime(false);
-                  setEditTaskShowDate(false);
                   setEditTaskShowRepeat(false);
                 }}
                 onRepeatClick={() => {
                   setEditTaskShowRepeat(!editTaskShowRepeat);
                   setEditTaskShowAlerts(false);
                   setEditTaskShowTime(false);
-                  setEditTaskShowDate(false);
                 }}
                 themeColor="amber"
                 showDatePicker={editTaskShowDate}
@@ -1803,20 +1800,22 @@ const ExecuteScreen = ({
 
               {/* Energy */}
               <div className="mb-6">
-                <label className="text-slate-400 text-sm mb-2 block">{t('common.energyRequired')}</label>
-                <div className="grid grid-cols-3 gap-2">
+                <label className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-2 block">{t('common.energyLevel')}</label>
+                <div className="flex gap-2">
                   {['low', 'medium', 'high'].map(level => (
                     <button
                       key={level}
                       onClick={() => setEditTaskEnergy(level)}
-                      className={`py-2.5 px-3 rounded-xl text-sm font-medium capitalize transition-all ${editTaskEnergy === level
-                        ? level === 'high' ? 'bg-rose-500/30 text-rose-300 ring-2 ring-rose-500/50' :
-                          level === 'medium' ? 'bg-amber-500/30 text-amber-300 ring-2 ring-amber-500/50' :
-                            'bg-emerald-500/30 text-emerald-300 ring-2 ring-emerald-500/50'
-                        : 'bg-white/5 text-slate-400'
-                        }`}
+                      className={`flex-1 py-2.5 rounded-xl font-medium text-sm transition-all duration-200
+                        ${editTaskEnergy === level
+                          ? level === 'low'
+                            ? 'bg-emerald-500/80 text-white shadow-lg shadow-emerald-500/30'
+                            : level === 'medium'
+                              ? 'bg-amber-500/80 text-white shadow-lg shadow-amber-500/30'
+                              : 'bg-rose-500/80 text-white shadow-lg shadow-rose-500/30'
+                          : 'bg-white/10 text-slate-400 hover:bg-white/20'}`}
                     >
-                      {level}
+                      {level === 'low' ? `🌱 ${t('energyLevels.light')}` : level === 'medium' ? `⚡ ${t('energyLevels.moderate')}` : `🔥 ${t('energyLevels.heavy')}`}
                     </button>
                   ))}
                 </div>
@@ -1834,7 +1833,7 @@ const ExecuteScreen = ({
                 <textarea
                   value={editTaskNotes}
                   onChange={(e) => setEditTaskNotes(e.target.value)}
-                  placeholder="Additional details..."
+                  placeholder={t('placeholders.additionalDetails')}
                   rows={2}
                   className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-500 outline-none focus:border-amber-500/50 resize-none"
                 />
