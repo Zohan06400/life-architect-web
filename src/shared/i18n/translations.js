@@ -165,7 +165,9 @@ export const translations = {
                 selectList: "Select List to Sync"
             },
             swipeNavigation: "Swipe Navigation",
-            swipeDesc: "Left/right swipe to switch tabs"
+            swipeDesc: "Left/right swipe to switch tabs",
+            testMode: "Test Mode",
+            testModeDesc: "Show developer test panel"
         },
         common: {
             edit: "Edit",
@@ -447,7 +449,9 @@ export const translations = {
             save: "Enregistrer",
             resetButton: "Réinitialiser",
             swipeNavigation: "Navigation par balayage",
-            swipeDesc: "Balayer pour changer d'onglet"
+            swipeDesc: "Balayer pour changer d'onglet",
+            testMode: "Mode Test",
+            testModeDesc: "Afficher le panneau de test développeur"
         },
         common: {
             edit: "Modifier",
@@ -728,7 +732,9 @@ export const translations = {
             save: "保存",
             resetButton: "重置数据",
             swipeNavigation: "滑动导航",
-            swipeDesc: "左右滑动切换标签页"
+            swipeDesc: "左右滑动切换标签页",
+            testMode: "测试模式",
+            testModeDesc: "显示开发者测试面板"
         },
         common: {
             edit: "编辑",
@@ -1009,7 +1015,9 @@ export const translations = {
             save: "Сохранить",
             resetButton: "Сбросить",
             swipeNavigation: "Навигация свайпами",
-            swipeDesc: "Свайп влево/вправо для смены экранов"
+            swipeDesc: "Свайп влево/вправо для смены экранов",
+            testMode: "Тестовый режим",
+            testModeDesc: "Показать панель тестирования"
         },
         common: {
             edit: "Изменить",

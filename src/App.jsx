@@ -727,6 +727,7 @@ const LifeArchitect = () => {
 
   const [username, setUsername] = useState(() => loadFromStorage('username', 'Architect'));
   const [swipeEnabled, setSwipeEnabled] = useState(() => loadFromStorage('swipeEnabled', true));
+  const [testModeEnabled, setTestModeEnabled] = useState(() => loadFromStorage('testModeEnabled', false));
 
   // Swipe Navigation Logic
   const [touchStart, setTouchStart] = useState(null);
@@ -784,6 +785,10 @@ const LifeArchitect = () => {
   useEffect(() => {
     saveToStorage('swipeEnabled', swipeEnabled);
   }, [swipeEnabled]);
+
+  useEffect(() => {
+    saveToStorage('testModeEnabled', testModeEnabled);
+  }, [testModeEnabled]);
 
   // Persist Reminders Settings
   useEffect(() => {
@@ -4227,6 +4232,34 @@ const LifeArchitect = () => {
                 </div>
               </div>
 
+              {/* Test Mode Setting */}
+              <div className="mb-6">
+                <div className="bg-white/5 rounded-xl border border-white/5 overflow-hidden">
+                  <div className="p-4 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white">
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                        </svg>
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium text-white">{t('settings.testMode')}</div>
+                        <div className="text-xs text-slate-400">{t('settings.testModeDesc')}</div>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => setTestModeEnabled(!testModeEnabled)}
+                      className={`relative w-12 h-7 rounded-full transition-colors duration-300 ${testModeEnabled ? 'bg-indigo-500' : 'bg-white/10'
+                        }`}
+                    >
+                      <div className={`absolute top-1 left-1 w-5 h-5 rounded-full bg-white transition-transform duration-300 ${testModeEnabled ? 'translate-x-5' : 'translate-x-0'
+                        }`} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
               {/* Data Section */}
               <div>
                 <button
@@ -4448,19 +4481,23 @@ const LifeArchitect = () => {
         }
       `}</style>
       {/* Test Mode Panel */}
-      <TestPanel
-        tasks={tasksByDate}
-        reminders={reminders}
-        projects={projects}
-        habits={routinesByDate}
-        entries={reflectionsByDate}
-        stats={{ completedTasks }}
-        dayPlan={plansByDate}
-        setTasks={setTasksByDate}
-        setProjects={setProjects}
-        setDayPlan={setPlansByDate}
-        setReminders={setReminders}
-      />
+      {
+        testModeEnabled && (
+          <TestPanel
+            tasks={tasksByDate}
+            reminders={reminders}
+            projects={projects}
+            habits={routinesByDate}
+            entries={reflectionsByDate}
+            stats={{ completedTasks }}
+            dayPlan={plansByDate}
+            setTasks={setTasksByDate}
+            setProjects={setProjects}
+            setDayPlan={setPlansByDate}
+            setReminders={setReminders}
+          />
+        )
+      }
     </div>
   );
 };
