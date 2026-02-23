@@ -154,6 +154,7 @@ export const ProjectsScreen = ({
                     setProjectsIsEditingNotes={setProjectsIsEditingNotes}
                     t={t}
                     getProjectProgress={getProjectProgress}
+                    onUpdateProjectTask={onUpdateProjectTask}
                 />
 
                 {/* Modals for Detail View */}

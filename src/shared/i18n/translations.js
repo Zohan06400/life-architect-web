@@ -163,7 +163,9 @@ export const translations = {
                 sync: "Sync Reminders",
                 desc: "Import tasks from iOS",
                 selectList: "Select List to Sync"
-            }
+            },
+            swipeNavigation: "Swipe Navigation",
+            swipeDesc: "Left/right swipe to switch tabs"
         },
         common: {
             edit: "Edit",
@@ -443,7 +445,9 @@ export const translations = {
             done: "Terminé",
             cancel: "Annuler",
             save: "Enregistrer",
-            resetButton: "Réinitialiser"
+            resetButton: "Réinitialiser",
+            swipeNavigation: "Navigation par balayage",
+            swipeDesc: "Balayer pour changer d'onglet"
         },
         common: {
             edit: "Modifier",
@@ -722,7 +726,9 @@ export const translations = {
             done: "完成",
             cancel: "取消",
             save: "保存",
-            resetButton: "重置数据"
+            resetButton: "重置数据",
+            swipeNavigation: "滑动导航",
+            swipeDesc: "左右滑动切换标签页"
         },
         common: {
             edit: "编辑",
@@ -1001,7 +1007,9 @@ export const translations = {
             done: "Готово",
             cancel: "Отмена",
             save: "Сохранить",
-            resetButton: "Сбросить"
+            resetButton: "Сбросить",
+            swipeNavigation: "Навигация свайпами",
+            swipeDesc: "Свайп влево/вправо для смены экранов"
         },
         common: {
             edit: "Изменить",

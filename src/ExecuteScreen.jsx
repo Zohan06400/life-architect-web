@@ -65,7 +65,12 @@ const ExecuteScreen = ({
   editTaskSubtasks, setEditTaskSubtasks,
   openGlobalTaskModal
 }) => {
-  const tasks = propTasks || []; // Ensure tasks is defined
+  // Defensive hydration: ensure tasks have Date objects for times
+  const tasks = (propTasks || []).map(t => ({
+    ...t,
+    startTime: (t.startTime && typeof t.startTime.getHours !== 'function') ? new Date(t.startTime) : t.startTime,
+    endTime: (t.endTime && typeof t.endTime.getHours !== 'function') ? new Date(t.endTime) : t.endTime
+  }));
 
   const today = new Date();
   // Verify lifted state availability

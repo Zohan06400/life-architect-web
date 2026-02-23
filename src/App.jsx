@@ -24,6 +24,8 @@ import {
 // Feature screens
 import { ProjectsScreen } from './features/projects/screen';
 import { PlanScreen } from './features/plan/screen';
+import { TestPanel } from './shared/test/TestPanel';
+import { logTestEvent } from './shared/config/test';
 
 
 // ============================================
@@ -724,6 +726,36 @@ const LifeArchitect = () => {
   ]);
 
   const [username, setUsername] = useState(() => loadFromStorage('username', 'Architect'));
+  const [swipeEnabled, setSwipeEnabled] = useState(() => loadFromStorage('swipeEnabled', true));
+
+  // Swipe Navigation Logic
+  const [touchStart, setTouchStart] = useState(null);
+  const [touchEnd, setTouchEnd] = useState(null);
+  const minSwipeDistance = 50;
+
+  const onTouchStart = (e) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const onTouchMove = (e) => setTouchEnd(e.targetTouches[0].clientX);
+
+  const onTouchEnd = () => {
+    if (!swipeEnabled || !touchStart || !touchEnd || isEditing) return;
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > minSwipeDistance;
+    const isRightSwipe = distance < -minSwipeDistance;
+
+    if (isLeftSwipe || isRightSwipe) {
+      const tabs = ['projects', 'plan', 'execute', 'review', 'patterns'];
+      const currentIndex = tabs.indexOf(activeTab);
+      if (isLeftSwipe && currentIndex < tabs.length - 1) {
+        setActiveTab(tabs[currentIndex + 1]);
+      } else if (isRightSwipe && currentIndex > 0) {
+        setActiveTab(tabs[currentIndex - 1]);
+      }
+    }
+  };
   // language lifted to top
 
   // Handle PWA Install Prompt
@@ -748,6 +780,10 @@ const LifeArchitect = () => {
   useEffect(() => {
     saveToStorage('language', language);
   }, [language]);
+
+  useEffect(() => {
+    saveToStorage('swipeEnabled', swipeEnabled);
+  }, [swipeEnabled]);
 
   // Persist Reminders Settings
   useEffect(() => {
@@ -1160,7 +1196,13 @@ const LifeArchitect = () => {
   // Helper to get resolved tasks for a date (hardened + virtual + reminders)
   const getResolvedTasksForDate = useCallback((date) => {
     const dateKey = getDateKey(date);
-    const hardenedTasks = tasksByDate[dateKey] || [];
+    const hardTaskRaw = tasksByDate[dateKey] || [];
+    const hardenedTasks = hardTaskRaw.map(t => ({
+      ...t,
+      startTime: t.startTime ? new Date(t.startTime) : null,
+      endTime: t.endTime ? new Date(t.endTime) : null,
+      completedAt: t.completedAt ? new Date(t.completedAt) : null,
+    }));
 
     // Find virtual tasks that should be here
     const virtualTasks = recurringTemplates
@@ -1396,6 +1438,13 @@ const LifeArchitect = () => {
   useEffect(() => { saveToStorage('plansByDate', plansByDate); }, [plansByDate]);
   useEffect(() => { saveToStorage('tasksByDate', tasksByDate); }, [tasksByDate]);
   useEffect(() => { saveToStorage('reflectionsByDate', reflectionsByDate); }, [reflectionsByDate]);
+
+  // Test Mode Logging
+  useEffect(() => { logTestEvent('STATE_CHANGE: Projects', projects); }, [projects]);
+  useEffect(() => { logTestEvent('STATE_CHANGE: Reminders', reminders); }, [reminders]);
+  useEffect(() => { logTestEvent('STATE_CHANGE: DayPlan', plansByDate); }, [plansByDate]);
+  useEffect(() => { logTestEvent('STATE_CHANGE: DailyTasks', tasksByDate); }, [tasksByDate]);
+  useEffect(() => { logTestEvent('STATE_CHANGE: Reflections', reflectionsByDate); }, [reflectionsByDate]);
   useEffect(() => { saveToStorage('completedTasks', completedTasks); }, [completedTasks]);
 
   // Global New Task Modal State
@@ -3495,7 +3544,12 @@ const LifeArchitect = () => {
 
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+    <div
+      className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 overflow-hidden"
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+    >
       {/* Ambient Background Effects */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-0 left-1/4 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl"></div>
@@ -4145,6 +4199,34 @@ const LifeArchitect = () => {
                 </div>
               </div>
 
+              {/* Swipe Navigation Setting */}
+              <div className="mb-6">
+                <div className="bg-white/5 rounded-xl border border-white/5 overflow-hidden">
+                  <div className="p-4 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white">
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                        </svg>
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium text-white">{t('settings.swipeNavigation')}</div>
+                        <div className="text-xs text-slate-400">{t('settings.swipeDesc')}</div>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => setSwipeEnabled(!swipeEnabled)}
+                      className={`relative w-12 h-7 rounded-full transition-colors duration-300 ${swipeEnabled ? 'bg-purple-500' : 'bg-white/10'
+                        }`}
+                    >
+                      <div className={`absolute top-1 left-1 w-5 h-5 rounded-full bg-white transition-transform duration-300 ${swipeEnabled ? 'translate-x-5' : 'translate-x-0'
+                        }`} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
               {/* Data Section */}
               <div>
                 <button
@@ -4365,6 +4447,20 @@ const LifeArchitect = () => {
           background-clip: text;
         }
       `}</style>
+      {/* Test Mode Panel */}
+      <TestPanel
+        tasks={tasksByDate}
+        reminders={reminders}
+        projects={projects}
+        habits={routinesByDate}
+        entries={reflectionsByDate}
+        stats={{ completedTasks }}
+        dayPlan={plansByDate}
+        setTasks={setTasksByDate}
+        setProjects={setProjects}
+        setDayPlan={setPlansByDate}
+        setReminders={setReminders}
+      />
     </div>
   );
 };

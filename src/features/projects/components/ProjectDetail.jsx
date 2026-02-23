@@ -15,13 +15,56 @@ export const ProjectDetail = ({
     setProjectsIsEditingNotes,
     t,
     // Helper to calculate progress - could be prop or imported util
-    getProjectProgress
+
+    // Helper to calculate progress - could be prop or imported util
+    getProjectProgress,
+    onUpdateProjectTask
 }) => {
     const [notesText, setNotesText] = useState('');
     const [showNewFolderInput, setShowNewFolderInput] = useState(false);
     const [newFolderName, setNewFolderName] = useState('');
+    // Drag and Drop State
+    const [dragOverFolderId, setDragOverFolderId] = useState(null);
 
     if (!project) return null;
+
+    const handleDragStart = (e, taskId) => {
+        e.dataTransfer.setData('taskId', taskId);
+        e.dataTransfer.effectAllowed = 'move';
+    };
+
+    const handleDragOver = (e, folderId) => {
+        e.preventDefault(); // Necessary to allow dropping
+        if (dragOverFolderId !== folderId) {
+            setDragOverFolderId(folderId);
+        }
+    };
+
+    const handleDragLeave = (e, folderId) => {
+        // Prevent flickering by checking if we're actually leaving the container
+        if (e.currentTarget.contains(e.relatedTarget)) {
+            return;
+        }
+
+        if (dragOverFolderId === folderId) {
+            setDragOverFolderId(null);
+        }
+    };
+
+    const handleDrop = (e, folderId) => {
+        e.preventDefault();
+        const taskIdStr = e.dataTransfer.getData('taskId');
+        if (taskIdStr) {
+            // Task IDs are numbers (timestamps), but dataTransfer stores strings
+            const taskId = parseInt(taskIdStr, 10);
+
+            // Only update if it's a valid number
+            if (!isNaN(taskId)) {
+                onUpdateProjectTask(project.id, taskId, { folderId });
+            }
+        }
+        setDragOverFolderId(null);
+    };
 
     const progress = getProjectProgress(project);
     const completedTasks = project.tasks?.filter(t => t.completed) || [];
@@ -247,7 +290,15 @@ export const ProjectDetail = ({
                         const folderTasks = pendingTasks.filter(t => t.folderId === folder.id);
 
                         return (
-                            <div key={folder.id} className="animate-fadeIn">
+
+                            <div
+                                key={folder.id}
+                                id={`folder-${folder.id}`}
+                                className={`animate-fadeIn transition-colors duration-200 rounded-xl ${dragOverFolderId === folder.id ? 'bg-white/5 ring-2 ring-cyan-500/50' : ''}`}
+                                onDragOver={(e) => handleDragOver(e, folder.id)}
+                                onDragLeave={(e) => handleDragLeave(e, folder.id)}
+                                onDrop={(e) => handleDrop(e, folder.id)}
+                            >
                                 <div className="flex items-center justify-between mb-2 group">
                                     <div
                                         className="flex items-center gap-2 cursor-pointer hover:text-cyan-400 transition-colors"
@@ -294,8 +345,11 @@ export const ProjectDetail = ({
                                             folderTasks.map(task => (
                                                 <div
                                                     key={task.id}
+                                                    id={`task-${task.id}`}
+                                                    draggable="true"
+                                                    onDragStart={(e) => handleDragStart(e, task.id)}
                                                     onClick={() => onOpenEditTask(task)}
-                                                    className="glass-card rounded-xl p-4 flex items-center gap-3 cursor-pointer hover:bg-white/10 transition-all active:scale-[0.98]"
+                                                    className="glass-card rounded-xl p-4 flex items-center gap-3 cursor-grab active:cursor-grabbing hover:bg-white/10 transition-all active:scale-[0.98]"
                                                 >
                                                     <button
                                                         onClick={(e) => {
@@ -349,10 +403,14 @@ export const ProjectDetail = ({
                                 )}
                                 <div className="space-y-2">
                                     {uncategorizedTasks.map(task => (
+
                                         <div
                                             key={task.id}
+                                            id={`task-${task.id}`}
+                                            draggable="true"
+                                            onDragStart={(e) => handleDragStart(e, task.id)}
                                             onClick={() => onOpenEditTask(task)}
-                                            className="glass-card rounded-xl p-4 flex items-center gap-3 cursor-pointer hover:bg-white/10 transition-all active:scale-[0.98]"
+                                            className="glass-card rounded-xl p-4 flex items-center gap-3 cursor-grab active:cursor-grabbing hover:bg-white/10 transition-all active:scale-[0.98]"
                                         >
                                             <button
                                                 onClick={(e) => {
