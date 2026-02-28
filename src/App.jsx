@@ -776,7 +776,9 @@ const LifeArchitect = () => {
 
     // Boundary resistance
     const currentIndex = tabs.indexOf(activeTab);
-    let offset = (diffX / window.innerWidth) * 100;
+    // Smooth transition: subtract threshold so it starts from 0 effectively
+    const adjustedDiffX = diffX > 0 ? diffX - swipeThreshold : diffX + swipeThreshold;
+    let offset = (adjustedDiffX / window.innerWidth) * 100;
 
     if ((currentIndex === 0 && offset < 0) || (currentIndex === tabs.length - 1 && offset > 0)) {
       offset /= 3; // Resistance
@@ -3596,9 +3598,11 @@ const LifeArchitect = () => {
   return (
     <div
       className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 overflow-hidden"
+      style={{ touchAction: swipeEnabled && !isEditing ? 'pan-y' : 'auto' }}
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
+      onTouchCancel={onTouchEnd}
     >
       {/* Ambient Background Effects */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
