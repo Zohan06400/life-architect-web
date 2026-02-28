@@ -7,6 +7,7 @@ import { EditReminderModal } from './components/EditReminderModal';
 import { EditTaskModal } from './components/EditTaskModal';
 import { formatTotalTime } from '../../shared/utils/formatting';
 import { saveToStorage } from '../../services/storage';
+import { Portal } from '../../shared/ui/Portal';
 
 export const PlanScreen = ({
     projects,
@@ -194,28 +195,32 @@ export const PlanScreen = ({
 
             {/* Modals */}
             {planEditingReminder && (
-                <EditReminderModal
-                    reminder={planEditingReminder}
-                    onSave={handleSaveReminder}
-                    onDelete={handleDeleteReminder}
-                    onClose={() => setPlanEditingReminder(null)}
-                    t={t}
-                    currentLocale={currentLocale}
-                />
+                <Portal>
+                    <EditReminderModal
+                        reminder={planEditingReminder}
+                        onSave={handleSaveReminder}
+                        onDelete={handleDeleteReminder}
+                        onClose={() => setPlanEditingReminder(null)}
+                        t={t}
+                        currentLocale={currentLocale}
+                    />
+                </Portal>
             )}
 
             {planEditingTask && (
-                <EditTaskModal
-                    task={planEditingTask}
-                    project={planEditingTaskProject}
-                    onSave={handleSaveTask}
-                    onClose={() => {
-                        setPlanEditingTask(null);
-                        setPlanEditingTaskProject(null);
-                    }}
-                    t={t}
-                    currentLocale={currentLocale}
-                />
+                <Portal>
+                    <EditTaskModal
+                        task={planEditingTask}
+                        project={planEditingTaskProject}
+                        onSave={handleSaveTask}
+                        onClose={() => {
+                            setPlanEditingTask(null);
+                            setPlanEditingTaskProject(null);
+                        }}
+                        t={t}
+                        currentLocale={currentLocale}
+                    />
+                </Portal>
             )}
 
         </div>

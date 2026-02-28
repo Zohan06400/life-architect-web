@@ -19,11 +19,14 @@ import {
   formatElapsed,
   getDaysInMonth,
   getFirstDayOfMonth,
-  getTaskFocusDuration
+  getTaskFocusDuration,
+  Portal
 } from './shared';
 // Feature screens
 import { ProjectsScreen } from './features/projects/screen';
 import { PlanScreen } from './features/plan/screen';
+import { ReflectScreen } from './features/reflect/screen';
+import { PatternsScreen } from './features/patterns/screen';
 import { TestPanel } from './shared/test/TestPanel';
 import { logTestEvent } from './shared/config/test';
 
@@ -596,6 +599,12 @@ const LifeArchitect = () => {
   const [activeTab, setActiveTab] = useState('execute');
   const [isLoading, setIsLoading] = useState(true);
 
+  // Editing states for sub-screens (to hide nav)
+  const [projectsIsEditing, setProjectsIsEditing] = useState(false);
+  const [planIsEditing, setPlanIsEditing] = useState(false);
+  const [executeIsEditing, setExecuteIsEditing] = useState(false);
+  const [reflectIsEditing, setReflectIsEditing] = useState(false);
+
   // Language State (lifted)
   const [language, setLanguage] = useState(() => loadFromStorage('language', 'en'));
 
@@ -693,7 +702,7 @@ const LifeArchitect = () => {
   const [remindersExpanded, setRemindersExpanded] = useState(false);
   const [expandedRoutine, setExpandedRoutine] = useState(null); // 'morning' | 'evening' | null
   // Lifted state for global persistence
-  const [reviewViewMode, setReviewViewMode] = useState('edit');
+  const [reflectViewMode, setReflectViewMode] = useState('edit');
   const [patternsViewMode, setPatternsViewMode] = useState('week');
   const [patternsActiveSection, setPatternsActiveSection] = useState('habits');
   const [projectsRemindersExpanded, setProjectsRemindersExpanded] = useState(false);
@@ -731,31 +740,51 @@ const LifeArchitect = () => {
 
   // Swipe Navigation Logic
   const [touchStart, setTouchStart] = useState(null);
-  const [touchEnd, setTouchEnd] = useState(null);
+  const [swipeOffset, setSwipeOffset] = useState(0);
+  const [isSwiping, setIsSwiping] = useState(false);
   const minSwipeDistance = 50;
+  const tabs = ['projects', 'plan', 'execute', 'review', 'patterns'];
 
   const onTouchStart = (e) => {
-    setTouchEnd(null);
+    if (!swipeEnabled || isEditing) return;
     setTouchStart(e.targetTouches[0].clientX);
+    setIsSwiping(false);
+    setSwipeOffset(0);
   };
 
-  const onTouchMove = (e) => setTouchEnd(e.targetTouches[0].clientX);
+  const onTouchMove = (e) => {
+    if (!swipeEnabled || touchStart === null || isEditing) return;
+    const currentTouch = e.targetTouches[0].clientX;
+    const diff = touchStart - currentTouch;
+
+    // Boundary resistance
+    const currentIndex = tabs.indexOf(activeTab);
+    let offset = (diff / window.innerWidth) * 100;
+
+    if ((currentIndex === 0 && offset < 0) || (currentIndex === tabs.length - 1 && offset > 0)) {
+      offset /= 3; // Resistance
+    }
+
+    setSwipeOffset(offset);
+    setIsSwiping(true);
+  };
 
   const onTouchEnd = () => {
-    if (!swipeEnabled || !touchStart || !touchEnd || isEditing) return;
-    const distance = touchStart - touchEnd;
-    const isLeftSwipe = distance > minSwipeDistance;
-    const isRightSwipe = distance < -minSwipeDistance;
+    if (!swipeEnabled || touchStart === null || isEditing) return;
 
-    if (isLeftSwipe || isRightSwipe) {
-      const tabs = ['projects', 'plan', 'execute', 'review', 'patterns'];
-      const currentIndex = tabs.indexOf(activeTab);
-      if (isLeftSwipe && currentIndex < tabs.length - 1) {
+    const currentIndex = tabs.indexOf(activeTab);
+
+    if (Math.abs(swipeOffset) > 15) { // 15% threshold for snap
+      if (swipeOffset > 0 && currentIndex < tabs.length - 1) {
         setActiveTab(tabs[currentIndex + 1]);
-      } else if (isRightSwipe && currentIndex > 0) {
+      } else if (swipeOffset < 0 && currentIndex > 0) {
         setActiveTab(tabs[currentIndex - 1]);
       }
     }
+
+    setTouchStart(null);
+    setSwipeOffset(0);
+    setIsSwiping(false);
   };
   // language lifted to top
 
@@ -851,9 +880,6 @@ const LifeArchitect = () => {
   const [projectsNewFolderName, setProjectsNewFolderName] = useState('');
 
 
-  // Editing states for sub-screens (to hide nav)
-  const [projectsIsEditing, setProjectsIsEditing] = useState(false);
-  const [planIsEditing, setPlanIsEditing] = useState(false);
 
   // Reminder Handlers
   const addQuickReminder = (text) => {
@@ -1111,6 +1137,7 @@ const LifeArchitect = () => {
 
   const [selectedPlanDate, setSelectedPlanDate] = useState(getToday());
   const [selectedExecuteDate, setSelectedExecuteDate] = useState(getToday());
+  const [selectedReflectDate, setSelectedReflectDate] = useState(getToday());
 
   const [plansByDate, setPlansByDate] = useState(() => {
     const defaultPlan = {
@@ -1384,10 +1411,7 @@ const LifeArchitect = () => {
     }));
   };
   // Get tasks for Execute screen's selected date
-  const tasks = getResolvedTasksForDate(selectedExecuteDate);
-
   // Reflections storage by date
-  const [selectedReflectDate, setSelectedReflectDate] = useState(getToday());
   const [reflectionsByDate, setReflectionsByDate] = useState(() => loadFromStorage('reflectionsByDate', {}));
 
   // Get reflection for a specific date
@@ -1861,7 +1885,7 @@ const LifeArchitect = () => {
 
 
     // Mode: 'edit' for questions, 'capsule' for viewing memory capsule
-    // viewMode state lifted to App component as reviewViewMode
+    // viewMode state lifted to App component as reflectViewMode
 
     // Handle photo upload
     const handlePhotoUpload = (e) => {
@@ -1905,9 +1929,9 @@ const LifeArchitect = () => {
     useEffect(() => {
       const reflection = reflectionsByDate[dateKey];
       if (reflection?.capsuleCreated) {
-        setReviewViewMode('capsule');
+        setReflectViewMode('capsule');
       } else {
-        setReviewViewMode('edit');
+        setReflectViewMode('edit');
       }
     }, [dateKey]);
 
@@ -1942,7 +1966,7 @@ const LifeArchitect = () => {
     // Generate Memory Capsule
     const createMemoryCapsule = () => {
       updateReflection(selectedReflectDate, 'capsuleCreated', true);
-      setReviewViewMode('capsule');
+      setReflectViewMode('capsule');
     };
 
     // Week navigation state
@@ -2296,7 +2320,7 @@ const LifeArchitect = () => {
         </div>
 
         {/* EDIT MODE - Rating, Photo, and Questions */}
-        {reviewViewMode === 'edit' && (
+        {reflectViewMode === 'edit' && (
           <>
             {/* Rating Section */}
             <div className="glass-card rounded-2xl p-4 mb-4">
@@ -2582,11 +2606,11 @@ const LifeArchitect = () => {
         )}
 
         {/* CAPSULE MODE - Memory Capsule View */}
-        {reviewViewMode === 'capsule' && (
+        {reflectViewMode === 'capsule' && (
           <div className="animate-fadeIn">
             {/* Memory Capsule Card - Clickable to edit */}
             <div
-              onClick={() => setReviewViewMode('edit')}
+              onClick={() => setReflectViewMode('edit')}
               className="cursor-pointer transition-all duration-300 hover:scale-[1.01] active:scale-[0.99]"
             >
               {/* Header */}
@@ -3541,6 +3565,8 @@ const LifeArchitect = () => {
   const isEditing =
     projectsIsEditing ||
     planIsEditing ||
+    executeIsEditing ||
+    reflectIsEditing ||
     executeShowNewTaskModal ||
     executeEditingTask ||
     executeEditingRoutine ||
@@ -3562,161 +3588,206 @@ const LifeArchitect = () => {
         <div className="absolute top-1/2 left-0 w-64 h-64 bg-indigo-500/15 rounded-full blur-3xl"></div>
       </div>
 
-      {/* Main Content */}
-      <div className="relative max-w-md mx-auto px-5 pt-8">
-        {/* Settings Button */}
-        <button
-          onClick={() => setShowSettingsModal(true)}
-          className="absolute top-8 right-5 w-10 h-10 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-all duration-200 z-20"
+      {/* Main Content Container with Sliding Screens */}
+      <div className="relative overflow-hidden w-full h-[calc(100vh-80px)] mt-4">
+        <div
+          className={`flex h-full w-[500%] ${isSwiping ? '' : 'transition-transform duration-500 cubic-bezier(0.4, 0, 0.2, 1)'}`}
+          style={{
+            transform: `translateX(calc(-${tabs.indexOf(activeTab) * 20}% - ${swipeOffset / 5}%))`
+          }}
         >
-          <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
-        </button>
-        {activeTab === 'projects' && <ProjectsScreen
-          projects={projects}
-          reminders={reminders}
-          selectedProject={selectedProject}
-          setSelectedProject={setSelectedProject}
-          projectsRemindersExpanded={projectsRemindersExpanded}
-          setProjectsRemindersExpanded={setProjectsRemindersExpanded}
-          onAddProject={addProject}
-          onUpdateProject={updateProject}
-          onDeleteProject={deleteProject}
-          onCreateFolder={createFolder}
-          onDeleteFolder={deleteFolder}
-          onToggleFolderCollapse={toggleFolderCollapse}
-          onAddProjectTask={addProjectTask}
-          onUpdateProjectTask={updateProjectTask}
-          onDeleteProjectTask={deleteProjectTask}
-          onToggleProjectTask={toggleProjectTask}
-          onAddQuickReminder={(text) => addQuickReminder(text)}
-          onUpdateReminder={updateReminder}
-          onDeleteReminder={deleteReminder}
-          onToggleReminder={toggleReminder}
-          saveToStorage={saveToStorage}
-          t={t}
-          currentLocale={language}
-          onEditingChange={setProjectsIsEditing}
-        />}
-        {activeTab === 'plan' && <PlanScreen
-          projects={projects}
-          setProjects={setProjects}
-          reminders={reminders}
-          setReminders={setReminders}
-          projectsExpanded={projectsExpanded}
-          setProjectsExpanded={setProjectsExpanded}
-          expandedProjectId={expandedProjectId}
-          setExpandedProjectId={setExpandedProjectId}
-          remindersExpanded={remindersExpanded}
-          setRemindersExpanded={setRemindersExpanded}
-          selectedPlanDate={selectedPlanDate}
-          setSelectedPlanDate={setSelectedPlanDate}
-          weekOffset={weekOffset}
-          setWeekOffset={setWeekOffset}
-          showMonthPicker={showMonthPicker}
-          setShowMonthPicker={setShowMonthPicker}
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-          setSelectedProject={setSelectedProject}
-          getResolvedTasksForDate={getResolvedTasksForDate}
-          toggleTaskCompletion={toggleTaskCompletion}
-          updateProjectTask={updateProjectTask}
-          openGlobalTaskModal={executeShowNewTaskModal ? null : openGlobalTaskModal}
-          t={t}
-          currentLocale={language}
-          today={getToday()}
-          onEditingChange={setPlanIsEditing}
-        />}
-        {activeTab === 'execute' && <ExecuteScreen
-          selectedExecuteDate={selectedExecuteDate}
-          setSelectedExecuteDate={setSelectedExecuteDate}
-          activeTask={activeTask}
-          setActiveTask={setActiveTask}
-          elapsedTime={elapsedTime}
-          setElapsedTime={setElapsedTime}
-          isPaused={isPaused}
-          setIsPaused={setIsPaused}
-          reminders={reminders}
-          setReminders={setReminders}
-          projects={projects}
-          setProjects={setProjects}
+          {/* Projects Screen */}
+          <div className="w-1/5 h-full overflow-y-auto px-5 pt-4 scrollbar-hide">
+            <ProjectsScreen
+              projects={projects}
+              reminders={reminders}
+              selectedProject={selectedProject}
+              setSelectedProject={setSelectedProject}
+              projectsRemindersExpanded={projectsRemindersExpanded}
+              setProjectsRemindersExpanded={setProjectsRemindersExpanded}
+              onAddProject={addProject}
+              onUpdateProject={updateProject}
+              onDeleteProject={deleteProject}
+              onCreateFolder={createFolder}
+              onDeleteFolder={deleteFolder}
+              onToggleFolderCollapse={toggleFolderCollapse}
+              onAddProjectTask={addProjectTask}
+              onUpdateProjectTask={updateProjectTask}
+              onDeleteProjectTask={deleteProjectTask}
+              onToggleProjectTask={toggleProjectTask}
+              onAddQuickReminder={(text) => addQuickReminder(text)}
+              onUpdateReminder={updateReminder}
+              onDeleteReminder={deleteReminder}
+              onToggleReminder={toggleReminder}
+              saveToStorage={saveToStorage}
+              t={t}
+              currentLocale={language}
+              onEditingChange={setProjectsIsEditing}
+            />
+          </div>
 
-          tasks={tasksByDate[getDateKey(selectedExecuteDate)]}
-          setTasksByDate={setTasksByDate}
-          getResolvedTasksForDate={getResolvedTasksForDate}
-          getRoutinesForDate={getRoutinesForDate}
-          toggleRoutineHabit={toggleRoutineHabit}
-          removeHabitFromTemplate={removeHabitFromTemplate}
-          addHabitToTemplate={addHabitToTemplate}
-          completeAllHabits={completeAllHabits}
-          toggleTaskCompletion={toggleTaskCompletion}
-          t={t}
-          currentLocale={currentLocale}
-          focusMode={focusMode}
-          setFocusMode={setFocusMode}
-          focusTask={focusTask}
-          setFocusTask={setFocusTask}
-          pomodoroTime={pomodoroTime}
-          setPomodoroTime={setPomodoroTime}
-          pomodoroRunning={pomodoroRunning}
-          setPomodoroRunning={setPomodoroRunning}
-          pomodoroSession={pomodoroSession}
-          setPomodoroSession={setPomodoroSession}
-          isBreak={isBreak}
-          setIsBreak={setIsBreak}
-          totalFocusTime={totalFocusTime}
-          setTotalFocusTime={setTotalFocusTime}
-          executeShowNewTaskModal={executeShowNewTaskModal}
-          setExecuteShowNewTaskModal={setExecuteShowNewTaskModal}
-          executeEditingTask={executeEditingTask}
-          setExecuteEditingTask={setExecuteEditingTask}
-          executeEditingRoutine={executeEditingRoutine}
-          setExecuteEditingRoutine={setExecuteEditingRoutine}
-          expandedRoutine={expandedRoutine}
-          setExpandedRoutine={setExpandedRoutine}
-          editTaskName={editTaskName}
-          setEditTaskName={setEditTaskName}
-          editTaskIcon={editTaskIcon}
-          setEditTaskIcon={setEditTaskIcon}
-          editTaskEnergy={editTaskEnergy}
-          setEditTaskEnergy={setEditTaskEnergy}
-          editTaskStartHour={editTaskStartHour}
-          setEditTaskStartHour={setEditTaskStartHour}
-          editTaskStartMinute={editTaskStartMinute}
-          setEditTaskStartMinute={setEditTaskStartMinute}
-          editTaskEndHour={editTaskEndHour}
-          setEditTaskEndHour={setEditTaskEndHour}
-          editTaskEndMinute={editTaskEndMinute}
-          setEditTaskEndMinute={setEditTaskEndMinute}
-          editTaskAlerts={editTaskAlerts}
-          setEditTaskAlerts={setEditTaskAlerts}
-          editTaskRepeat={editTaskRepeat}
-          setEditTaskRepeat={setEditTaskRepeat}
-          editTaskShowTime={editTaskShowTime}
-          setEditTaskShowTime={setEditTaskShowTime}
-          editTaskShowAlerts={editTaskShowAlerts}
-          setEditTaskShowAlerts={setEditTaskShowAlerts}
-          editTaskDate={editTaskDate}
-          setEditTaskDate={setEditTaskDate}
-          editTaskShowDate={editTaskShowDate}
-          setEditTaskShowDate={setEditTaskShowDate}
-          editTaskShowRepeat={editTaskShowRepeat}
-          setEditTaskShowRepeat={setEditTaskShowRepeat}
-          editTaskShowIconPicker={editTaskShowIconPicker}
-          setEditTaskShowIconPicker={setEditTaskShowIconPicker}
-          editTaskValue={editTaskValue}
-          setEditTaskValue={setEditTaskValue}
-          editTaskNotes={editTaskNotes}
-          setEditTaskNotes={setEditTaskNotes}
-          editTaskSubtasks={editTaskSubtasks}
-          setEditTaskSubtasks={setEditTaskSubtasks}
-          openGlobalTaskModal={openGlobalTaskModal}
-        />}
-        {activeTab === 'review' && <ReviewScreen />}
-        {activeTab === 'patterns' && <PatternsScreen />}
+          {/* Plan Screen */}
+          <div className="w-1/5 h-full overflow-y-auto px-5 pt-4 scrollbar-hide">
+            <PlanScreen
+              projects={projects}
+              setProjects={setProjects}
+              reminders={reminders}
+              setReminders={setReminders}
+              projectsExpanded={projectsExpanded}
+              setProjectsExpanded={setProjectsExpanded}
+              expandedProjectId={expandedProjectId}
+              setExpandedProjectId={setExpandedProjectId}
+              remindersExpanded={remindersExpanded}
+              setRemindersExpanded={setRemindersExpanded}
+              selectedPlanDate={selectedPlanDate}
+              setSelectedPlanDate={setSelectedPlanDate}
+              weekOffset={weekOffset}
+              setWeekOffset={setWeekOffset}
+              showMonthPicker={showMonthPicker}
+              setShowMonthPicker={setShowMonthPicker}
+              activeTab={activeTab}
+              setActiveTab={setActiveTab}
+              setSelectedProject={setSelectedProject}
+              getResolvedTasksForDate={getResolvedTasksForDate}
+              toggleTaskCompletion={toggleTaskCompletion}
+              updateProjectTask={updateProjectTask}
+              openGlobalTaskModal={executeShowNewTaskModal ? null : openGlobalTaskModal}
+              t={t}
+              currentLocale={language}
+              today={getToday()}
+              onEditingChange={setPlanIsEditing}
+            />
+          </div>
+
+          {/* Execute Screen */}
+          <div className="w-1/5 h-full overflow-y-auto px-5 pt-4 scrollbar-hide">
+            <ExecuteScreen
+              selectedExecuteDate={selectedExecuteDate}
+              setSelectedExecuteDate={setSelectedExecuteDate}
+              activeTask={activeTask}
+              setActiveTask={setActiveTask}
+              elapsedTime={elapsedTime}
+              setElapsedTime={setElapsedTime}
+              isPaused={isPaused}
+              setIsPaused={setIsPaused}
+              reminders={reminders}
+              setReminders={setReminders}
+              projects={projects}
+              setProjects={setProjects}
+              tasks={tasksByDate[getDateKey(selectedExecuteDate)]}
+              setTasksByDate={setTasksByDate}
+              getResolvedTasksForDate={getResolvedTasksForDate}
+              getRoutinesForDate={getRoutinesForDate}
+              toggleRoutineHabit={toggleRoutineHabit}
+              toggleTaskCompletion={toggleTaskCompletion}
+              updateProjectTask={updateProjectTask}
+              onEditingChange={setExecuteIsEditing}
+              t={t}
+              currentLocale={currentLocale}
+              focusMode={focusMode}
+              setFocusMode={setFocusMode}
+              focusTask={focusTask}
+              setFocusTask={setFocusTask}
+              pomodoroTime={pomodoroTime}
+              setPomodoroTime={setPomodoroTime}
+              pomodoroRunning={pomodoroRunning}
+              setPomodoroRunning={setPomodoroRunning}
+              pomodoroSession={pomodoroSession}
+              setPomodoroSession={setPomodoroSession}
+              isBreak={isBreak}
+              setIsBreak={setIsBreak}
+              totalFocusTime={totalFocusTime}
+              setTotalFocusTime={setTotalFocusTime}
+              executeShowNewTaskModal={executeShowNewTaskModal}
+              setExecuteShowNewTaskModal={setExecuteShowNewTaskModal}
+              executeEditingTask={executeEditingTask}
+              setExecuteEditingTask={setExecuteEditingTask}
+              executeEditingRoutine={executeEditingRoutine}
+              setExecuteEditingRoutine={setExecuteEditingRoutine}
+              expandedRoutine={expandedRoutine}
+              setExpandedRoutine={setExpandedRoutine}
+              openGlobalTaskModal={executeShowNewTaskModal ? null : openGlobalTaskModal}
+              editTaskName={editTaskName}
+              setEditTaskName={setEditTaskName}
+              editTaskIcon={editTaskIcon}
+              setEditTaskIcon={setEditTaskIcon}
+              editTaskEnergy={editTaskEnergy}
+              setEditTaskEnergy={setEditTaskEnergy}
+              editTaskStartHour={editTaskStartHour}
+              setEditTaskStartHour={setEditTaskStartHour}
+              editTaskStartMinute={editTaskStartMinute}
+              setEditTaskStartMinute={setEditTaskStartMinute}
+              editTaskEndHour={editTaskEndHour}
+              setEditTaskEndHour={setEditTaskEndHour}
+              editTaskEndMinute={editTaskEndMinute}
+              setEditTaskEndMinute={setEditTaskEndMinute}
+              editTaskAlerts={editTaskAlerts}
+              setEditTaskAlerts={setEditTaskAlerts}
+              editTaskRepeat={editTaskRepeat}
+              setEditTaskRepeat={setEditTaskRepeat}
+              editTaskShowTime={editTaskShowTime}
+              setEditTaskShowTime={setEditTaskShowTime}
+              editTaskShowAlerts={editTaskShowAlerts}
+              setEditTaskShowAlerts={setEditTaskShowAlerts}
+              editTaskDate={editTaskDate}
+              setEditTaskDate={setEditTaskDate}
+              editTaskShowDate={editTaskShowDate}
+              setEditTaskShowDate={setEditTaskShowDate}
+              editTaskShowRepeat={editTaskShowRepeat}
+              setEditTaskShowRepeat={setEditTaskShowRepeat}
+              editTaskShowIconPicker={editTaskShowIconPicker}
+              setEditTaskShowIconPicker={setEditTaskShowIconPicker}
+              editTaskValue={editTaskValue}
+              setEditTaskValue={setEditTaskValue}
+              editTaskNotes={editTaskNotes}
+              setEditTaskNotes={setEditTaskNotes}
+              editTaskSubtasks={editTaskSubtasks}
+              setEditTaskSubtasks={setEditTaskSubtasks}
+            />
+          </div>
+
+          {/* Reflect Screen */}
+          <div className="w-1/5 h-full overflow-y-auto px-5 pt-4 scrollbar-hide">
+            <ReflectScreen
+              reflectionsByDate={reflectionsByDate}
+              updateReflection={updateReflection}
+              projects={projects}
+              influenceOptions={influenceOptions}
+              showPhotoModal={reviewShowPhotoModal}
+              setShowPhotoModal={setReviewShowPhotoModal}
+              viewMode={reflectViewMode}
+              setViewMode={setReflectViewMode}
+              selectedDate={selectedReflectDate}
+              setSelectedDate={setSelectedReflectDate}
+              reflectionQuestions={reflectionQuestions}
+              t={t}
+              currentLocale={currentLocale}
+              onEditingChange={setReflectIsEditing}
+            />
+          </div>
+
+          {/* Patterns Screen */}
+          <div className="w-1/5 h-full overflow-y-auto px-5 pt-4 scrollbar-hide">
+            <PatternsScreen
+              tasksByDate={tasksByDate}
+              projects={projects}
+              t={t}
+              currentLocale={language}
+            />
+          </div>
+        </div>
       </div>
+
+      {/* Settings Button - Fixed outside sliding container */}
+      <button
+        onClick={() => setShowSettingsModal(true)}
+        className="fixed top-8 right-5 w-10 h-10 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-all duration-200 z-50 glass"
+      >
+        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+      </button>
 
       {/* Bottom Navigation - Liquid Glass */}
       <nav className={`fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-[400px] rounded-full backdrop-blur-2xl bg-black/40 border border-white/10 shadow-2xl shadow-black/50 z-50 transition-all duration-500 ${isEditing ? 'translate-y-[200%] opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'}`}>
@@ -3780,554 +3851,557 @@ const LifeArchitect = () => {
 
       {/* Global New Task Modal */}
       {showGlobalTaskModal && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center animate-fadeIn">
-          <div
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            onClick={() => setShowGlobalTaskModal(false)}
-          />
+        <Portal>
+          <div className="fixed inset-0 z-50 flex items-end justify-center animate-fadeIn">
+            <div
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              onClick={() => setShowGlobalTaskModal(false)}
+            />
 
-          <div
-            className="relative w-full max-w-md mx-4 mb-4 rounded-3xl overflow-hidden animate-slideUp"
-            style={{
-              background: 'linear-gradient(180deg, rgba(30,30,40,0.95) 0%, rgba(20,20,30,0.98) 100%)',
-              backdropFilter: 'blur(40px)',
-              border: '1px solid rgba(255,255,255,0.1)',
-              boxShadow: '0 25px 50px rgba(0,0,0,0.5)'
-            }}
-          >
-            {/* Header */}
-            <div className="px-5 pt-5 pb-4 border-b border-white/10">
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-white">
-                  {globalTaskMode === 'reminder' ? t('modals.newReminder') : globalTaskMode === 'priority' ? t('modals.newPriority') : t('modals.newTask')}
-                </h2>
-                <button
-                  onClick={() => setShowGlobalTaskModal(false)}
-                  className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-slate-400 hover:bg-white/20 transition-colors"
-                >
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-
-              {/* Mode Toggle - Only show if not in priority mode */}
-              {globalTaskMode !== 'priority' && (
-                <div className="flex gap-2 mt-3">
+            <div
+              className="relative w-full max-w-md mx-4 mb-4 rounded-3xl overflow-hidden animate-slideUp"
+              style={{
+                background: 'linear-gradient(180deg, rgba(30,30,40,0.95) 0%, rgba(20,20,30,0.98) 100%)',
+                backdropFilter: 'blur(40px)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                boxShadow: '0 25px 50px rgba(0,0,0,0.5)'
+              }}
+            >
+              {/* Header */}
+              <div className="px-5 pt-5 pb-4 border-b border-white/10">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-semibold text-white">
+                    {globalTaskMode === 'reminder' ? t('modals.newReminder') : globalTaskMode === 'priority' ? t('modals.newPriority') : t('modals.newTask')}
+                  </h2>
                   <button
-                    onClick={() => setGlobalTaskMode('task')}
-                    className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all ${globalTaskMode === 'task'
-                      ? 'bg-amber-500/80 text-white'
-                      : 'bg-white/10 text-slate-400'
-                      }`}
+                    onClick={() => setShowGlobalTaskModal(false)}
+                    className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-slate-400 hover:bg-white/20 transition-colors"
                   >
-                    ⏰ {t('common.scheduledTask')}
-                  </button>
-                  <button
-                    onClick={() => setGlobalTaskMode('reminder')}
-                    className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all ${globalTaskMode === 'reminder'
-                      ? 'bg-purple-500/80 text-white'
-                      : 'bg-white/10 text-slate-400'
-                      }`}
-                  >
-                    📌 {t('common.reminder')}
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
                   </button>
                 </div>
-              )}
 
-              {/* Priority slot indicator */}
-              {globalTaskMode === 'priority' && globalTaskPrioritySlot !== null && (
-                <div className="mt-3 flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500/30 to-indigo-600/30 border border-purple-500/30 flex items-center justify-center">
-                    <span className="text-purple-400 text-sm font-bold">{globalTaskPrioritySlot + 1}</span>
+                {/* Mode Toggle - Only show if not in priority mode */}
+                {globalTaskMode !== 'priority' && (
+                  <div className="flex gap-2 mt-3">
+                    <button
+                      onClick={() => setGlobalTaskMode('task')}
+                      className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all ${globalTaskMode === 'task'
+                        ? 'bg-amber-500/80 text-white'
+                        : 'bg-white/10 text-slate-400'
+                        }`}
+                    >
+                      ⏰ {t('common.scheduledTask')}
+                    </button>
+                    <button
+                      onClick={() => setGlobalTaskMode('reminder')}
+                      className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all ${globalTaskMode === 'reminder'
+                        ? 'bg-purple-500/80 text-white'
+                        : 'bg-white/10 text-slate-400'
+                        }`}
+                    >
+                      📌 {t('common.reminder')}
+                    </button>
                   </div>
-                  <span className="text-slate-400 text-sm">{t('common.priority')} #{globalTaskPrioritySlot + 1}</span>
-                </div>
-              )}
-            </div>
+                )}
 
-            {/* Body */}
-            <div className="px-5 py-4 max-h-[60vh] overflow-y-auto">
-
-              {/* Title & Icon Header */}
-              <div className="mb-4">
-                <label className="text-slate-400 text-sm mb-2 block">
-                  {globalTaskMode === 'reminder' ? t('common.reminder') : globalTaskMode === 'priority' ? t('common.priority') : t('common.task')}
-                </label>
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => setGlobalTaskShowIconPicker(!globalTaskShowIconPicker)}
-                    className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-2xl hover:bg-white/10 transition-colors"
-                  >
-                    {globalTaskIcon}
-                  </button>
-                  <input
-                    type="text"
-                    value={globalTaskName}
-                    onChange={(e) => setGlobalTaskName(e.target.value)}
-                    placeholder={globalTaskMode === 'reminder' ? t('placeholders.reminder') : t('placeholders.whatToDo')}
-                    className="flex-1 px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-500 outline-none focus:border-amber-500/50"
-                    autoFocus
-                  />
-                </div>
-
-                {/* Icon Picker (Conditional) */}
-                {globalTaskShowIconPicker && (
-                  <div className="mt-4 p-4 rounded-xl bg-white/5 border border-white/5 animate-fadeIn">
-                    <div className="flex flex-wrap gap-2">
-                      {globalIconOptions.map(icon => (
-                        <button
-                          key={icon}
-                          onClick={() => {
-                            setGlobalTaskIcon(icon);
-                            setGlobalTaskShowIconPicker(false);
-                          }}
-                          className={`w-10 h-10 rounded-lg flex items-center justify-center text-xl transition-colors
-                            ${globalTaskIcon === icon ? 'bg-amber-500/20 text-amber-500' : 'hover:bg-white/10'}`}
-                        >
-                          {icon}
-                        </button>
-                      ))}
+                {/* Priority slot indicator */}
+                {globalTaskMode === 'priority' && globalTaskPrioritySlot !== null && (
+                  <div className="mt-3 flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500/30 to-indigo-600/30 border border-purple-500/30 flex items-center justify-center">
+                      <span className="text-purple-400 text-sm font-bold">{globalTaskPrioritySlot + 1}</span>
                     </div>
+                    <span className="text-slate-400 text-sm">{t('common.priority')} #{globalTaskPrioritySlot + 1}</span>
                   </div>
                 )}
               </div>
 
-              {/* iOS Style Details List - For Tasks, Reminders & Priorities */}
-              {(globalTaskMode === 'task' || globalTaskMode === 'reminder' || globalTaskMode === 'priority') && (
-                <>
-                  <TaskDetailsList
-                    date={globalTaskDate}
-                    startTime={`${globalTaskStartHour}:${globalTaskStartMinute.toString().padStart(2, '0')}`}
-                    endTime={`${globalTaskEndHour}:${globalTaskEndMinute.toString().padStart(2, '0')}`}
-                    alerts={globalTaskAlerts}
-                    onDateClick={() => {
-                      setGlobalTaskShowDate(!globalTaskShowDate);
-                      setGlobalTaskShowTime(false);
-                      setGlobalTaskShowAlerts(false);
-                      setGlobalTaskShowRepeat(false);
-                    }}
-                    onTimeClick={() => {
-                      setGlobalTaskShowTime(!globalTaskShowTime);
-                      setGlobalTaskShowAlerts(false);
-                      setGlobalTaskShowDate(false);
-                      setGlobalTaskShowRepeat(false);
-                    }}
-                    onAlertsClick={() => {
-                      setGlobalTaskShowAlerts(!globalTaskShowAlerts);
-                      setGlobalTaskShowTime(false);
-                      setGlobalTaskShowDate(false);
-                      setGlobalTaskShowRepeat(false);
-                    }}
-                    onRepeatClick={() => {
-                      setGlobalTaskShowRepeat(!globalTaskShowRepeat);
-                      setGlobalTaskShowAlerts(false);
-                      setGlobalTaskShowTime(false);
-                      setGlobalTaskShowDate(false);
-                    }}
-                    themeColor="amber"
-                    showDatePicker={globalTaskShowDate}
-                    onDateChange={(date) => {
-                      setGlobalTaskDate(date);
-                      setGlobalTaskShowDate(false);
-                    }}
-                    showTimePicker={globalTaskShowTime}
-                    onStartTimeChange={({ hour, minute }) => {
-                      setGlobalTaskStartHour(hour);
-                      setGlobalTaskStartMinute(minute);
-                    }}
-                    onEndTimeChange={({ hour, minute }) => {
-                      setGlobalTaskEndHour(hour);
-                      setGlobalTaskEndMinute(minute);
-                    }}
-                    repeat={globalTaskRepeat}
-                    showRepeatPicker={globalTaskShowRepeat}
-                    onRepeatChange={(repeat) => setGlobalTaskRepeat(repeat)}
-                    t={t}
-                    locale={currentLocale}
-                  />
+              {/* Body */}
+              <div className="px-5 py-4 max-h-[60vh] overflow-y-auto">
 
-
-                  {/* Alerts Picker */}
-                  {globalTaskShowAlerts && (
-                    <div className="mb-6 p-4 rounded-2xl bg-white/5 border border-white/5 animate-fadeIn">
-                      <label className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-3 block">{t('common.manageAlerts')}</label>
-                      <div className="space-y-2">
-                        {globalTaskAlerts.map((alert, index) => (
-                          <div key={index} className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5">
-                            <span className="text-sm text-slate-200">{alert.label}</span>
-                            <button
-                              onClick={() => setGlobalTaskAlerts(prev => prev.filter((_, i) => i !== index))}
-                              className="text-rose-400 hover:text-rose-300 p-1"
-                            >
-                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                              </svg>
-                            </button>
-                          </div>
-                        ))}
-                        <div className="pt-2 grid grid-cols-3 gap-2">
-                          {globalAlertOptions.map(opt => (
-                            <button
-                              key={opt.label}
-                              onClick={() => {
-                                if (!globalTaskAlerts.some(a => a.value === opt.value)) {
-                                  setGlobalTaskAlerts(prev => [...prev, opt]);
-                                }
-                              }}
-                              className="p-2 rounded-lg bg-indigo-500/10 text-indigo-300 text-[10px] font-medium border border-indigo-500/20 hover:bg-indigo-500/20 transition-all text-left"
-                            >
-                              + {opt.label}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </>
-              )}
-
-              {/* Value (New) */}
-              <div className="mb-4">
-                <label className="text-slate-400 text-sm mb-2 block">{t('common.impactValue')}: {globalTaskValue}/10</label>
-                <input
-                  type="range"
-                  min="1"
-                  max="10"
-                  value={globalTaskValue}
-                  onChange={(e) => setGlobalTaskValue(parseInt(e.target.value))}
-                  className="w-full accent-amber-500"
-                />
-              </div>
-
-              {/* Energy Level */}
-              <div className="mb-4">
-                <label className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-2 block">{t('common.energyLevel')}</label>
-                <div className="flex gap-2">
-                  {['low', 'medium', 'high'].map(e => (
+                {/* Title & Icon Header */}
+                <div className="mb-4">
+                  <label className="text-slate-400 text-sm mb-2 block">
+                    {globalTaskMode === 'reminder' ? t('common.reminder') : globalTaskMode === 'priority' ? t('common.priority') : t('common.task')}
+                  </label>
+                  <div className="flex gap-3">
                     <button
-                      key={e}
-                      onClick={() => setGlobalTaskEnergy(e)}
-                      className={`flex-1 py-2.5 rounded-xl font-medium text-sm transition-all duration-200
-                        ${globalTaskEnergy === e
-                          ? e === 'low'
-                            ? 'bg-emerald-500/80 text-white shadow-lg shadow-emerald-500/30'
-                            : e === 'medium'
-                              ? 'bg-amber-500/80 text-white shadow-lg shadow-amber-500/30'
-                              : 'bg-rose-500/80 text-white shadow-lg shadow-rose-500/30'
-                          : 'bg-white/10 text-slate-400 hover:bg-white/20'}`}
+                      onClick={() => setGlobalTaskShowIconPicker(!globalTaskShowIconPicker)}
+                      className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-2xl hover:bg-white/10 transition-colors"
                     >
-                      {e === 'low' ? `🌱 ${t('energyLevels.light')}` : e === 'medium' ? `⚡ ${t('energyLevels.moderate')}` : `🔥 ${t('energyLevels.heavy')}`}
+                      {globalTaskIcon}
                     </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Subtasks */}
-              <SubtaskList
-                subtasks={globalTaskSubtasks}
-                onChange={setGlobalTaskSubtasks}
-                t={t}
-              />
-
-              {/* Notes (New) */}
-              <div className="mb-4">
-                <label className="text-slate-400 text-sm mb-2 block">{t('common.notes')}</label>
-                <textarea
-                  value={globalTaskNotes}
-                  onChange={(e) => setGlobalTaskNotes(e.target.value)}
-                  placeholder={t('placeholders.additionalDetails')}
-                  rows={2}
-                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-500 outline-none focus:border-amber-500/50 resize-none"
-                />
-              </div>
-
-            </div>
-
-            {/* Footer */}
-            <div className="px-5 py-4 border-t border-white/10">
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setShowGlobalTaskModal(false)}
-                  className="flex-1 py-3 rounded-xl font-medium text-slate-400 bg-white/10 hover:bg-white/20 transition-all"
-                >
-                  {t('common.cancel')}
-                </button>
-                <button
-                  onClick={createGlobalTask}
-                  disabled={!globalTaskName.trim()}
-                  className={`flex-1 py-3 rounded-xl font-semibold transition-all duration-200 flex items-center justify-center gap-2
-                    ${globalTaskName.trim()
-                      ? globalTaskMode === 'reminder'
-                        ? 'bg-gradient-to-r from-purple-500 to-indigo-500 text-white shadow-lg shadow-purple-500/30'
-                        : globalTaskMode === 'priority'
-                          ? 'bg-gradient-to-r from-purple-500 to-indigo-500 text-white shadow-lg shadow-purple-500/30'
-                          : 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/30'
-                      : 'bg-white/5 text-slate-600 cursor-not-allowed'}`}
-                >
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                  {globalTaskMode === 'reminder' ? `${t('common.add')} ${t('common.reminder')}` : globalTaskMode === 'priority' ? `${t('common.add')} ${t('common.priority')}` : t('projects.addTask')}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Settings Modal */}
-      {showSettingsModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center animate-fadeIn">
-          {/* Backdrop */}
-          <div
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            onClick={() => setShowSettingsModal(false)}
-          />
-
-          {/* Modal Card */}
-          <div className="relative w-[90%] max-w-sm glass-card rounded-3xl overflow-hidden shadow-2xl animate-popIn">
-            <div className="p-6">
-              <h3 className="text-xl font-semibold text-white mb-6">{t('settings.title')}</h3>
-
-              {/* Profile Section */}
-              <div className="mb-6">
-                <label className="block text-xs font-medium text-slate-400 uppercase tracking-widest mb-2">
-                  {t('settings.profileName')}
-                </label>
-                <div className="relative">
-                  <div className="absolute left-3 top-1/2 -translate-y-1/2 text-lg">
-                    👋
-                  </div>
-                  <input
-                    type="text"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white outline-none focus:border-purple-500/50 transition-colors"
-                  />
-                </div>
-              </div>
-
-              {/* Language Selector */}
-              <div className="mb-6">
-                <label className="block text-xs font-medium text-slate-400 uppercase tracking-widest mb-2">
-                  {t('settings.language')}
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  {[
-                    { code: 'en', label: 'English' },
-                    { code: 'fr', label: 'Français' },
-                    { code: 'zh', label: '中文' },
-                    { code: 'ru', label: 'Русский' }
-                  ].map((lang) => (
-                    <button
-                      key={lang.code}
-                      onClick={() => setLanguage(lang.code)}
-                      className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${language === lang.code
-                        ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/25'
-                        : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white'
-                        }`}
-                    >
-                      {lang.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-
-              {/* Apple Reminders Integration */}
-              <div className="mb-6">
-                <label className="block text-xs font-medium text-slate-400 uppercase tracking-widest mb-2 flex items-center justify-between">
-                  <span>{t('settings.reminders.title') || 'Apple Reminders'}</span>
-                  {remindersSyncEnabled && (
-                    <span className="text-emerald-400 text-[10px] bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                      Sync Active
-                    </span>
-                  )}
-                </label>
-
-                <div className="bg-white/5 rounded-xl border border-white/5 overflow-hidden">
-                  {/* Toggle Switch */}
-                  <div className="p-4 flex items-center justify-between border-b border-white/5">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white">
-                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                        </svg>
-                      </div>
-                      <div>
-                        <div className="text-sm font-medium text-white">{t('settings.reminders.sync') || 'Sync Reminders'}</div>
-                        <div className="text-xs text-slate-400">{t('settings.reminders.desc') || 'Import tasks from iOS'}</div>
-                      </div>
-                    </div>
-
-                    <button
-                      onClick={() => setRemindersSyncEnabled(!remindersSyncEnabled)}
-                      className={`relative w-12 h-7 rounded-full transition-colors duration-300 ${remindersSyncEnabled ? 'bg-purple-500' : 'bg-white/10'
-                        }`}
-                    >
-                      <div className={`absolute top-1 left-1 w-5 h-5 rounded-full bg-white transition-transform duration-300 ${remindersSyncEnabled ? 'translate-x-5' : 'translate-x-0'
-                        }`} />
-                    </button>
+                    <input
+                      type="text"
+                      value={globalTaskName}
+                      onChange={(e) => setGlobalTaskName(e.target.value)}
+                      placeholder={globalTaskMode === 'reminder' ? t('placeholders.reminder') : t('placeholders.whatToDo')}
+                      className="flex-1 px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-500 outline-none focus:border-amber-500/50"
+                      autoFocus
+                    />
                   </div>
 
-                  {/* List Selection (Conditional) */}
-                  {remindersSyncEnabled && (
-                    <div className="p-4 bg-black/20 animate-slideUp">
-                      <label className="block text-xs text-slate-500 mb-2 uppercase tracking-wide">
-                        {t('settings.reminders.selectList') || 'Select List to Sync'}
-                      </label>
-                      <div className="space-y-2">
-                        {remindersLists.map(list => (
+                  {/* Icon Picker (Conditional) */}
+                  {globalTaskShowIconPicker && (
+                    <div className="mt-4 p-4 rounded-xl bg-white/5 border border-white/5 animate-fadeIn">
+                      <div className="flex flex-wrap gap-2">
+                        {globalIconOptions.map(icon => (
                           <button
-                            key={list.id}
-                            onClick={() => setSelectedRemindersList(list.id)}
-                            className={`w-full flex items-center justify-between p-3 rounded-lg text-sm transition-all ${selectedRemindersList === list.id
-                              ? 'bg-purple-500/20 text-purple-200 border border-purple-500/30'
-                              : 'bg-white/5 text-slate-400 hover:bg-white/10 border border-transparent'
-                              }`}
+                            key={icon}
+                            onClick={() => {
+                              setGlobalTaskIcon(icon);
+                              setGlobalTaskShowIconPicker(false);
+                            }}
+                            className={`w-10 h-10 rounded-lg flex items-center justify-center text-xl transition-colors
+                            ${globalTaskIcon === icon ? 'bg-amber-500/20 text-amber-500' : 'hover:bg-white/10'}`}
                           >
-                            <span className="flex items-center gap-2">
-                              <span className="w-2 h-2 rounded-full bg-current"></span>
-                              {list.title}
-                            </span>
-                            {selectedRemindersList === list.id && (
-                              <svg className="w-4 h-4 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                              </svg>
-                            )}
+                            {icon}
                           </button>
                         ))}
                       </div>
                     </div>
                   )}
                 </div>
-              </div>
 
-              {/* Swipe Navigation Setting */}
-              <div className="mb-6">
-                <div className="bg-white/5 rounded-xl border border-white/5 overflow-hidden">
-                  <div className="p-4 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white">
-                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                        </svg>
-                      </div>
-                      <div>
-                        <div className="text-sm font-medium text-white">{t('settings.swipeNavigation')}</div>
-                        <div className="text-xs text-slate-400">{t('settings.swipeDesc')}</div>
-                      </div>
-                    </div>
+                {/* iOS Style Details List - For Tasks, Reminders & Priorities */}
+                {(globalTaskMode === 'task' || globalTaskMode === 'reminder' || globalTaskMode === 'priority') && (
+                  <>
+                    <TaskDetailsList
+                      date={globalTaskDate}
+                      startTime={`${globalTaskStartHour}:${globalTaskStartMinute.toString().padStart(2, '0')}`}
+                      endTime={`${globalTaskEndHour}:${globalTaskEndMinute.toString().padStart(2, '0')}`}
+                      alerts={globalTaskAlerts}
+                      onDateClick={() => {
+                        setGlobalTaskShowDate(!globalTaskShowDate);
+                        setGlobalTaskShowTime(false);
+                        setGlobalTaskShowAlerts(false);
+                        setGlobalTaskShowRepeat(false);
+                      }}
+                      onTimeClick={() => {
+                        setGlobalTaskShowTime(!globalTaskShowTime);
+                        setGlobalTaskShowAlerts(false);
+                        setGlobalTaskShowDate(false);
+                        setGlobalTaskShowRepeat(false);
+                      }}
+                      onAlertsClick={() => {
+                        setGlobalTaskShowAlerts(!globalTaskShowAlerts);
+                        setGlobalTaskShowTime(false);
+                        setGlobalTaskShowDate(false);
+                        setGlobalTaskShowRepeat(false);
+                      }}
+                      onRepeatClick={() => {
+                        setGlobalTaskShowRepeat(!globalTaskShowRepeat);
+                        setGlobalTaskShowAlerts(false);
+                        setGlobalTaskShowTime(false);
+                        setGlobalTaskShowDate(false);
+                      }}
+                      themeColor="amber"
+                      showDatePicker={globalTaskShowDate}
+                      onDateChange={(date) => {
+                        setGlobalTaskDate(date);
+                        setGlobalTaskShowDate(false);
+                      }}
+                      showTimePicker={globalTaskShowTime}
+                      onStartTimeChange={({ hour, minute }) => {
+                        setGlobalTaskStartHour(hour);
+                        setGlobalTaskStartMinute(minute);
+                      }}
+                      onEndTimeChange={({ hour, minute }) => {
+                        setGlobalTaskEndHour(hour);
+                        setGlobalTaskEndMinute(minute);
+                      }}
+                      repeat={globalTaskRepeat}
+                      showRepeatPicker={globalTaskShowRepeat}
+                      onRepeatChange={(repeat) => setGlobalTaskRepeat(repeat)}
+                      t={t}
+                      locale={currentLocale}
+                    />
 
-                    <button
-                      onClick={() => setSwipeEnabled(!swipeEnabled)}
-                      className={`relative w-12 h-7 rounded-full transition-colors duration-300 ${swipeEnabled ? 'bg-purple-500' : 'bg-white/10'
-                        }`}
-                    >
-                      <div className={`absolute top-1 left-1 w-5 h-5 rounded-full bg-white transition-transform duration-300 ${swipeEnabled ? 'translate-x-5' : 'translate-x-0'
-                        }`} />
-                    </button>
+
+                    {/* Alerts Picker */}
+                    {globalTaskShowAlerts && (
+                      <div className="mb-6 p-4 rounded-2xl bg-white/5 border border-white/5 animate-fadeIn">
+                        <label className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-3 block">{t('common.manageAlerts')}</label>
+                        <div className="space-y-2">
+                          {globalTaskAlerts.map((alert, index) => (
+                            <div key={index} className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5">
+                              <span className="text-sm text-slate-200">{alert.label}</span>
+                              <button
+                                onClick={() => setGlobalTaskAlerts(prev => prev.filter((_, i) => i !== index))}
+                                className="text-rose-400 hover:text-rose-300 p-1"
+                              >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                              </button>
+                            </div>
+                          ))}
+                          <div className="pt-2 grid grid-cols-3 gap-2">
+                            {globalAlertOptions.map(opt => (
+                              <button
+                                key={opt.label}
+                                onClick={() => {
+                                  if (!globalTaskAlerts.some(a => a.value === opt.value)) {
+                                    setGlobalTaskAlerts(prev => [...prev, opt]);
+                                  }
+                                }}
+                                className="p-2 rounded-lg bg-indigo-500/10 text-indigo-300 text-[10px] font-medium border border-indigo-500/20 hover:bg-indigo-500/20 transition-all text-left"
+                              >
+                                + {opt.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {/* Value (New) */}
+                <div className="mb-4">
+                  <label className="text-slate-400 text-sm mb-2 block">{t('common.impactValue')}: {globalTaskValue}/10</label>
+                  <input
+                    type="range"
+                    min="1"
+                    max="10"
+                    value={globalTaskValue}
+                    onChange={(e) => setGlobalTaskValue(parseInt(e.target.value))}
+                    className="w-full accent-amber-500"
+                  />
+                </div>
+
+                {/* Energy Level */}
+                <div className="mb-4">
+                  <label className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-2 block">{t('common.energyLevel')}</label>
+                  <div className="flex gap-2">
+                    {['low', 'medium', 'high'].map(e => (
+                      <button
+                        key={e}
+                        onClick={() => setGlobalTaskEnergy(e)}
+                        className={`flex-1 py-2.5 rounded-xl font-medium text-sm transition-all duration-200
+                        ${globalTaskEnergy === e
+                            ? e === 'low'
+                              ? 'bg-emerald-500/80 text-white shadow-lg shadow-emerald-500/30'
+                              : e === 'medium'
+                                ? 'bg-amber-500/80 text-white shadow-lg shadow-amber-500/30'
+                                : 'bg-rose-500/80 text-white shadow-lg shadow-rose-500/30'
+                            : 'bg-white/10 text-slate-400 hover:bg-white/20'}`}
+                      >
+                        {e === 'low' ? `🌱 ${t('energyLevels.light')}` : e === 'medium' ? `⚡ ${t('energyLevels.moderate')}` : `🔥 ${t('energyLevels.heavy')}`}
+                      </button>
+                    ))}
                   </div>
                 </div>
-              </div>
 
-              {/* Test Mode Setting */}
-              <div className="mb-6">
-                <div className="bg-white/5 rounded-xl border border-white/5 overflow-hidden">
-                  <div className="p-4 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white">
-                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
-                        </svg>
-                      </div>
-                      <div>
-                        <div className="text-sm font-medium text-white">{t('settings.testMode')}</div>
-                        <div className="text-xs text-slate-400">{t('settings.testModeDesc')}</div>
-                      </div>
-                    </div>
+                {/* Subtasks */}
+                <SubtaskList
+                  subtasks={globalTaskSubtasks}
+                  onChange={setGlobalTaskSubtasks}
+                  t={t}
+                />
 
-                    <button
-                      onClick={() => setTestModeEnabled(!testModeEnabled)}
-                      className={`relative w-12 h-7 rounded-full transition-colors duration-300 ${testModeEnabled ? 'bg-indigo-500' : 'bg-white/10'
-                        }`}
-                    >
-                      <div className={`absolute top-1 left-1 w-5 h-5 rounded-full bg-white transition-transform duration-300 ${testModeEnabled ? 'translate-x-5' : 'translate-x-0'
-                        }`} />
-                    </button>
-                  </div>
+                {/* Notes (New) */}
+                <div className="mb-4">
+                  <label className="text-slate-400 text-sm mb-2 block">{t('common.notes')}</label>
+                  <textarea
+                    value={globalTaskNotes}
+                    onChange={(e) => setGlobalTaskNotes(e.target.value)}
+                    placeholder={t('placeholders.additionalDetails')}
+                    rows={2}
+                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-500 outline-none focus:border-amber-500/50 resize-none"
+                  />
                 </div>
+
               </div>
 
-              {/* Data Section */}
-              <div>
-                <button
-                  onClick={() => {
-                    if (window.confirm(t('settings.resetWarning'))) {
-                      localStorage.clear();
-                      window.location.reload();
-                    }
-                  }}
-                  className="w-full py-3 rounded-xl bg-rose-500/10 text-rose-400 border border-rose-500/20 hover:bg-rose-500/20 transition-all font-medium text-sm flex items-center justify-center gap-2"
-                >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-                  {t('settings.resetButton')}
-                </button>
-              </div>
-
-              {/* Install App Section */}
-              <div className="mt-6 mb-6">
-                <label className="block text-xs font-medium text-slate-400 uppercase tracking-widest mb-2">
-                  {t('settings.install')}
-                </label>
-                {installPrompt ? (
+              {/* Footer */}
+              <div className="px-5 py-4 border-t border-white/10">
+                <div className="flex gap-3">
                   <button
-                    onClick={() => {
-                      if (installPrompt) {
-                        installPrompt.prompt();
-                        installPrompt.userChoice.then((choiceResult) => {
-                          if (choiceResult.outcome === 'accepted') {
-                            setInstallPrompt(null);
-                          }
-                        });
-                      }
-                    }}
-                    className="w-full py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/20 hover:shadow-amber-500/40 transition-all font-bold text-sm flex items-center justify-center gap-2"
+                    onClick={() => setShowGlobalTaskModal(false)}
+                    className="flex-1 py-3 rounded-xl font-medium text-slate-400 bg-white/10 hover:bg-white/20 transition-all"
+                  >
+                    {t('common.cancel')}
+                  </button>
+                  <button
+                    onClick={createGlobalTask}
+                    disabled={!globalTaskName.trim()}
+                    className={`flex-1 py-3 rounded-xl font-semibold transition-all duration-200 flex items-center justify-center gap-2
+                    ${globalTaskName.trim()
+                        ? globalTaskMode === 'reminder'
+                          ? 'bg-gradient-to-r from-purple-500 to-indigo-500 text-white shadow-lg shadow-purple-500/30'
+                          : globalTaskMode === 'priority'
+                            ? 'bg-gradient-to-r from-purple-500 to-indigo-500 text-white shadow-lg shadow-purple-500/30'
+                            : 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/30'
+                        : 'bg-white/5 text-slate-600 cursor-not-allowed'}`}
                   >
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                     </svg>
-                    Install App
+                    {globalTaskMode === 'reminder' ? `${t('common.add')} ${t('common.reminder')}` : globalTaskMode === 'priority' ? `${t('common.add')} ${t('common.priority')}` : t('projects.addTask')}
                   </button>
-                ) : (
-                  <div className="p-3 bg-white/5 rounded-xl border border-white/10 text-center">
-                    <p className="text-xs text-slate-400 mb-2">
-                      To install on iOS:
-                    </p>
-                    <div className="flex items-center justify-center gap-2 text-sm text-white font-medium">
-                      Tap <span className="text-xl">⎋</span> Share &rarr; Add to Home Screen
-                    </div>
-                  </div>
-                )}
+                </div>
               </div>
             </div>
-
-            {/* Footer */}
-            <div className="bg-white/5 p-4 flex justify-end">
-              <button
-                onClick={() => setShowSettingsModal(false)}
-                className="px-6 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-medium transition-colors"
-              >
-                {t('settings.done')}
-              </button>
-            </div>
           </div>
-        </div>
+        </Portal>
       )}
 
+      {/* Settings Modal */}
+      {showSettingsModal && (
+        <Portal>
+          <div className="fixed inset-0 z-50 flex items-center justify-center animate-fadeIn">
+            {/* Backdrop */}
+            <div
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              onClick={() => setShowSettingsModal(false)}
+            />
+
+            {/* Modal Card */}
+            <div className="relative w-[90%] max-w-sm glass-card rounded-3xl overflow-hidden shadow-2xl animate-popIn">
+              <div className="p-6">
+                <h3 className="text-xl font-semibold text-white mb-6">{t('settings.title')}</h3>
+
+                {/* Profile Section */}
+                <div className="mb-6">
+                  <label className="block text-xs font-medium text-slate-400 uppercase tracking-widest mb-2">
+                    {t('settings.profileName')}
+                  </label>
+                  <div className="relative">
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-lg">
+                      👋
+                    </div>
+                    <input
+                      type="text"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      className="w-full pl-10 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white outline-none focus:border-purple-500/50 transition-colors"
+                    />
+                  </div>
+                </div>
+
+                {/* Language Selector */}
+                <div className="mb-6">
+                  <label className="block text-xs font-medium text-slate-400 uppercase tracking-widest mb-2">
+                    {t('settings.language')}
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { code: 'en', label: 'English' },
+                      { code: 'fr', label: 'Français' },
+                      { code: 'zh', label: '中文' },
+                      { code: 'ru', label: 'Русский' }
+                    ].map((lang) => (
+                      <button
+                        key={lang.code}
+                        onClick={() => setLanguage(lang.code)}
+                        className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${language === lang.code
+                          ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/25'
+                          : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white'
+                          }`}
+                      >
+                        {lang.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+
+                {/* Apple Reminders Integration */}
+                <div className="mb-6">
+                  <label className="block text-xs font-medium text-slate-400 uppercase tracking-widest mb-2 flex items-center justify-between">
+                    <span>{t('settings.reminders.title') || 'Apple Reminders'}</span>
+                    {remindersSyncEnabled && (
+                      <span className="text-emerald-400 text-[10px] bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                        Sync Active
+                      </span>
+                    )}
+                  </label>
+
+                  <div className="bg-white/5 rounded-xl border border-white/5 overflow-hidden">
+                    {/* Toggle Switch */}
+                    <div className="p-4 flex items-center justify-between border-b border-white/5">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white">
+                          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                          </svg>
+                        </div>
+                        <div>
+                          <div className="text-sm font-medium text-white">{t('settings.reminders.sync') || 'Sync Reminders'}</div>
+                          <div className="text-xs text-slate-400">{t('settings.reminders.desc') || 'Import tasks from iOS'}</div>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => setRemindersSyncEnabled(!remindersSyncEnabled)}
+                        className={`relative w-12 h-7 rounded-full transition-colors duration-300 ${remindersSyncEnabled ? 'bg-purple-500' : 'bg-white/10'
+                          }`}
+                      >
+                        <div className={`absolute top-1 left-1 w-5 h-5 rounded-full bg-white transition-transform duration-300 ${remindersSyncEnabled ? 'translate-x-5' : 'translate-x-0'
+                          }`} />
+                      </button>
+                    </div>
+
+                    {/* List Selection (Conditional) */}
+                    {remindersSyncEnabled && (
+                      <div className="p-4 bg-black/20 animate-slideUp">
+                        <label className="block text-xs text-slate-500 mb-2 uppercase tracking-wide">
+                          {t('settings.reminders.selectList') || 'Select List to Sync'}
+                        </label>
+                        <div className="space-y-2">
+                          {remindersLists.map(list => (
+                            <button
+                              key={list.id}
+                              onClick={() => setSelectedRemindersList(list.id)}
+                              className={`w-full flex items-center justify-between p-3 rounded-lg text-sm transition-all ${selectedRemindersList === list.id
+                                ? 'bg-purple-500/20 text-purple-200 border border-purple-500/30'
+                                : 'bg-white/5 text-slate-400 hover:bg-white/10 border border-transparent'
+                                }`}
+                            >
+                              <span className="flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-current"></span>
+                                {list.title}
+                              </span>
+                              {selectedRemindersList === list.id && (
+                                <svg className="w-4 h-4 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                </svg>
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Swipe Navigation Setting */}
+                <div className="mb-6">
+                  <div className="bg-white/5 rounded-xl border border-white/5 overflow-hidden">
+                    <div className="p-4 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white">
+                          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                          </svg>
+                        </div>
+                        <div>
+                          <div className="text-sm font-medium text-white">{t('settings.swipeNavigation')}</div>
+                          <div className="text-xs text-slate-400">{t('settings.swipeDesc')}</div>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => setSwipeEnabled(!swipeEnabled)}
+                        className={`relative w-12 h-7 rounded-full transition-colors duration-300 ${swipeEnabled ? 'bg-purple-500' : 'bg-white/10'
+                          }`}
+                      >
+                        <div className={`absolute top-1 left-1 w-5 h-5 rounded-full bg-white transition-transform duration-300 ${swipeEnabled ? 'translate-x-5' : 'translate-x-0'
+                          }`} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Test Mode Setting */}
+                <div className="mb-6">
+                  <div className="bg-white/5 rounded-xl border border-white/10 overflow-hidden">
+                    <div className="p-4 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white">
+                          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                          </svg>
+                        </div>
+                        <div>
+                          <div className="text-sm font-medium text-white">{t('settings.testMode')}</div>
+                          <div className="text-xs text-slate-400">{t('settings.testModeDesc')}</div>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => setTestModeEnabled(!testModeEnabled)}
+                        className={`relative w-12 h-7 rounded-full transition-colors duration-300 ${testModeEnabled ? 'bg-indigo-500' : 'bg-white/10'
+                          }`}
+                      >
+                        <div className={`absolute top-1 left-1 w-5 h-5 rounded-full bg-white transition-transform duration-300 ${testModeEnabled ? 'translate-x-5' : 'translate-x-0'
+                          }`} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Data Section */}
+                <div>
+                  <button
+                    onClick={() => {
+                      if (window.confirm(t('settings.resetWarning'))) {
+                        localStorage.clear();
+                        window.location.reload();
+                      }
+                    }}
+                    className="w-full py-3 rounded-xl bg-rose-500/10 text-rose-400 border border-rose-500/20 hover:bg-rose-500/20 transition-all font-medium text-sm flex items-center justify-center gap-2"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    {t('settings.resetButton')}
+                  </button>
+                </div>
+
+                {/* Install App Section */}
+                <div className="mt-6 mb-6">
+                  <label className="block text-xs font-medium text-slate-400 uppercase tracking-widest mb-2">
+                    {t('settings.install')}
+                  </label>
+                  {installPrompt ? (
+                    <button
+                      onClick={() => {
+                        if (installPrompt) {
+                          installPrompt.prompt();
+                          installPrompt.userChoice.then((choiceResult) => {
+                            if (choiceResult.outcome === 'accepted') {
+                              setInstallPrompt(null);
+                            }
+                          });
+                        }
+                      }}
+                      className="w-full py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/20 hover:shadow-amber-500/40 transition-all font-bold text-sm flex items-center justify-center gap-2"
+                    >
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                      </svg>
+                      Install App
+                    </button>
+                  ) : (
+                    <div className="p-3 bg-white/5 rounded-xl border border-white/10 text-center">
+                      <p className="text-xs text-slate-400 mb-2">
+                        To install on iOS:
+                      </p>
+                      <div className="flex items-center justify-center gap-2 text-sm text-white font-medium">
+                        Tap <span className="text-xl">⎋</span> Share &rarr; Add to Home Screen
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="bg-white/5 p-4 flex justify-end">
+                <button
+                  onClick={() => setShowSettingsModal(false)}
+                  className="px-6 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-medium transition-colors"
+                >
+                  {t('settings.done')}
+                </button>
+              </div>
+            </div>
+          </div>
+        </Portal>
+      )}
       {/* Global Styles - Liquid Glass */}
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
@@ -4336,6 +4410,18 @@ const LifeArchitect = () => {
           font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Inter', 'Segoe UI', Roboto, sans-serif;
           -webkit-font-smoothing: antialiased;
           -moz-osx-font-smoothing: grayscale;
+          -webkit-tap-highlight-color: transparent;
+          touch-action: manipulation;
+        }
+
+        button:active {
+          transform: scale(0.96);
+          opacity: 0.8;
+          transition: transform 0.1s cubic-bezier(0, 0, 0.2, 1);
+        }
+
+        .no-active-scale:active {
+          transform: none !important;
         }
         
         @keyframes fadeIn {
@@ -4427,7 +4513,9 @@ const LifeArchitect = () => {
         .animate-glow { animation: glow 2s ease-in-out infinite; }
         .animate-sand-stream { animation: sandStream 0.5s ease-in infinite; }
         .animate-time-pulse { animation: timePulse 2s ease-in-out infinite; }
-        .safe-area-pb { padding-bottom: env(safe-area-inset-bottom, 0); }
+        .safe-area-pt { padding-top: env(safe-area-inset-top, 20px); }
+        .safe-area-pb { padding-bottom: env(safe-area-inset-bottom, 20px); }
+        .safe-area-mt { margin-top: env(safe-area-inset-top, 0); }
         
         /* Apple-style Typography */
         h1, h2, h3 {
@@ -4498,7 +4586,7 @@ const LifeArchitect = () => {
           />
         )
       }
-    </div>
+    </div >
   );
 };
 

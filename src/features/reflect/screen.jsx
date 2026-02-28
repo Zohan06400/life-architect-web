@@ -15,10 +15,18 @@ export const ReflectScreen = ({
     setSelectedDate,
     reflectionQuestions,
     t,
-    currentLocale
+    currentLocale,
+    onEditingChange
 }) => {
     // Photo upload ref
     const photoInputRef = useRef(null);
+
+    // Notify parent about editing state (for hiding navigation)
+    useEffect(() => {
+        if (onEditingChange) {
+            onEditingChange(showPhotoModal);
+        }
+    }, [showPhotoModal, onEditingChange]);
 
     // Handle photo upload
     const handlePhotoUpload = (e) => {

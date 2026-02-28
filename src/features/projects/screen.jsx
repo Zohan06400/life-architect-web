@@ -5,6 +5,7 @@ import { ProjectEditModal } from './components/ProjectEditModal';
 import { ProjectTaskModal } from './components/ProjectTaskModal';
 import { MoveReminderModal } from './components/MoveReminderModal';
 import { ProjectsEditReminderModal } from './components/ProjectsEditReminderModal';
+import { Portal } from '../../shared/ui/Portal';
 
 export const ProjectsScreen = ({
     // Data
@@ -158,39 +159,43 @@ export const ProjectsScreen = ({
                 />
 
                 {/* Modals for Detail View */}
-                <ProjectEditModal
-                    isOpen={showProjectModal}
-                    onClose={() => setShowProjectModal(false)}
-                    project={editingProject}
-                    onSave={(data) => {
-                        if (editingProject) {
-                            onUpdateProject(editingProject.id, data);
-                        } else {
-                            onAddProject(data);
-                        }
-                        setShowProjectModal(false);
-                    }}
-                    onDelete={onDeleteProject}
-                    t={t}
-                />
+                <Portal>
+                    <ProjectEditModal
+                        isOpen={showProjectModal}
+                        onClose={() => setShowProjectModal(false)}
+                        project={editingProject}
+                        onSave={(data) => {
+                            if (editingProject) {
+                                onUpdateProject(editingProject.id, data);
+                            } else {
+                                onAddProject(data);
+                            }
+                            setShowProjectModal(false);
+                        }}
+                        onDelete={onDeleteProject}
+                        t={t}
+                    />
+                </Portal>
 
-                <ProjectTaskModal
-                    isOpen={showProjectTaskModal}
-                    onClose={() => setShowProjectTaskModal(false)}
-                    task={editingProjectTask}
-                    project={currentProject}
-                    onSave={(data) => {
-                        if (editingProjectTask && editingProjectTask.id) {
-                            onUpdateProjectTask(currentProject.id, editingProjectTask.id, data);
-                        } else {
-                            onAddProjectTask(currentProject.id, data);
-                        }
-                        setShowProjectTaskModal(false);
-                    }}
-                    onDelete={onDeleteProjectTask}
-                    t={t}
-                    currentLocale={currentLocale}
-                />
+                <Portal>
+                    <ProjectTaskModal
+                        isOpen={showProjectTaskModal}
+                        onClose={() => setShowProjectTaskModal(false)}
+                        task={editingProjectTask}
+                        project={currentProject}
+                        onSave={(data) => {
+                            if (editingProjectTask && editingProjectTask.id) {
+                                onUpdateProjectTask(currentProject.id, editingProjectTask.id, data);
+                            } else {
+                                onAddProjectTask(currentProject.id, data);
+                            }
+                            setShowProjectTaskModal(false);
+                        }}
+                        onDelete={onDeleteProjectTask}
+                        t={t}
+                        currentLocale={currentLocale}
+                    />
+                </Portal>
             </div>
         );
     }
@@ -224,46 +229,52 @@ export const ProjectsScreen = ({
             />
 
             {/* Modals shared or for List View */}
-            <ProjectEditModal
-                isOpen={showProjectModal}
-                onClose={() => setShowProjectModal(false)}
-                project={editingProject}
-                onSave={(data) => {
-                    if (editingProject) {
-                        onUpdateProject(editingProject.id, data);
-                    } else {
-                        onAddProject(data);
-                    }
-                    setShowProjectModal(false);
-                }}
-                t={t}
-            />
+            <Portal>
+                <ProjectEditModal
+                    isOpen={showProjectModal}
+                    onClose={() => setShowProjectModal(false)}
+                    project={editingProject}
+                    onSave={(data) => {
+                        if (editingProject) {
+                            onUpdateProject(editingProject.id, data);
+                        } else {
+                            onAddProject(data);
+                        }
+                        setShowProjectModal(false);
+                    }}
+                    t={t}
+                />
+            </Portal>
 
-            <ProjectsEditReminderModal
-                isOpen={!!projectsEditingReminder}
-                onClose={() => setProjectsEditingReminder(null)} // Close logic
-                reminder={projectsEditingReminder}
-                onSave={(data) => {
-                    onUpdateReminder(data);
-                    setProjectsEditingReminder(null);
-                }}
-                onDelete={onDeleteReminder}
-                t={t}
-            />
+            <Portal>
+                <ProjectsEditReminderModal
+                    isOpen={!!projectsEditingReminder}
+                    onClose={() => setProjectsEditingReminder(null)} // Close logic
+                    reminder={projectsEditingReminder}
+                    onSave={(data) => {
+                        onUpdateReminder(data);
+                        setProjectsEditingReminder(null);
+                    }}
+                    onDelete={onDeleteReminder}
+                    t={t}
+                />
+            </Portal>
 
-            <MoveReminderModal
-                isOpen={projectsShowMoveModal}
-                onClose={() => setProjectsShowMoveModal(false)}
-                reminderToMove={projectsReminderToMove}
-                projects={projects}
-                onMoveToProject={handleMoveReminderToProject}
-                onOpenNewProject={() => {
-                    setProjectsShowMoveModal(false);
-                    setEditingProject(null);
-                    setShowProjectModal(true);
-                }}
-                t={t}
-            />
+            <Portal>
+                <MoveReminderModal
+                    isOpen={projectsShowMoveModal}
+                    onClose={() => setProjectsShowMoveModal(false)}
+                    reminderToMove={projectsReminderToMove}
+                    projects={projects}
+                    onMoveToProject={handleMoveReminderToProject}
+                    onOpenNewProject={() => {
+                        setProjectsShowMoveModal(false);
+                        setEditingProject(null);
+                        setShowProjectModal(true);
+                    }}
+                    t={t}
+                />
+            </Portal>
         </div>
     );
 };

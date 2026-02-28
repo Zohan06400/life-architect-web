@@ -12,6 +12,7 @@ import {
   formatElapsed,
   safeParseDate
 } from './shared';
+import { Portal } from './shared/ui/Portal';
 
 const ExecuteScreen = ({
   selectedExecuteDate, setSelectedExecuteDate,
@@ -1574,551 +1575,557 @@ const ExecuteScreen = ({
 
       {/* Liquid Glass Time Preview - Shows when dragging */}
       {draggingTask && getDragPreviewTimeRange() && (
-        <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 pointer-events-none animate-fadeIn">
-          <div
-            className="px-8 py-5 rounded-3xl shadow-2xl"
-            style={{
-              background: 'linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.15) 100%)',
-              backdropFilter: 'blur(40px)',
-              WebkitBackdropFilter: 'blur(40px)',
-              border: '1px solid rgba(255,255,255,0.3)',
-              boxShadow: '0 25px 50px rgba(0,0,0,0.4), inset 0 1px 1px rgba(255,255,255,0.3), 0 0 80px rgba(251,191,36,0.2)'
-            }}
-          >
-            <div className="flex items-center gap-4">
-              {/* Start time */}
-              <div className="text-center">
-                <p className="text-white/60 text-[10px] uppercase tracking-wider mb-1">{t('common.from')}</p>
-                <p className="text-4xl font-light text-white tracking-tight" style={{ fontVariantNumeric: 'tabular-nums' }}>
-                  {getDragPreviewTimeRange().start}
-                </p>
+        <Portal>
+          <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 pointer-events-none animate-fadeIn">
+            <div
+              className="px-8 py-5 rounded-3xl shadow-2xl"
+              style={{
+                background: 'linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.15) 100%)',
+                backdropFilter: 'blur(40px)',
+                WebkitBackdropFilter: 'blur(40px)',
+                border: '1px solid rgba(255,255,255,0.3)',
+                boxShadow: '0 25px 50px rgba(0,0,0,0.4), inset 0 1px 1px rgba(255,255,255,0.3), 0 0 80px rgba(251,191,36,0.2)'
+              }}
+            >
+              <div className="flex items-center gap-4">
+                {/* Start time */}
+                <div className="text-center">
+                  <p className="text-white/60 text-[10px] uppercase tracking-wider mb-1">{t('common.from')}</p>
+                  <p className="text-4xl font-light text-white tracking-tight" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                    {getDragPreviewTimeRange().start}
+                  </p>
+                </div>
+
+                {/* Arrow */}
+                <div className="flex flex-col items-center px-2">
+                  <svg className="w-8 h-8 text-amber-400/80" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                  </svg>
+                </div>
+
+                {/* End time */}
+                <div className="text-center">
+                  <p className="text-white/60 text-[10px] uppercase tracking-wider mb-1">{t('common.to')}</p>
+                  <p className="text-4xl font-light text-white tracking-tight" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                    {getDragPreviewTimeRange().end}
+                  </p>
+                </div>
               </div>
 
-              {/* Arrow */}
-              <div className="flex flex-col items-center px-2">
-                <svg className="w-8 h-8 text-amber-400/80" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                </svg>
-              </div>
+              {/* Target day indicator when hovering calendar */}
+              {dragOverDay && (
+                <div className="mt-4 pt-3 border-t border-amber-400/30 text-center animate-fadeIn">
+                  <p className="text-amber-400 text-sm font-medium">
+                    📅 {t('common.moveTo')} {dragOverDay.toLocaleDateString(currentLocale, { weekday: 'short', month: 'short', day: 'numeric' })}
+                  </p>
+                </div>
+              )}
 
-              {/* End time */}
-              <div className="text-center">
-                <p className="text-white/60 text-[10px] uppercase tracking-wider mb-1">{t('common.to')}</p>
-                <p className="text-4xl font-light text-white tracking-tight" style={{ fontVariantNumeric: 'tabular-nums' }}>
-                  {getDragPreviewTimeRange().end}
-                </p>
+              {/* Task info */}
+              <div className={`mt-4 pt-3 border-t border-white/10 flex items-center justify-center gap-2 ${dragOverDay ? 'mt-0 pt-2 border-t-0' : ''}`}>
+                <span className="text-lg">{draggingTask.icon}</span>
+                <span className="text-white/80 text-sm font-medium">{draggingTask.title}</span>
               </div>
-            </div>
-
-            {/* Target day indicator when hovering calendar */}
-            {dragOverDay && (
-              <div className="mt-4 pt-3 border-t border-amber-400/30 text-center animate-fadeIn">
-                <p className="text-amber-400 text-sm font-medium">
-                  📅 {t('common.moveTo')} {dragOverDay.toLocaleDateString(currentLocale, { weekday: 'short', month: 'short', day: 'numeric' })}
-                </p>
-              </div>
-            )}
-
-            {/* Task info */}
-            <div className={`mt-4 pt-3 border-t border-white/10 flex items-center justify-center gap-2 ${dragOverDay ? 'mt-0 pt-2 border-t-0' : ''}`}>
-              <span className="text-lg">{draggingTask.icon}</span>
-              <span className="text-white/80 text-sm font-medium">{draggingTask.title}</span>
             </div>
           </div>
-        </div>
+        </Portal>
       )}
 
       {/* Edit Task Modal */}
       {executeEditingTask && !focusMode && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center animate-fadeIn">
-          <div
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            onClick={() => setExecuteEditingTask(null)}
-          />
+        <Portal>
+          <div className="fixed inset-0 z-50 flex items-end justify-center animate-fadeIn">
+            <div
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              onClick={() => setExecuteEditingTask(null)}
+            />
 
-          <div
-            className="relative w-full max-w-md mx-4 mb-4 rounded-3xl overflow-hidden animate-slideUp"
-            style={{
-              background: 'linear-gradient(180deg, rgba(30,30,40,0.95) 0%, rgba(20,20,30,0.98) 100%)',
-              backdropFilter: 'blur(40px)',
-              border: '1px solid rgba(255,255,255,0.1)',
-              boxShadow: '0 25px 50px rgba(0,0,0,0.5)'
-            }}
-          >
-            {/* Header */}
-            <div className="px-5 pt-5 pb-4 border-b border-white/10">
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-white">{t('modals.editTask')}</h2>
-                <button
-                  onClick={() => setExecuteEditingTask(null)}
-                  className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-slate-400 hover:bg-white/20 transition-colors"
-                >
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-
-            {/* Body */}
-            <div className="px-5 py-4 max-h-[60vh] overflow-y-auto">
-              {/* Title & Icon Header */}
-              <div className="mb-4">
-                <label className="text-slate-400 text-sm mb-2 block">{t('common.task')}</label>
-                <div className="flex gap-3">
+            <div
+              className="relative w-full max-w-md mx-4 mb-4 rounded-3xl overflow-hidden animate-slideUp"
+              style={{
+                background: 'linear-gradient(180deg, rgba(30,30,40,0.95) 0%, rgba(20,20,30,0.98) 100%)',
+                backdropFilter: 'blur(40px)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                boxShadow: '0 25px 50px rgba(0,0,0,0.5)'
+              }}
+            >
+              {/* Header */}
+              <div className="px-5 pt-5 pb-4 border-b border-white/10">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-semibold text-white">{t('modals.editTask')}</h2>
                   <button
-                    onClick={() => setEditTaskShowIconPicker(!editTaskShowIconPicker)}
-                    className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-2xl hover:bg-white/10 transition-colors"
+                    onClick={() => setExecuteEditingTask(null)}
+                    className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-slate-400 hover:bg-white/20 transition-colors"
                   >
-                    {editTaskIcon}
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
                   </button>
-                  <input
-                    type="text"
-                    value={editTaskName}
-                    onChange={(e) => setEditTaskName(e.target.value)}
-                    placeholder={t('placeholders.reminder')}
-                    className="flex-1 px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-500 outline-none focus:border-amber-500/50"
-                  />
+                </div>
+              </div>
+
+              {/* Body */}
+              <div className="px-5 py-4 max-h-[60vh] overflow-y-auto">
+                {/* Title & Icon Header */}
+                <div className="mb-4">
+                  <label className="text-slate-400 text-sm mb-2 block">{t('common.task')}</label>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setEditTaskShowIconPicker(!editTaskShowIconPicker)}
+                      className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-2xl hover:bg-white/10 transition-colors"
+                    >
+                      {editTaskIcon}
+                    </button>
+                    <input
+                      type="text"
+                      value={editTaskName}
+                      onChange={(e) => setEditTaskName(e.target.value)}
+                      placeholder={t('placeholders.reminder')}
+                      className="flex-1 px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-500 outline-none focus:border-amber-500/50"
+                    />
+                  </div>
+
+                  {/* Icon Picker (Conditional) */}
+                  {editTaskShowIconPicker && (
+                    <div className="mt-4 p-4 rounded-xl bg-white/5 border border-white/5 animate-fadeIn">
+                      <div className="flex flex-wrap gap-2">
+                        {globalIconOptions.map(icon => (
+                          <button
+                            key={icon}
+                            onClick={() => {
+                              setEditTaskIcon(icon);
+                              setEditTaskShowIconPicker(false);
+                            }}
+                            className={`w-10 h-10 rounded-lg flex items-center justify-center text-xl transition-colors
+                                ${editTaskIcon === icon ? 'bg-amber-500/20 text-amber-500' : 'hover:bg-white/10'}`}
+                          >
+                            {icon}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
-                {/* Icon Picker (Conditional) */}
-                {editTaskShowIconPicker && (
-                  <div className="mt-4 p-4 rounded-xl bg-white/5 border border-white/5 animate-fadeIn">
-                    <div className="flex flex-wrap gap-2">
-                      {globalIconOptions.map(icon => (
-                        <button
-                          key={icon}
-                          onClick={() => {
-                            setEditTaskIcon(icon);
-                            setEditTaskShowIconPicker(false);
-                          }}
-                          className={`w-10 h-10 rounded-lg flex items-center justify-center text-xl transition-colors
-                              ${editTaskIcon === icon ? 'bg-amber-500/20 text-amber-500' : 'hover:bg-white/10'}`}
-                        >
-                          {icon}
-                        </button>
+                {/* Details List (iOS Style) - Moved Up */}
+                <TaskDetailsList
+                  date={editTaskDate}
+                  startTime={`${editTaskStartHour}:${editTaskStartMinute.toString().padStart(2, '0')}`}
+                  endTime={`${editTaskEndHour}:${editTaskEndMinute.toString().padStart(2, '0')}`}
+                  alerts={editTaskAlerts}
+                  onDateClick={() => {
+                    setEditTaskShowDate(!editTaskShowDate);
+                    setEditTaskShowTime(false);
+                    setEditTaskShowAlerts(false);
+                    setEditTaskShowRepeat(false);
+                  }}
+                  onTimeClick={() => {
+                    setEditTaskShowTime(!editTaskShowTime);
+                    setEditTaskShowAlerts(false);
+                    setEditTaskShowRepeat(false);
+                  }}
+                  onAlertsClick={() => {
+                    setEditTaskShowAlerts(!editTaskShowAlerts);
+                    setEditTaskShowTime(false);
+                    setEditTaskShowRepeat(false);
+                  }}
+                  onRepeatClick={() => {
+                    setEditTaskShowRepeat(!editTaskShowRepeat);
+                    setEditTaskShowAlerts(false);
+                    setEditTaskShowTime(false);
+                  }}
+                  themeColor="amber"
+                  showDatePicker={editTaskShowDate}
+                  onDateChange={(date) => {
+                    setEditTaskDate(date);
+                    setEditTaskShowDate(false);
+                  }}
+                  showTimePicker={editTaskShowTime}
+                  onStartTimeChange={({ hour, minute }) => {
+                    setEditTaskStartHour(hour);
+                    setEditTaskStartMinute(minute);
+                  }}
+                  onEndTimeChange={({ hour, minute }) => {
+                    setEditTaskEndHour(hour);
+                    setEditTaskEndMinute(minute);
+                  }}
+                  repeat={editTaskRepeat}
+                  showRepeatPicker={editTaskShowRepeat}
+                  onRepeatChange={(repeat) => setEditTaskRepeat(repeat)}
+                  t={t}
+                  locale={currentLocale}
+                />
+
+
+                {/* Alerts Picker (Collapsible) */}
+                {editTaskShowAlerts && (
+                  <div className="mb-6 p-4 rounded-2xl bg-white/5 border border-white/5 animate-fadeIn">
+                    <label className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-3 block">Manage Alerts</label>
+                    <div className="space-y-2">
+                      {editTaskAlerts.map((alert, index) => (
+                        <div key={index} className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5">
+                          <span className="text-sm text-slate-200">{alert.label}</span>
+                          <button
+                            onClick={() => setEditTaskAlerts(editTaskAlerts.filter((_, i) => i !== index))}
+                            className="text-rose-400 hover:text-rose-300 p-1"
+                          >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </div>
                       ))}
+                      <div className="pt-2 grid grid-cols-3 gap-2">
+                        {globalAlertOptions.map(opt => (
+                          <button
+                            key={opt.label}
+                            onClick={() => {
+                              if (!editTaskAlerts.some(a => a.value === opt.value)) {
+                                setEditTaskAlerts([...editTaskAlerts, opt]);
+                              }
+                            }}
+                            className="p-2 rounded-lg bg-indigo-500/10 text-indigo-300 text-[10px] font-medium border border-indigo-500/20 hover:bg-indigo-500/20 transition-all text-left"
+                          >
+                            + {opt.label}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 )}
-              </div>
 
-              {/* Details List (iOS Style) - Moved Up */}
-              <TaskDetailsList
-                date={editTaskDate}
-                startTime={`${editTaskStartHour}:${editTaskStartMinute.toString().padStart(2, '0')}`}
-                endTime={`${editTaskEndHour}:${editTaskEndMinute.toString().padStart(2, '0')}`}
-                alerts={editTaskAlerts}
-                onDateClick={() => {
-                  setEditTaskShowDate(!editTaskShowDate);
-                  setEditTaskShowTime(false);
-                  setEditTaskShowAlerts(false);
-                  setEditTaskShowRepeat(false);
-                }}
-                onTimeClick={() => {
-                  setEditTaskShowTime(!editTaskShowTime);
-                  setEditTaskShowAlerts(false);
-                  setEditTaskShowRepeat(false);
-                }}
-                onAlertsClick={() => {
-                  setEditTaskShowAlerts(!editTaskShowAlerts);
-                  setEditTaskShowTime(false);
-                  setEditTaskShowRepeat(false);
-                }}
-                onRepeatClick={() => {
-                  setEditTaskShowRepeat(!editTaskShowRepeat);
-                  setEditTaskShowAlerts(false);
-                  setEditTaskShowTime(false);
-                }}
-                themeColor="amber"
-                showDatePicker={editTaskShowDate}
-                onDateChange={(date) => {
-                  setEditTaskDate(date);
-                  setEditTaskShowDate(false);
-                }}
-                showTimePicker={editTaskShowTime}
-                onStartTimeChange={({ hour, minute }) => {
-                  setEditTaskStartHour(hour);
-                  setEditTaskStartMinute(minute);
-                }}
-                onEndTimeChange={({ hour, minute }) => {
-                  setEditTaskEndHour(hour);
-                  setEditTaskEndMinute(minute);
-                }}
-                repeat={editTaskRepeat}
-                showRepeatPicker={editTaskShowRepeat}
-                onRepeatChange={(repeat) => setEditTaskRepeat(repeat)}
-                t={t}
-                locale={currentLocale}
-              />
+                {/* Value (Impact) */}
+                <div className="mb-4">
+                  <label className="text-slate-400 text-sm mb-2 block">{t('common.impactValue')}: {editTaskValue}/10</label>
+                  <input
+                    type="range"
+                    min="1"
+                    max="10"
+                    value={editTaskValue}
+                    onChange={(e) => setEditTaskValue(parseInt(e.target.value))}
+                    className="w-full accent-amber-500"
+                  />
+                </div>
 
-
-              {/* Alerts Picker (Collapsible) */}
-              {editTaskShowAlerts && (
-                <div className="mb-6 p-4 rounded-2xl bg-white/5 border border-white/5 animate-fadeIn">
-                  <label className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-3 block">Manage Alerts</label>
-                  <div className="space-y-2">
-                    {editTaskAlerts.map((alert, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5">
-                        <span className="text-sm text-slate-200">{alert.label}</span>
-                        <button
-                          onClick={() => setEditTaskAlerts(editTaskAlerts.filter((_, i) => i !== index))}
-                          className="text-rose-400 hover:text-rose-300 p-1"
-                        >
-                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
-                      </div>
+                {/* Energy */}
+                <div className="mb-6">
+                  <label className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-2 block">{t('common.energyLevel')}</label>
+                  <div className="flex gap-2">
+                    {['low', 'medium', 'high'].map(level => (
+                      <button
+                        key={level}
+                        onClick={() => setEditTaskEnergy(level)}
+                        className={`flex-1 py-2.5 rounded-xl font-medium text-sm transition-all duration-200
+                          ${editTaskEnergy === level
+                            ? level === 'low'
+                              ? 'bg-emerald-500/80 text-white shadow-lg shadow-emerald-500/30'
+                              : level === 'medium'
+                                ? 'bg-amber-500/80 text-white shadow-lg shadow-amber-500/30'
+                                : 'bg-rose-500/80 text-white shadow-lg shadow-rose-500/30'
+                            : 'bg-white/10 text-slate-400 hover:bg-white/20'}`}
+                      >
+                        {level === 'low' ? `🌱 ${t('energyLevels.light')}` : level === 'medium' ? `⚡ ${t('energyLevels.moderate')}` : `🔥 ${t('energyLevels.heavy')}`}
+                      </button>
                     ))}
-                    <div className="pt-2 grid grid-cols-3 gap-2">
-                      {globalAlertOptions.map(opt => (
-                        <button
-                          key={opt.label}
-                          onClick={() => {
-                            if (!editTaskAlerts.some(a => a.value === opt.value)) {
-                              setEditTaskAlerts([...editTaskAlerts, opt]);
-                            }
-                          }}
-                          className="p-2 rounded-lg bg-indigo-500/10 text-indigo-300 text-[10px] font-medium border border-indigo-500/20 hover:bg-indigo-500/20 transition-all text-left"
-                        >
-                          + {opt.label}
-                        </button>
-                      ))}
-                    </div>
                   </div>
                 </div>
-              )}
 
-              {/* Value (Impact) */}
-              <div className="mb-4">
-                <label className="text-slate-400 text-sm mb-2 block">{t('common.impactValue')}: {editTaskValue}/10</label>
-                <input
-                  type="range"
-                  min="1"
-                  max="10"
-                  value={editTaskValue}
-                  onChange={(e) => setEditTaskValue(parseInt(e.target.value))}
-                  className="w-full accent-amber-500"
+                <SubtaskList
+                  subtasks={editTaskSubtasks}
+                  onChange={setEditTaskSubtasks}
+                  t={t}
                 />
-              </div>
 
-              {/* Energy */}
-              <div className="mb-6">
-                <label className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-2 block">{t('common.energyLevel')}</label>
-                <div className="flex gap-2">
-                  {['low', 'medium', 'high'].map(level => (
-                    <button
-                      key={level}
-                      onClick={() => setEditTaskEnergy(level)}
-                      className={`flex-1 py-2.5 rounded-xl font-medium text-sm transition-all duration-200
-                        ${editTaskEnergy === level
-                          ? level === 'low'
-                            ? 'bg-emerald-500/80 text-white shadow-lg shadow-emerald-500/30'
-                            : level === 'medium'
-                              ? 'bg-amber-500/80 text-white shadow-lg shadow-amber-500/30'
-                              : 'bg-rose-500/80 text-white shadow-lg shadow-rose-500/30'
-                          : 'bg-white/10 text-slate-400 hover:bg-white/20'}`}
-                    >
-                      {level === 'low' ? `🌱 ${t('energyLevels.light')}` : level === 'medium' ? `⚡ ${t('energyLevels.moderate')}` : `🔥 ${t('energyLevels.heavy')}`}
-                    </button>
-                  ))}
+                {/* Notes */}
+                <div className="mb-4">
+                  <label className="text-slate-400 text-sm mb-2 block">{t('common.notes')}</label>
+                  <textarea
+                    value={editTaskNotes}
+                    onChange={(e) => setEditTaskNotes(e.target.value)}
+                    placeholder={t('placeholders.additionalDetails')}
+                    rows={2}
+                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-500 outline-none focus:border-amber-500/50 resize-none"
+                  />
                 </div>
+
+                {/* Task Name */}
+                {/* Focus Mode Button */}
+                {!executeEditingTask?.completed && (
+                  <button
+                    onClick={() => startFocusMode(executeEditingTask)}
+                    className="w-full py-3.5 rounded-xl font-semibold text-sm transition-all duration-200 flex items-center justify-center gap-2 mb-4
+                        bg-gradient-to-r from-purple-500/30 to-indigo-500/30 text-purple-300 border border-purple-500/30 hover:from-purple-500/50 hover:to-indigo-500/50"
+                  >
+                    <span className="text-lg">🎯</span>
+                    <span>{t('execute.startFocusMode')}</span>
+                  </button>
+                )}
               </div>
 
-              <SubtaskList
-                subtasks={editTaskSubtasks}
-                onChange={setEditTaskSubtasks}
-                t={t}
-              />
-
-              {/* Notes */}
-              <div className="mb-4">
-                <label className="text-slate-400 text-sm mb-2 block">{t('common.notes')}</label>
-                <textarea
-                  value={editTaskNotes}
-                  onChange={(e) => setEditTaskNotes(e.target.value)}
-                  placeholder={t('placeholders.additionalDetails')}
-                  rows={2}
-                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-500 outline-none focus:border-amber-500/50 resize-none"
-                />
-              </div>
-
-              {/* Task Name */}
-              {/* Focus Mode Button */}
-              {!executeEditingTask?.completed && (
-                <button
-                  onClick={() => startFocusMode(executeEditingTask)}
-                  className="w-full py-3.5 rounded-xl font-semibold text-sm transition-all duration-200 flex items-center justify-center gap-2 mb-4
-                      bg-gradient-to-r from-purple-500/30 to-indigo-500/30 text-purple-300 border border-purple-500/30 hover:from-purple-500/50 hover:to-indigo-500/50"
-                >
-                  <span className="text-lg">🎯</span>
-                  <span>{t('execute.startFocusMode')}</span>
-                </button>
-              )}
-            </div>
-
-            {/* Footer */}
-            <div className="px-5 py-4 border-t border-white/10">
-              <div className="flex gap-3">
-                <button
-                  onClick={() => deleteTask(executeEditingTask.id)}
-                  className="px-4 py-3 rounded-xl font-medium text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 transition-all"
-                >
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-                </button>
-                <button
-                  onClick={() => setExecuteEditingTask(null)}
-                  className="flex-1 py-3 rounded-xl font-medium text-slate-400 bg-white/10 hover:bg-white/20 transition-all"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={saveTaskEdit}
-                  disabled={!editTaskName.trim()}
-                  className={`flex-1 py-3 rounded-xl font-semibold transition-all duration-200
-                      ${editTaskName.trim()
-                      ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/30'
-                      : 'bg-white/5 text-slate-600 cursor-not-allowed'}`}
-                >
-                  Save Changes
-                </button>
+              {/* Footer */}
+              <div className="px-5 py-4 border-t border-white/10">
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => deleteTask(executeEditingTask.id)}
+                    className="px-4 py-3 rounded-xl font-medium text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 transition-all"
+                  >
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={() => setExecuteEditingTask(null)}
+                    className="flex-1 py-3 rounded-xl font-medium text-slate-400 bg-white/10 hover:bg-white/20 transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={saveTaskEdit}
+                    disabled={!editTaskName.trim()}
+                    className={`flex-1 py-3 rounded-xl font-semibold transition-all duration-200
+                        ${editTaskName.trim()
+                        ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/30'
+                        : 'bg-white/5 text-slate-600 cursor-not-allowed'}`}
+                  >
+                    Save Changes
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        </Portal>
       )}
 
       {/* Focus Mode - Full Screen Pomodoro Timer */}
       {focusMode && focusTask && (
-        <div className="fixed top-0 left-0 w-full h-full z-[100] flex flex-col items-center justify-center animate-fadeIn bg-[rgb(10,10,20)]"
-          style={{
-            background: 'linear-gradient(180deg, rgba(10,10,20,1) 0%, rgba(20,10,30,1) 100%)',
-            overscrollBehavior: 'contain'
-          }}
-        >
-          {/* Close button */}
-          <button
-            onClick={() => {
-              setFocusMode(false);
-              setFocusTask(null);
-              setPomodoroRunning(false);
-            }}
-            className="absolute top-6 right-6 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-slate-400 hover:bg-white/20 transition-colors z-10"
-          >
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-
-          {/* Background ambient glow */}
-          <div className="absolute inset-0 overflow-hidden pointer-events-none">
-            <div className={`absolute top-1/4 left-1/2 -translate-x-1/2 w-96 h-96 rounded-full blur-3xl transition-colors duration-1000 ${isBreak ? 'bg-emerald-500/20' : 'bg-purple-500/20'
-              }`}></div>
-          </div>
-
-          {/* Task info */}
-          <div className="mb-8 text-center relative z-10">
-            <span className="text-5xl mb-4 block">{focusTask.icon}</span>
-            <h2 className="text-xl font-semibold text-white mb-2">{focusTask.title}</h2>
-            <p className={`text-sm font-medium ${isBreak ? 'text-emerald-400' : 'text-purple-400'}`}>
-              {isBreak ? t('execute.breakTime') : `${t('execute.focusSession')} ${pomodoroSession}`}
-            </p>
-          </div>
-
-          {/* Liquid Glass Timer */}
-          <div
-            className="relative mb-10"
+        <Portal>
+          <div className="fixed top-0 left-0 w-full h-full z-[100] flex flex-col items-center justify-center animate-fadeIn bg-[rgb(10,10,20)]"
             style={{
-              width: '280px',
-              height: '280px'
+              background: 'linear-gradient(180deg, rgba(10,10,20,1) 0%, rgba(20,10,30,1) 100%)',
+              overscrollBehavior: 'contain'
             }}
           >
-            {/* Outer glass ring */}
-            <div
-              className="absolute inset-0 rounded-full"
-              style={{
-                background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 50%, rgba(255,255,255,0.08) 100%)',
-                backdropFilter: 'blur(20px)',
-                border: '1px solid rgba(255,255,255,0.15)',
-                boxShadow: `0 25px 60px rgba(0,0,0,0.4), inset 0 1px 1px rgba(255,255,255,0.2), 0 0 100px ${isBreak ? 'rgba(52,211,153,0.2)' : 'rgba(139,92,246,0.2)'}`
-              }}
-            />
-
-            {/* Progress ring */}
-            <svg className="absolute inset-0 w-full h-full -rotate-90">
-              <circle
-                cx="140"
-                cy="140"
-                r="125"
-                fill="none"
-                stroke="rgba(255,255,255,0.1)"
-                strokeWidth="8"
-              />
-              <circle
-                cx="140"
-                cy="140"
-                r="125"
-                fill="none"
-                stroke={isBreak ? 'rgb(52,211,153)' : 'rgb(139,92,246)'}
-                strokeWidth="8"
-                strokeLinecap="round"
-                strokeDasharray={2 * Math.PI * 125}
-                strokeDashoffset={2 * Math.PI * 125 * (1 - pomodoroTime / (isBreak ? (pomodoroSession % 4 === 0 ? 15 * 60 : 5 * 60) : getTaskFocusDuration(focusTask)))}
-                className="transition-all duration-1000"
-                style={{
-                  filter: `drop-shadow(0 0 10px ${isBreak ? 'rgb(52,211,153)' : 'rgb(139,92,246)'})`
-                }}
-              />
-            </svg>
-
-            {/* Inner glass circle with time */}
-            <div
-              className="absolute inset-6 rounded-full flex flex-col items-center justify-center"
-              style={{
-                background: 'linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.03) 100%)',
-                backdropFilter: 'blur(10px)',
-                border: '1px solid rgba(255,255,255,0.1)',
-                boxShadow: 'inset 0 2px 10px rgba(0,0,0,0.2)'
-              }}
-            >
-              <span
-                className="text-6xl font-extralight text-white tracking-tight"
-                style={{ fontVariantNumeric: 'tabular-nums' }}
-              >
-                {formatPomodoroTime(pomodoroTime)}
-              </span>
-              <span className="text-white/40 text-sm mt-2">
-                {isBreak ? t('execute.untilFocus') : t('execute.remaining')}
-              </span>
-            </div>
-          </div>
-
-          {/* Control buttons */}
-          <div className="flex gap-4 relative z-10">
-            {/* Reset button */}
+            {/* Close button */}
             <button
               onClick={() => {
-                setPomodoroTime(isBreak ? (pomodoroSession % 4 === 0 ? 15 * 60 : 5 * 60) : getTaskFocusDuration(focusTask));
-                setPomodoroRunning(false);
-              }}
-              className="w-14 h-14 rounded-full flex items-center justify-center transition-all"
-              style={{
-                background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)',
-                backdropFilter: 'blur(10px)',
-                border: '1px solid rgba(255,255,255,0.1)'
-              }}
-            >
-              <svg className="w-6 h-6 text-white/60" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-            </button>
-
-            {/* Play/Pause button */}
-            <button
-              onClick={() => setPomodoroRunning(!pomodoroRunning)}
-              className="w-20 h-20 rounded-full flex items-center justify-center transition-all hover:scale-105"
-              style={{
-                background: isBreak
-                  ? 'linear-gradient(135deg, rgba(52,211,153,0.8) 0%, rgba(16,185,129,0.8) 100%)'
-                  : 'linear-gradient(135deg, rgba(139,92,246,0.8) 0%, rgba(99,102,241,0.8) 100%)',
-                backdropFilter: 'blur(10px)',
-                border: '1px solid rgba(255,255,255,0.2)',
-                boxShadow: isBreak
-                  ? '0 10px 40px rgba(52,211,153,0.4)'
-                  : '0 10px 40px rgba(139,92,246,0.4)'
-              }}
-            >
-              {pomodoroRunning ? (
-                <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
-                </svg>
-              ) : (
-                <svg className="w-8 h-8 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M8 5v14l11-7z" />
-                </svg>
-              )}
-            </button>
-
-            {/* Skip button */}
-            <button
-              onClick={() => {
-                if (!isBreak) {
-                  // Add time worked so far
-                  const taskDuration = getTaskFocusDuration(focusTask);
-                  setTotalFocusTime(t => t + (taskDuration - pomodoroTime));
-                }
-                if (isBreak) {
-                  setPomodoroSession(s => s + 1);
-                  setPomodoroTime(getTaskFocusDuration(focusTask));
-                  setIsBreak(false);
-                } else {
-                  if (pomodoroSession % 4 === 0) {
-                    setPomodoroTime(15 * 60);
-                  } else {
-                    setPomodoroTime(5 * 60);
-                  }
-                  setIsBreak(true);
-                }
-                setPomodoroRunning(false);
-              }}
-              className="w-14 h-14 rounded-full flex items-center justify-center transition-all"
-              style={{
-                background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)',
-                backdropFilter: 'blur(10px)',
-                border: '1px solid rgba(255,255,255,0.1)'
-              }}
-            >
-              <svg className="w-6 h-6 text-white/60" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
-              </svg>
-            </button>
-          </div>
-
-          {/* Session stats */}
-          <div
-            className="mt-10 px-6 py-4 rounded-2xl flex gap-8"
-            style={{
-              background: 'linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%)',
-              backdropFilter: 'blur(10px)',
-              border: '1px solid rgba(255,255,255,0.1)'
-            }}
-          >
-            <div className="text-center">
-              <p className="text-2xl font-bold text-white">{pomodoroSession}</p>
-              <p className="text-xs text-white/40">Sessions</p>
-            </div>
-            <div className="w-px bg-white/10"></div>
-            <div className="text-center">
-              <p className="text-2xl font-bold text-white">{Math.floor(totalFocusTime / 60)}</p>
-              <p className="text-xs text-white/40">Minutes focused</p>
-            </div>
-            <div className="w-px bg-white/10"></div>
-            <div className="text-center">
-              <p className="text-2xl font-bold text-white">{4 - (pomodoroSession % 4 || 4)}</p>
-              <p className="text-xs text-white/40">Until long break</p>
-            </div>
-          </div>
-
-          {/* Complete task button */}
-          {!focusTask.completed && (
-            <button
-              onClick={() => {
-                completeTask(focusTask.id);
                 setFocusMode(false);
                 setFocusTask(null);
+                setPomodoroRunning(false);
               }}
-              className="mt-6 px-8 py-3 rounded-xl font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/30 transition-all flex items-center gap-2"
+              className="absolute top-6 right-6 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-slate-400 hover:bg-white/20 transition-colors z-10"
             >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
-              Mark Task Complete
             </button>
-          )}
-        </div>
+
+            {/* Background ambient glow */}
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+              <div className={`absolute top-1/4 left-1/2 -translate-x-1/2 w-96 h-96 rounded-full blur-3xl transition-colors duration-1000 ${isBreak ? 'bg-emerald-500/20' : 'bg-purple-500/20'
+                }`}></div>
+            </div>
+
+            {/* Task info */}
+            <div className="mb-8 text-center relative z-10">
+              <span className="text-5xl mb-4 block">{focusTask.icon}</span>
+              <h2 className="text-xl font-semibold text-white mb-2">{focusTask.title}</h2>
+              <p className={`text-sm font-medium ${isBreak ? 'text-emerald-400' : 'text-purple-400'}`}>
+                {isBreak ? t('execute.breakTime') : `${t('execute.focusSession')} ${pomodoroSession}`}
+              </p>
+            </div>
+
+            {/* Liquid Glass Timer */}
+            <div
+              className="relative mb-10"
+              style={{
+                width: '280px',
+                height: '280px'
+              }}
+            >
+              {/* Outer glass ring */}
+              <div
+                className="absolute inset-0 rounded-full"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 50%, rgba(255,255,255,0.08) 100%)',
+                  backdropFilter: 'blur(20px)',
+                  border: '1px solid rgba(255,255,255,0.15)',
+                  boxShadow: `0 25px 60px rgba(0,0,0,0.4), inset 0 1px 1px rgba(255,255,255,0.2), 0 0 100px ${isBreak ? 'rgba(52,211,153,0.2)' : 'rgba(139,92,246,0.2)'}`
+                }}
+              />
+
+              {/* Progress ring */}
+              <svg className="absolute inset-0 w-full h-full -rotate-90">
+                <circle
+                  cx="140"
+                  cy="140"
+                  r="125"
+                  fill="none"
+                  stroke="rgba(255,255,255,0.1)"
+                  strokeWidth="8"
+                />
+                <circle
+                  cx="140"
+                  cy="140"
+                  r="125"
+                  fill="none"
+                  stroke={isBreak ? 'rgb(52,211,153)' : 'rgb(139,92,246)'}
+                  strokeWidth="8"
+                  strokeLinecap="round"
+                  strokeDasharray={2 * Math.PI * 125}
+                  strokeDashoffset={2 * Math.PI * 125 * (1 - pomodoroTime / (isBreak ? (pomodoroSession % 4 === 0 ? 15 * 60 : 5 * 60) : getTaskFocusDuration(focusTask)))}
+                  className="transition-all duration-1000"
+                  style={{
+                    filter: `drop-shadow(0 0 10px ${isBreak ? 'rgb(52,211,153)' : 'rgb(139,92,246)'})`
+                  }}
+                />
+              </svg>
+
+              {/* Inner glass circle with time */}
+              <div
+                className="absolute inset-6 rounded-full flex flex-col items-center justify-center"
+                style={{
+                  background: 'linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.03) 100%)',
+                  backdropFilter: 'blur(10px)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  boxShadow: 'inset 0 2px 10px rgba(0,0,0,0.2)'
+                }}
+              >
+                <span
+                  className="text-6xl font-extralight text-white tracking-tight"
+                  style={{ fontVariantNumeric: 'tabular-nums' }}
+                >
+                  {formatPomodoroTime(pomodoroTime)}
+                </span>
+                <span className="text-white/40 text-sm mt-2">
+                  {isBreak ? t('execute.untilFocus') : t('execute.remaining')}
+                </span>
+              </div>
+            </div>
+
+            {/* Control buttons */}
+            <div className="flex gap-4 relative z-10">
+              {/* Reset button */}
+              <button
+                onClick={() => {
+                  setPomodoroTime(isBreak ? (pomodoroSession % 4 === 0 ? 15 * 60 : 5 * 60) : getTaskFocusDuration(focusTask));
+                  setPomodoroRunning(false);
+                }}
+                className="w-14 h-14 rounded-full flex items-center justify-center transition-all"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)',
+                  backdropFilter: 'blur(10px)',
+                  border: '1px solid rgba(255,255,255,0.1)'
+                }}
+              >
+                <svg className="w-6 h-6 text-white/60" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </button>
+
+              {/* Play/Pause button */}
+              <button
+                onClick={() => setPomodoroRunning(!pomodoroRunning)}
+                className="w-20 h-20 rounded-full flex items-center justify-center transition-all hover:scale-105"
+                style={{
+                  background: isBreak
+                    ? 'linear-gradient(135deg, rgba(52,211,153,0.8) 0%, rgba(16,185,129,0.8) 100%)'
+                    : 'linear-gradient(135deg, rgba(139,92,246,0.8) 0%, rgba(99,102,241,0.8) 100%)',
+                  backdropFilter: 'blur(10px)',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  boxShadow: isBreak
+                    ? '0 10px 40px rgba(52,211,153,0.4)'
+                    : '0 10px 40px rgba(139,92,246,0.4)'
+                }}
+              >
+                {pomodoroRunning ? (
+                  <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
+                  </svg>
+                ) : (
+                  <svg className="w-8 h-8 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M8 5v14l11-7z" />
+                  </svg>
+                )}
+              </button>
+
+              {/* Skip button */}
+              <button
+                onClick={() => {
+                  if (!isBreak) {
+                    // Add time worked so far
+                    const taskDuration = getTaskFocusDuration(focusTask);
+                    setTotalFocusTime(t => t + (taskDuration - pomodoroTime));
+                  }
+                  if (isBreak) {
+                    setPomodoroSession(s => s + 1);
+                    setPomodoroTime(getTaskFocusDuration(focusTask));
+                    setIsBreak(false);
+                  } else {
+                    if (pomodoroSession % 4 === 0) {
+                      setPomodoroTime(15 * 60);
+                    } else {
+                      setPomodoroTime(5 * 60);
+                    }
+                    setIsBreak(true);
+                  }
+                  setPomodoroRunning(false);
+                }}
+                className="w-14 h-14 rounded-full flex items-center justify-center transition-all"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)',
+                  backdropFilter: 'blur(10px)',
+                  border: '1px solid rgba(255,255,255,0.1)'
+                }}
+              >
+                <svg className="w-6 h-6 text-white/60" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Session stats */}
+            <div
+              className="mt-10 px-6 py-4 rounded-2xl flex gap-8"
+              style={{
+                background: 'linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%)',
+                backdropFilter: 'blur(10px)',
+                border: '1px solid rgba(255,255,255,0.1)'
+              }}
+            >
+              <div className="text-center">
+                <p className="text-2xl font-bold text-white">{pomodoroSession}</p>
+                <p className="text-xs text-white/40">Sessions</p>
+              </div>
+              <div className="w-px bg-white/10"></div>
+              <div className="text-center">
+                <p className="text-2xl font-bold text-white">{Math.floor(totalFocusTime / 60)}</p>
+                <p className="text-xs text-white/40">Minutes focused</p>
+              </div>
+              <div className="w-px bg-white/10"></div>
+              <div className="text-center">
+                <p className="text-2xl font-bold text-white">{4 - (pomodoroSession % 4 || 4)}</p>
+                <p className="text-xs text-white/40">Until long break</p>
+              </div>
+            </div>
+
+            {/* Complete task button */}
+            {!focusTask.completed && (
+              <button
+                onClick={() => {
+                  completeTask(focusTask.id);
+                  setFocusMode(false);
+                  setFocusTask(null);
+                }}
+                className="mt-6 px-8 py-3 rounded-xl font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/30 transition-all flex items-center gap-2"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                Mark Task Complete
+              </button>
+            )}
+          </div>
+        </Portal>
       )}
     </div>
   );

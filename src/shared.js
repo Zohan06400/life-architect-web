@@ -3,6 +3,7 @@ import React from 'react';
 // Re-export UI components
 export { RepeatPicker } from './shared/ui/RepeatPicker';
 export { TaskDetailsList } from './shared/ui/TaskDetailsList';
+export { Portal } from './shared/ui/Portal';
 
 
 // ============================================
