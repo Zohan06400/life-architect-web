@@ -735,7 +735,7 @@ const LifeArchitect = () => {
   ]);
 
   const [username, setUsername] = useState(() => loadFromStorage('username', 'Architect'));
-  const [swipeEnabled, setSwipeEnabled] = useState(() => loadFromStorage('swipeEnabled', true));
+  const [swipeEnabled, setSwipeEnabled] = useState(() => loadFromStorage('swipeEnabled', false));
   const [testModeEnabled, setTestModeEnabled] = useState(() => loadFromStorage('testModeEnabled', false));
 
   // Swipe Navigation Logic
