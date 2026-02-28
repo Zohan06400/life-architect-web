@@ -740,26 +740,43 @@ const LifeArchitect = () => {
 
   // Swipe Navigation Logic
   const [touchStart, setTouchStart] = useState(null);
+  const [touchStartY, setTouchStartY] = useState(null);
   const [swipeOffset, setSwipeOffset] = useState(0);
   const [isSwiping, setIsSwiping] = useState(false);
+  const [isVerticalScroll, setIsVerticalScroll] = useState(false);
   const minSwipeDistance = 50;
+  const swipeThreshold = 10;
   const tabs = ['projects', 'plan', 'execute', 'review', 'patterns'];
 
   const onTouchStart = (e) => {
     if (!swipeEnabled || isEditing) return;
     setTouchStart(e.targetTouches[0].clientX);
+    setTouchStartY(e.targetTouches[0].clientY);
     setIsSwiping(false);
+    setIsVerticalScroll(false);
     setSwipeOffset(0);
   };
 
   const onTouchMove = (e) => {
-    if (!swipeEnabled || touchStart === null || isEditing) return;
-    const currentTouch = e.targetTouches[0].clientX;
-    const diff = touchStart - currentTouch;
+    if (!swipeEnabled || touchStart === null || isEditing || isVerticalScroll) return;
+
+    const currentTouchX = e.targetTouches[0].clientX;
+    const currentTouchY = e.targetTouches[0].clientY;
+    const diffX = touchStart - currentTouchX;
+    const diffY = Math.abs(touchStartY - currentTouchY);
+
+    // If we haven't decided if it's a swipe yet, check thresholds
+    if (!isSwiping) {
+      if (diffY > Math.abs(diffX) && diffY > 5) {
+        setIsVerticalScroll(true);
+        return;
+      }
+      if (Math.abs(diffX) < swipeThreshold) return;
+    }
 
     // Boundary resistance
     const currentIndex = tabs.indexOf(activeTab);
-    let offset = (diff / window.innerWidth) * 100;
+    let offset = (diffX / window.innerWidth) * 100;
 
     if ((currentIndex === 0 && offset < 0) || (currentIndex === tabs.length - 1 && offset > 0)) {
       offset /= 3; // Resistance
@@ -774,7 +791,7 @@ const LifeArchitect = () => {
 
     const currentIndex = tabs.indexOf(activeTab);
 
-    if (Math.abs(swipeOffset) > 15) { // 15% threshold for snap
+    if (isSwiping && Math.abs(swipeOffset) > 15) { // 15% threshold for snap
       if (swipeOffset > 0 && currentIndex < tabs.length - 1) {
         setActiveTab(tabs[currentIndex + 1]);
       } else if (swipeOffset < 0 && currentIndex > 0) {
@@ -783,8 +800,10 @@ const LifeArchitect = () => {
     }
 
     setTouchStart(null);
+    setTouchStartY(null);
     setSwipeOffset(0);
     setIsSwiping(false);
+    setIsVerticalScroll(false);
   };
   // language lifted to top
 
